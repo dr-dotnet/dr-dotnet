@@ -137,6 +137,22 @@ void PrintRuntimes(IEnumUnknown* &enumRuntimes) {
 }
 
 void Attach() {
+
+	// Starts of tests
+
+	// Get metahost
+	ICLRMetaHost* pMetaHost = NULL;
+	TRY(CLRCreateInstance(CLSID_CLRMetaHost, IID_ICLRMetaHost, (VOID**)&pMetaHost));
+
+	auto file = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\Samples\\Fibonacci\\bin\\Debug\\net6.0\\Fibonacci.dll";
+	WCHAR rgwchVersion[30];
+	DWORD cwchVersion = ARRAYSIZE(rgwchVersion);
+	TRY(pMetaHost->GetVersionFromFile(file, rgwchVersion, &cwchVersion));
+	wprintf(L"CLR version for file: %s\n", rgwchVersion);
+
+	// End of tests
+
+
 	// Get managed process handle
 	HANDLE processHandle;
 	TRY(GetProcessByName(TEXT("Fibonacci.exe"), processHandle));
@@ -145,12 +161,6 @@ void Attach() {
 	if (processHandle == NULL) {
 		printf("Failed getting process handle\n");
 	}
-
-	// Get metahost
-	HMODULE hModule = LoadLibrary(TEXT("mscoree.dll"));
-	CreateInterfaceFnPtr createInterface = (CreateInterfaceFnPtr)GetProcAddress(hModule, "CreateInterface");
-	ICLRMetaHost* pMetaHost = NULL;
-	TRY(createInterface(CLSID_CLRMetaHost, IID_ICLRMetaHost, (LPVOID*)&pMetaHost));
 
 	// Get some runtime information
 	IEnumUnknown* enumLoadedRuntimes = NULL;
