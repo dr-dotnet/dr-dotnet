@@ -74,13 +74,8 @@ HRESULT GetProcessByName(const TCHAR element[], HANDLE &processHandle)
     return E_POINTER;
 }
 
-void AttachToProcess(LPCWSTR sz_runtimeVersion, HANDLE handle) {
-	ICLRMetaHost* pMetaHost = NULL;
-	ICLRRuntimeInfo* pRuntimeInfo = NULL;
+void AttachToProcess(ICLRRuntimeInfo* pRuntimeInfo, HANDLE handle) {
 	ICLRProfiling* pClrProfiling = NULL;
-
-	TRY(CLRCreateInstance(CLSID_CLRMetaHost, IID_ICLRMetaHost, (VOID**)&pMetaHost));
-	TRY(pMetaHost->GetRuntime(sz_runtimeVersion, IID_ICLRRuntimeInfo, (VOID**)&pRuntimeInfo));
 
 	//ICLRRuntimeHost* runtimeHost = NULL;
 	//TRY(pRuntimeInfo->GetInterface(CLSID_CLRRuntimeHost, IID_ICLRRuntimeHost, (LPVOID*)&runtimeHost));
@@ -123,7 +118,75 @@ void AttachToProcess(LPCWSTR sz_runtimeVersion, HANDLE handle) {
 	TRY(pClrProfiling->AttachProfiler(id, 10000, &clsidProfiler, path, pvClientData, cbClientData));
 }
 
-void PrintRuntimes(IEnumUnknown* &enumRuntimes) {
+void OnRuntimeLoaded(
+	ICLRRuntimeInfo* pRuntimeInfo,
+	CallbackThreadSetFnPtr pfnCallbackThreadSet,
+	CallbackThreadUnsetFnPtr pfnCallbackThreadUnset)
+{
+	LPWSTR frameworkName = (LPWSTR)LocalAlloc(LPTR, 2048);
+	DWORD bytes = 2048, result = 0;
+
+	TRY(pRuntimeInfo->GetVersionString(frameworkName, &bytes));
+
+	wprintf(L"CALLBACK! Version: %s\n", frameworkName);
+
+	HANDLE processHandle;
+	TRY(GetProcessByName(TEXT("Fibonacci.exe"), processHandle));
+
+	ICLRProfiling* pClrProfiling = NULL;
+	TRY(pRuntimeInfo->GetInterface(CLSID_CLRProfiling, IID_ICLRProfiling, (LPVOID*)&pClrProfiling));
+
+	DWORD id = GetProcessId(processHandle);
+
+	CLSID clsidProfiler;
+	TRY(CLSIDFromString(L"{BD097ED8-733E-43FE-8ED7-A95FF9A8448C}", (LPCLSID)&clsidProfiler));
+
+	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\x64\\Debug\\Profiler.Windows.dll";
+	LPVOID pvClientData = NULL;
+	DWORD cbClientData = 0;
+
+	TRY(pClrProfiling->AttachProfiler(id, 10000, &clsidProfiler, path, pvClientData, cbClientData));
+}
+
+void AttachFromCallback()
+{
+	// Get metahost
+	ICLRMetaHost* pMetaHost = NULL;
+	TRY(CLRCreateInstance(CLSID_CLRMetaHost, IID_ICLRMetaHost, (VOID**)&pMetaHost));
+
+	auto file = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\Samples\\Fibonacci\\bin\\Debug\\net6.0\\Fibonacci.dll";
+	WCHAR rgwchVersion[30];
+	DWORD cwchVersion = ARRAYSIZE(rgwchVersion);
+	TRY(pMetaHost->GetVersionFromFile(file, rgwchVersion, &cwchVersion));
+	wprintf(L"CLR version for file: %s\n", rgwchVersion);
+
+	TRY(pMetaHost->RequestRuntimeLoadedNotification(OnRuntimeLoaded));
+}
+
+void AttachFromVersion()
+{
+	// Get metahost
+	ICLRMetaHost* pMetaHost = NULL;
+	TRY(CLRCreateInstance(CLSID_CLRMetaHost, IID_ICLRMetaHost, (VOID**)&pMetaHost));
+
+	// Get managed process handle
+	HANDLE processHandle;
+	TRY(GetProcessByName(TEXT("Fibonacci.exe"), processHandle));
+	//TRY(GetProcessByID(136620, processHandle));
+
+	if (processHandle == NULL) {
+		printf("Failed getting process handle\n");
+	}
+
+	//auto versionString = L"v2.0.50727";
+	auto versionString = L"v4.0.30319";
+	ICLRRuntimeInfo* pRuntimeInfo = NULL;
+	TRY(pMetaHost->GetRuntime(versionString, IID_ICLRRuntimeInfo, (VOID**)&pRuntimeInfo));
+
+	AttachToProcess(pRuntimeInfo, processHandle);
+}
+
+void PrintRuntimes(IEnumUnknown*& enumRuntimes) {
 	IUnknown* enumRuntime = NULL;
 	ICLRRuntimeInfo* runtimeInfo = NULL;
 	LPWSTR frameworkName = (LPWSTR)LocalAlloc(LPTR, 2048);
@@ -136,22 +199,11 @@ void PrintRuntimes(IEnumUnknown* &enumRuntimes) {
 	}
 }
 
-void Attach() {
-
-	// Starts of tests
-
+void ListRuntimes()
+{
 	// Get metahost
 	ICLRMetaHost* pMetaHost = NULL;
 	TRY(CLRCreateInstance(CLSID_CLRMetaHost, IID_ICLRMetaHost, (VOID**)&pMetaHost));
-
-	auto file = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\Samples\\Fibonacci\\bin\\Debug\\net6.0\\Fibonacci.dll";
-	WCHAR rgwchVersion[30];
-	DWORD cwchVersion = ARRAYSIZE(rgwchVersion);
-	TRY(pMetaHost->GetVersionFromFile(file, rgwchVersion, &cwchVersion));
-	wprintf(L"CLR version for file: %s\n", rgwchVersion);
-
-	// End of tests
-
 
 	// Get managed process handle
 	HANDLE processHandle;
@@ -173,13 +225,12 @@ void Attach() {
 
 	printf("Installed Runtimes:\n");
 	PrintRuntimes(enumInstalledRuntimes);
-
-	//AttachToProcess(L"v2.0.50727", processHandle);
-	AttachToProcess(L"v4.0.30319", processHandle);
 }
 
 int main()
 {
-	Attach();
+	ListRuntimes();
+	//AttachFromCallback();
+	AttachFromVersion();
 	std::cin.get();
 }
