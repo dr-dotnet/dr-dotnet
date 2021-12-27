@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="DotNext.Profiler.Windows.def">
+    <None Include="Profiler.Windows.def">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
