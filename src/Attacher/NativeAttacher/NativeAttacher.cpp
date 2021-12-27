@@ -110,8 +110,8 @@ void AttachToProcess(ICLRRuntimeInfo* pRuntimeInfo, HANDLE handle) {
 
 	CLSID clsidProfiler;
 	TRY(CLSIDFromString(L"{BD097ED8-733E-43FE-8ED7-A95FF9A8448C}", (LPCLSID)&clsidProfiler));
+	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\bin\\Debug\\Profiler.Windows.dll";
 
-	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\x64\\Debug\\Profiler.Windows.dll";
 	LPVOID pvClientData = NULL;
 	DWORD cbClientData = 0;
 
@@ -140,8 +140,8 @@ void OnRuntimeLoaded(
 
 	CLSID clsidProfiler;
 	TRY(CLSIDFromString(L"{BD097ED8-733E-43FE-8ED7-A95FF9A8448C}", (LPCLSID)&clsidProfiler));
+	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\bin\\Debug\\Profiler.Windows.dll";
 
-	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\x64\\Debug\\Profiler.Windows.dll";
 	LPVOID pvClientData = NULL;
 	DWORD cbClientData = 0;
 
