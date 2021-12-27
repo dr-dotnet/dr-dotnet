@@ -77,10 +77,10 @@ HRESULT GetProcessByName(const TCHAR element[], HANDLE &processHandle)
 void AttachToProcess(ICLRRuntimeInfo* pRuntimeInfo, HANDLE handle) {
 	ICLRProfiling* pClrProfiling = NULL;
 
-	//ICLRRuntimeHost* runtimeHost = NULL;
-	//TRY(pRuntimeInfo->GetInterface(CLSID_CLRRuntimeHost, IID_ICLRRuntimeHost, (LPVOID*)&runtimeHost));
-	//// Start runtime, and load our assembly
-	//runtimeHost->Start();
+	ICLRRuntimeHost* runtimeHost = NULL;
+	TRY(pRuntimeInfo->GetInterface(CLSID_CLRRuntimeHost, IID_ICLRRuntimeHost, (LPVOID*)&runtimeHost));
+	// Start runtime, and load our assembly
+	runtimeHost->Start();
 
 	//BOOL isStarted;
 	//DWORD startedFlags;
@@ -109,8 +109,11 @@ void AttachToProcess(ICLRRuntimeInfo* pRuntimeInfo, HANDLE handle) {
 	DWORD id = GetProcessId(handle);
 
 	CLSID clsidProfiler;
-	TRY(CLSIDFromString(L"{BD097ED8-733E-43FE-8ED7-A95FF9A8448C}", (LPCLSID)&clsidProfiler));
-	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\bin\\Debug\\Profiler.Windows.dll";
+	//TRY(CLSIDFromString(L"{BD097ED8-733E-43FE-8ED7-A95FF9A8448C}", (LPCLSID)&clsidProfiler));
+	TRY(CLSIDFromString(L"{805A308B-061C-47F3-9B30-F785C3186E82}", (LPCLSID)&clsidProfiler));
+	auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\x64\\Release\\Profiler.Windows.dll";
+	//auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\Samples\\Fibonacci\\bin\\Release\\net5.0\\Profiler.Windows.dll";
+	//auto path = L"C:\\Users\\oginiaux\\Projects\\traceman\\src\\ConsoleApp1\\bin\\Release\\Profiler.Windows.dll";
 
 	LPVOID pvClientData = NULL;
 	DWORD cbClientData = 0;
