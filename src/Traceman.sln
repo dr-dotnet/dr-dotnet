@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NativeAttacher", "Attacher\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fibonacci", "Samples\Fibonacci\Fibonacci.csproj", "{1024DBE6-1D22-4EA2-BA7E-42FEE28298DA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fibonacci_NETFramework", "Samples\Fibonacci_NETFramework\Fibonacci_NETFramework.csproj", "{13F95E75-EB2D-4E12-8BB9-24A4896AA083}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Profiler\Profiler.Shared\Profiler.Shared.vcxitems*{2dc0cd84-ca15-478b-8c5a-0be3b0906feb}*SharedItemsImports = 4
@@ -100,6 +102,18 @@ Global
 		{1024DBE6-1D22-4EA2-BA7E-42FEE28298DA}.Release|x64.Build.0 = Release|Any CPU
 		{1024DBE6-1D22-4EA2-BA7E-42FEE28298DA}.Release|x86.ActiveCfg = Release|Any CPU
 		{1024DBE6-1D22-4EA2-BA7E-42FEE28298DA}.Release|x86.Build.0 = Release|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Debug|x64.Build.0 = Debug|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Debug|x86.Build.0 = Debug|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Release|Any CPU.Build.0 = Release|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Release|x64.ActiveCfg = Release|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Release|x64.Build.0 = Release|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Release|x86.ActiveCfg = Release|Any CPU
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -111,6 +125,7 @@ Global
 		{76F2B7EF-59EE-46D1-9926-8BBED89888BA} = {7B58F30D-88E7-454A-849E-217E53242B67}
 		{DD1B129B-C950-435B-B572-C4099C0E31CE} = {7B58F30D-88E7-454A-849E-217E53242B67}
 		{1024DBE6-1D22-4EA2-BA7E-42FEE28298DA} = {1FF207C9-148F-4B2E-BF07-5CAC24E79551}
+		{13F95E75-EB2D-4E12-8BB9-24A4896AA083} = {1FF207C9-148F-4B2E-BF07-5CAC24E79551}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A87AC77F-7D77-46A7-B184-D2B15919F131}
