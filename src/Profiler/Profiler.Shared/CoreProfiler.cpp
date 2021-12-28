@@ -6,6 +6,14 @@
 #include "Logger.h"
 #include "OS.h"
 
+#define TRY(x)  { \
+					HRESULT hr; \
+					if (FAILED(hr = x)) { \
+						printf("Failed: '%s'. Reason: 0x%x.\n", #x, hr); \
+						return hr; \
+					} \
+				}
+
 HRESULT __stdcall CoreProfiler::QueryInterface(REFIID riid, void** ppvObject) {
 
 	Logger::Info(__FUNCTION__);
@@ -21,7 +29,7 @@ HRESULT __stdcall CoreProfiler::QueryInterface(REFIID riid, void** ppvObject) {
 	//StringFromIID(__uuidof(ICorProfilerCallback2), &pStr2);
 	//wprintf(L"2-> %s", pStr2);
 
-	if (true || riid == __uuidof(IUnknown) ||
+	if (riid == __uuidof(IUnknown) ||
 		riid == __uuidof(ICorProfilerCallback) ||
 		riid == __uuidof(ICorProfilerCallback2) ||
 		riid == __uuidof(ICorProfilerCallback3) ||
@@ -30,9 +38,11 @@ HRESULT __stdcall CoreProfiler::QueryInterface(REFIID riid, void** ppvObject) {
 		riid == __uuidof(ICorProfilerCallback6) ||
 		riid == __uuidof(ICorProfilerCallback7) ||
 		riid == __uuidof(ICorProfilerCallback8) ||
-		riid == __uuidof(ICorProfilerCallback9)) {
+		riid == __uuidof(ICorProfilerCallback9) ||
+		riid == __uuidof(ICorProfilerCallback10) ||
+		riid == __uuidof(ICorProfilerCallback11)) {
 		AddRef();
-		*ppvObject = static_cast<ICorProfilerCallback8*>(this);
+		*ppvObject = static_cast<ICorProfilerCallback3*>(this);
 
 		wprintf(L"OK");
 
@@ -332,6 +342,7 @@ HRESULT CoreProfiler::ExceptionThrown(ObjectID thrownObjectId) {
 }
 
 HRESULT CoreProfiler::ExceptionSearchFunctionEnter(FunctionID functionId) {
+	Logger::Info(__FUNCTION__);
 	return S_OK;
 }
 
@@ -380,6 +391,7 @@ HRESULT CoreProfiler::ExceptionCatcherEnter(FunctionID functionId, ObjectID obje
 }
 
 HRESULT CoreProfiler::ExceptionCatcherLeave() {
+	Logger::Info(__FUNCTION__);
 	return S_OK;
 }
 
@@ -396,6 +408,7 @@ HRESULT CoreProfiler::ExceptionCLRCatcherFound() {
 }
 
 HRESULT CoreProfiler::ExceptionCLRCatcherExecute() {
+	Logger::Info(__FUNCTION__);
 	return S_OK;
 }
 
@@ -443,16 +456,16 @@ HRESULT CoreProfiler::InitializeForAttach(IUnknown* pICorProfilerInfoUnk, void* 
 	pICorProfilerInfoUnk->QueryInterface(&_info);
 	assert(_info);
 
-	_info->SetEventMask(
+	TRY(_info->SetEventMask(
 		COR_PRF_MONITOR_MODULE_LOADS |
 		COR_PRF_MONITOR_ASSEMBLY_LOADS |
 		COR_PRF_MONITOR_GC |
 		COR_PRF_MONITOR_CLASS_LOADS |
 		COR_PRF_MONITOR_THREADS |
 		COR_PRF_MONITOR_EXCEPTIONS |
-		COR_PRF_MONITOR_JIT_COMPILATION |
-		COR_PRF_MONITOR_OBJECT_ALLOCATED |
-		COR_PRF_ENABLE_OBJECT_ALLOCATED);
+		COR_PRF_MONITOR_JIT_COMPILATION));
+
+	Logger::Info("ATTACHED!");
 
 	return S_OK;
 }
@@ -468,49 +481,49 @@ HRESULT CoreProfiler::ProfilerDetachSucceeded() {
 	return S_OK;
 }
 
-HRESULT CoreProfiler::ReJITCompilationStarted(FunctionID functionId, ReJITID rejitId, BOOL fIsSafeToBlock) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::GetReJITParameters(ModuleID moduleId, mdMethodDef methodId, ICorProfilerFunctionControl* pFunctionControl) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::ReJITCompilationFinished(FunctionID functionId, ReJITID rejitId, HRESULT hrStatus, BOOL fIsSafeToBlock) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::ReJITError(ModuleID moduleId, mdMethodDef methodId, FunctionID functionId, HRESULT hrStatus) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID* oldObjectIDRangeStart, ObjectID* newObjectIDRangeStart, SIZE_T* cObjectIDRangeLength) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::SurvivingReferences2(ULONG cSurvivingObjectIDRanges, ObjectID* objectIDRangeStart, SIZE_T* cObjectIDRangeLength) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::ConditionalWeakTableElementReferences(ULONG cRootRefs, ObjectID* keyRefIds, ObjectID* valueRefIds, GCHandleID* rootIds) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::GetAssemblyReferences(const WCHAR* wszAssemblyPath, ICorProfilerAssemblyReferenceProvider* pAsmRefProvider) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::ModuleInMemorySymbolsUpdated(ModuleID moduleId) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::DynamicMethodJITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock, LPCBYTE pILHeader, ULONG cbILHeader) {
-	return S_OK;
-}
-
-HRESULT CoreProfiler::DynamicMethodJITCompilationFinished(FunctionID functionId, HRESULT hrStatus, BOOL fIsSafeToBlock) {
-	return S_OK;
-}
+//HRESULT CoreProfiler::ReJITCompilationStarted(FunctionID functionId, ReJITID rejitId, BOOL fIsSafeToBlock) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::GetReJITParameters(ModuleID moduleId, mdMethodDef methodId, ICorProfilerFunctionControl* pFunctionControl) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::ReJITCompilationFinished(FunctionID functionId, ReJITID rejitId, HRESULT hrStatus, BOOL fIsSafeToBlock) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::ReJITError(ModuleID moduleId, mdMethodDef methodId, FunctionID functionId, HRESULT hrStatus) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID* oldObjectIDRangeStart, ObjectID* newObjectIDRangeStart, SIZE_T* cObjectIDRangeLength) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::SurvivingReferences2(ULONG cSurvivingObjectIDRanges, ObjectID* objectIDRangeStart, SIZE_T* cObjectIDRangeLength) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::ConditionalWeakTableElementReferences(ULONG cRootRefs, ObjectID* keyRefIds, ObjectID* valueRefIds, GCHandleID* rootIds) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::GetAssemblyReferences(const WCHAR* wszAssemblyPath, ICorProfilerAssemblyReferenceProvider* pAsmRefProvider) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::ModuleInMemorySymbolsUpdated(ModuleID moduleId) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::DynamicMethodJITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock, LPCBYTE pILHeader, ULONG cbILHeader) {
+//	return S_OK;
+//}
+//
+//HRESULT CoreProfiler::DynamicMethodJITCompilationFinished(FunctionID functionId, HRESULT hrStatus, BOOL fIsSafeToBlock) {
+//	return S_OK;
+//}
 
 std::string CoreProfiler::GetTypeName(mdTypeDef type, ModuleID module) const {
 	CComPtr<IMetaDataImport> spMetadata;
@@ -527,6 +540,8 @@ std::string CoreProfiler::GetTypeName(mdTypeDef type, ModuleID module) const {
 }
 
 std::string CoreProfiler::GetMethodName(FunctionID function) const {
+	Logger::Info(__FUNCTION__);
+
 	ModuleID module;
 	mdToken token;
 	mdTypeDef type;
