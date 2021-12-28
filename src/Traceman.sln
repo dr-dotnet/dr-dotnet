@@ -24,6 +24,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fibonacci_NETFramework", "Samples\Fibonacci_NETFramework\Fibonacci_NETFramework.csproj", "{13F95E75-EB2D-4E12-8BB9-24A4896AA083}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManagedAttachedNew", "ManagedAttachedNew\ManagedAttachedNew.csproj", "{62AF041E-429E-4FE9-9819-DBF3BCFDB45E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5FF8787B-1E42-4F50-967C-4A7506577009} = {5FF8787B-1E42-4F50-967C-4A7506577009}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution

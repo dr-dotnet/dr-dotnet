@@ -1,4 +1,5 @@
 #include "Common.h"
+#include "Logger.h"
 #include "CoreProfilerFactory.h"
 #include "CoreProfiler.h"
 #include <new>
@@ -6,7 +7,7 @@
 
 HRESULT __stdcall CoreProfilerFactory::QueryInterface(REFIID riid, void** ppvObject) {
 
-	std::cout << "qq instance\n";
+	Logger::Info(__FUNCTION__);
 
 	if (ppvObject == nullptr)
 		return E_POINTER;
@@ -28,7 +29,7 @@ ULONG __stdcall CoreProfilerFactory::Release(void) {
 
 HRESULT __stdcall CoreProfilerFactory::CreateInstance(IUnknown* pUnkOuter, REFIID riid, void** ppvObject) {
 
-	std::cout << "create instance\n";
+	Logger::Info(__FUNCTION__);
 
 	auto profiler = new (std::nothrow) CoreProfiler;
 	if (profiler == nullptr)

@@ -45,6 +45,7 @@ void Logger::Term() {
 #ifdef _WINDOWS
 #include <Windows.h>
 #endif
+#include <iostream>
 
 void Logger::DoLog(LogLevel level, const char* text) {
 
@@ -62,6 +63,8 @@ void Logger::DoLog(LogLevel level, const char* text) {
 	timespec_get(&ts, TIME_UTC);
 	
 	strftime(time, sizeof(time), "%D %T", plt);
+
+	std::cout << text << std::endl;
 
 	std::stringstream message;
 	message

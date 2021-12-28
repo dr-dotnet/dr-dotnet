@@ -14,19 +14,26 @@ namespace Fibonacci
 
             long sum = 0;
 
-            Enumerable.Range(0, 2 /*Environment.ProcessorCount*/).Select((i) =>
-            {
-                return ThreadPool.QueueUserWorkItem((_) =>
-                {
+            //Enumerable.Range(0, 2 /*Environment.ProcessorCount*/).Select((i) =>
+            //{
+            //    return ThreadPool.QueueUserWorkItem((_) =>
+            //    {
                     while (true)
                     {
                         unchecked
                         {
-                            Interlocked.Add(ref sum, myType.Fibonacci(1000 * i));
+                            Interlocked.Add(ref sum, myType.Fibonacci(1000 * 0));
+                            try
+                            {
+                                throw new ArgumentNullException("test");
+                            } catch
+                            {
+
+                            }
                         }
                     }
-                });
-            }).ToArray();
+            //    });
+            //}).ToArray();
 
             Console.WriteLine("Press key to exit");
             Console.Read();
