@@ -1,0 +1,14 @@
+[package]
+name = "profiler"
+version = "0.1.0"
+authors = ["Olivier Giniaux <oginiaux@gmail.com>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/ogxd/traceman"
+
+[dependencies]
+profiling_api = { version = "0.1.0", path = "../profiling_api" }
+uuid = "0.8"
+
+[lib]
+crate-type = ["cdylib"]

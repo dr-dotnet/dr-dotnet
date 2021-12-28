@@ -1,0 +1,12 @@
+[package]
+name = "profiling_api"
+version = "0.1.0"
+authors = ["Olivier Giniaux <oginiaux@gmail.com>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/ogxd/traceman"
+
+[dependencies]
+uuid = "0.8"
+widestring = "0.4.2"
+bitflags = "1.2.1"
