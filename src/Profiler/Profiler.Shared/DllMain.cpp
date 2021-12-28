@@ -6,7 +6,7 @@
 
 extern "C" BOOL __stdcall DllMain(HINSTANCE hInstDll, DWORD reason, PVOID) {
 
-	std::cout << "2\n";
+	Logger::Info(__FUNCTION__);
 
 	switch (reason) {
 		case DLL_PROCESS_ATTACH:
@@ -25,13 +25,22 @@ class __declspec(uuid("805A308B-061C-47F3-9B30-F785C3186E82")) CoreProfiler;
 
 extern "C" HRESULT __stdcall DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv) {
 
-	std::cout << "1\n";
-
-	Logger::Debug(__FUNCTION__);
+	Logger::Info(__FUNCTION__);
 
 	if (rclsid == __uuidof(CoreProfiler)) {
 		static CoreProfilerFactory factory;
-		return factory.QueryInterface(riid, ppv);
+		HRESULT r = factory.QueryInterface(riid, ppv);
+		if (r == S_OK) {
+			Logger::Info("OK!");
+
+		}
+		else {
+			Logger::Info("FUCK");
+		}
+		return r;
 	}
+
+	Logger::Info("NA!");
+
 	return CLASS_E_CLASSNOTAVAILABLE;
 }

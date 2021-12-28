@@ -8,12 +8,20 @@
 
 HRESULT __stdcall CoreProfiler::QueryInterface(REFIID riid, void** ppvObject) {
 
-	std::cout << "query interface\n";
+	Logger::Info(__FUNCTION__);
 
 	if (ppvObject == nullptr)
 		return E_POINTER;
 
-	if (riid == __uuidof(IUnknown) ||
+	//LPOLESTR pStr = NULL;
+	//StringFromIID(riid, &pStr);
+	//wprintf(L"?-> %s", pStr);
+
+	//LPOLESTR pStr2 = NULL;
+	//StringFromIID(__uuidof(ICorProfilerCallback2), &pStr2);
+	//wprintf(L"2-> %s", pStr2);
+
+	if (true || riid == __uuidof(IUnknown) ||
 		riid == __uuidof(ICorProfilerCallback) ||
 		riid == __uuidof(ICorProfilerCallback2) ||
 		riid == __uuidof(ICorProfilerCallback3) ||
@@ -25,8 +33,14 @@ HRESULT __stdcall CoreProfiler::QueryInterface(REFIID riid, void** ppvObject) {
 		riid == __uuidof(ICorProfilerCallback9)) {
 		AddRef();
 		*ppvObject = static_cast<ICorProfilerCallback8*>(this);
+
+		wprintf(L"OK");
+
 		return S_OK;
 	}
+
+	wprintf(L"FAIL");
+
 
 	return E_NOINTERFACE;
 }
@@ -45,9 +59,7 @@ ULONG __stdcall CoreProfiler::Release(void) {
 
 HRESULT CoreProfiler::Initialize(IUnknown* pICorProfilerInfoUnk) {
 
-	std::cout << "init\n";
-
-	Logger::Debug(__FUNCTION__);
+	Logger::Info(__FUNCTION__);
 
 	pICorProfilerInfoUnk->QueryInterface(&_info);
 	assert(_info);
@@ -59,8 +71,9 @@ HRESULT CoreProfiler::Initialize(IUnknown* pICorProfilerInfoUnk) {
 		COR_PRF_MONITOR_CLASS_LOADS |
 		COR_PRF_MONITOR_THREADS |
 		COR_PRF_MONITOR_EXCEPTIONS |
-		COR_PRF_MONITOR_JIT_COMPILATION);
-	//|	COR_PRF_MONITOR_OBJECT_ALLOCATED | COR_PRF_ENABLE_OBJECT_ALLOCATED);
+		COR_PRF_MONITOR_JIT_COMPILATION |
+		COR_PRF_MONITOR_OBJECT_ALLOCATED |
+		COR_PRF_ENABLE_OBJECT_ALLOCATED);
 
 	return S_OK;
 }
@@ -141,7 +154,7 @@ HRESULT CoreProfiler::ClassLoadFinished(ClassID classId, HRESULT hrStatus) {
 	mdTypeDef type;
 	if (SUCCEEDED(_info->GetClassIDInfo(classId, &module, &type))) {
 		auto name = GetTypeName(type, module);
-		Logger::Debug("Type %s loaded", name.c_str());
+		Logger::Info("Type %s loaded", name.c_str());
 	}
 
 	return S_OK;
@@ -160,13 +173,13 @@ HRESULT CoreProfiler::FunctionUnloadStarted(FunctionID functionId) {
 }
 
 HRESULT CoreProfiler::JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock) {
-	Logger::Debug("JIT compilation started: %s", GetMethodName(functionId).c_str());
+	Logger::Info("JIT compilation started: %s", GetMethodName(functionId).c_str());
 
 	return S_OK;
 }
 
 HRESULT CoreProfiler::JITCompilationFinished(FunctionID functionId, HRESULT hrStatus, BOOL fIsSafeToBlock) {
-	Logger::Debug("JIT compilation finished: %s", GetMethodName(functionId).c_str());
+	Logger::Info("JIT compilation finished: %s", GetMethodName(functionId).c_str());
 
 	return S_OK;
 }
@@ -284,7 +297,7 @@ HRESULT CoreProfiler::ObjectAllocated(ObjectID objectId, ClassID classId) {
 	if (SUCCEEDED(_info->GetClassIDInfo(classId, &module, &type))) {
 		auto name = GetTypeName(type, module);
 		if(!name.empty())
-			Logger::Debug("Allocated object 0x%p of type %s", objectId, name.c_str());
+			Logger::Info("Allocated object 0x%p of type %s", objectId, name.c_str());
 	}
 	return S_OK;
 }
@@ -302,12 +315,13 @@ HRESULT CoreProfiler::RootReferences(ULONG cRootRefs, ObjectID* rootRefIds) {
 }
 
 HRESULT CoreProfiler::ExceptionThrown(ObjectID thrownObjectId) {
+	Logger::Info("Exception");
 	ClassID classid;
 	HR(_info->GetClassFromObject(thrownObjectId, &classid));
 	ModuleID module;
 	mdTypeDef type;
 	HR(_info->GetClassIDInfo(classid, &module, &type));
-	Logger::Warning("Exception %s thrown", GetTypeName(type, module).c_str());
+	Logger::Info("Exception %s thrown", GetTypeName(type, module).c_str());
 
 	std::vector<std::string> data;
 	if (SUCCEEDED(_info->DoStackSnapshot(0, StackSnapshotCB, 0, &data, nullptr, 0))) {
@@ -390,7 +404,7 @@ HRESULT CoreProfiler::ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR*
 }
 
 HRESULT CoreProfiler::GarbageCollectionStarted(int cGenerations, BOOL* generationCollected, COR_PRF_GC_REASON reason) {
-	Logger::Debug(__FUNCTION__);
+	Logger::Info(__FUNCTION__);
 	Logger::Info("GC started. Gen0=%s, Gen1=%s, Gen2=%s",
 		generationCollected[0] ? "Yes" : "No", generationCollected[1] ? "Yes" : "No", generationCollected[2] ? "Yes" : "No");
 
@@ -423,11 +437,30 @@ HRESULT CoreProfiler::HandleDestroyed(GCHandleID handleId) {
 	return S_OK;
 }
 
-HRESULT CoreProfiler::InitializeForAttach(IUnknown* pCorProfilerInfoUnk, void* pvClientData, UINT cbClientData) {
+HRESULT CoreProfiler::InitializeForAttach(IUnknown* pICorProfilerInfoUnk, void* pvClientData, UINT cbClientData) {
+	Logger::Info(__FUNCTION__);
+
+	pICorProfilerInfoUnk->QueryInterface(&_info);
+	assert(_info);
+
+	_info->SetEventMask(
+		COR_PRF_MONITOR_MODULE_LOADS |
+		COR_PRF_MONITOR_ASSEMBLY_LOADS |
+		COR_PRF_MONITOR_GC |
+		COR_PRF_MONITOR_CLASS_LOADS |
+		COR_PRF_MONITOR_THREADS |
+		COR_PRF_MONITOR_EXCEPTIONS |
+		COR_PRF_MONITOR_JIT_COMPILATION |
+		COR_PRF_MONITOR_OBJECT_ALLOCATED |
+		COR_PRF_ENABLE_OBJECT_ALLOCATED);
+
 	return S_OK;
 }
 
 HRESULT CoreProfiler::ProfilerAttachComplete() {
+
+	Logger::Info(__FUNCTION__);
+
 	return S_OK;
 }
 
