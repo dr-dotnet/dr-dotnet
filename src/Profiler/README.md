@@ -1,6 +1,7 @@
 # Brainstorming
 
 ## How to create the Profiler COM object in Rust
+
 - Must generate a .so file
   - Specify crate-type=cdylib
   - https://doc.rust-lang.org/reference/linkage.html
@@ -10,19 +11,17 @@
 - Must have a class that implements ICorProfilerCallback2 (or higher).
   - What does it mean to have a class if we only have C bindings (no C++)
   - What does it mean to implement an interface? COM has a concept of interfaces, but C/C++ doesn't (even though it's in the .h file as an "interface")
-- 
 
 ## Basic flow is:
+
 1. Some COM client (CLR in this case) calls `DllGetClassObject`, which populates a pointer ([out] parameter) to an instance of a struct that adheres to IClassFactory
 2. The COM client then calls `CreateInstance` on the IClassFactory that it now has a handle to. This populates a pointer ([out] parameter) to an instance of a struct that adheres to ICorProfilerCallback9.
 3. Now the COM client can call function pointers in this struct that it know will exist. Neat!
 
-Some Helpful Resources:
-- Docs on some of the weird Windows specific types (LPVOID, DWORD, HINSTANCE, etc...)
-  - https://en.wikibooks.org/wiki/Windows_Programming/Handles_and_Data_Types
-
 ## Some Links
 
+- Docs on some of the weird Windows specific types (LPVOID, DWORD, HINSTANCE, etc...)
+  - https://en.wikibooks.org/wiki/Windows_Programming/Handles_and_Data_Types
 - https://github.com/DataDog/dd-trace-dotnet
 - https://docs.datadoghq.com/tracing/setup/dotnet/?tab=netcoreonlinux
 - https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback2-interface
@@ -45,9 +44,3 @@ Some Helpful Resources:
 - https://www.codeproject.com/Articles/13601/COM-in-plain-C#CLASS
 - https://gankra.github.io/blah/rust-layouts-and-abis/
 - https://docs.rs/intercom/0.2.0/src/intercom/combox.rs.html#105-134
-
-## TODO
-
-- Create facility to run tests against multiple .net versions. For example, here is linux setup for [side-by-side .net core installations](https://www.hanselman.com/blog/SideBySideUserScopedNETCoreInstallationsOnLinuxWithDotnetinstallsh.aspx).
-- A potential source of bugs in the `ProfilerInfo` struct, is when an `S_OK` hresult is returned, but one of the out pointer parameters can be null. These need explicitly checked if they are null and wrapped in an `Option`. If we just dereference, this is undefined behavior! The Microsoft documentation is spotty on which out parameters can be null. Sometimes it is mentioned in the remarks.
-
