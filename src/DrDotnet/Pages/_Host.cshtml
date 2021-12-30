@@ -1,0 +1,53 @@
+﻿@page "/"
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+@namespace DrDotnetWeb.Pages
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dr Dotnet</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="_content/DrDotnet/css/bootstrap/bootstrap.min.css" />
+    <link href="_content/DrDotnet/css/site.css" rel="stylesheet" />
+    <link href="DrDotnetWeb.styles.css" rel="stylesheet" />
+
+    <!-- for water demo page -->
+    <script src="_content/DrDotnet/water/OES_texture_float_linear-polyfill.js"></script>
+    <script src="_content/DrDotnet/water/lightgl.js"></script>
+    <script src="_content/DrDotnet/water/cubemap.js"></script>
+    <script src="_content/DrDotnet/water/renderer.js"></script>
+    <script src="_content/DrDotnet/water/water.js"></script>
+    <script src="_content/DrDotnet/water/main.js"></script>
+
+
+</head>
+<body>
+    <!-- water demo -->
+    <img id="tiles" style="display: none" src="_content/DrDotnet/water/tiles.jpg">
+    <img id="xneg" style="display: none"  src="_content/DrDotnet/water/xneg.jpg">
+    <img id="xpos" style="display: none"  src="_content/DrDotnet/water/xpos.jpg">
+    <img id="ypos" style="display: none"  src="_content/DrDotnet/water/ypos.jpg">
+    <img id="zneg" style="display: none"  src="_content/DrDotnet/water/zneg.jpg">
+    <img id="zpos" style="display: none"  src="_content/DrDotnet/water/zpos.jpg">
+
+    <component type="typeof(DrDotnet.App)" render-mode="ServerPrerendered" />
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            An error has occurred. This application may no longer respond until reloaded.
+        </environment>
+        <environment include="Development">
+            An unhandled exception has occurred. See browser dev tools for details.
+        </environment>
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>
