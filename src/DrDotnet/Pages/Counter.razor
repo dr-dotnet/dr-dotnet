@@ -3,16 +3,33 @@
 
 <h1>Counter</h1>
 
-<p>Current count: @currentCount</p>
-
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+    <textarea style="width:100%;" @bind="AllLogs" @bind:event="oninput" />
 
 @code {
-    private int currentCount = 0;
 
-    private void IncrementCount()
+    private static string _allLogs;
+
+    public string AllLogs
     {
-        currentCount++;
-        AppState.Counter++;
+        get
+        {
+            return _allLogs;
+        }
+        set
+        {
+            // nope
+        }
+    }
+
+    public void OnLog(string message)
+    {
+        _allLogs += message;
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        Logger.MessageLogged += OnLog;
     }
 }
