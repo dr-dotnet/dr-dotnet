@@ -15,14 +15,9 @@
     <link rel="stylesheet" href="_content/DrDotnet/css/bootstrap/bootstrap.min.css" />
     <link href="_content/DrDotnet/css/site.css" rel="stylesheet" />
     <link href="DrDotnetWeb.styles.css" rel="stylesheet" />
+    <link href="_content/MatBlazor/dist/matBlazor.css" rel="stylesheet" />
 
-    <!-- for water demo page -->
-    <script src="_content/DrDotnet/water/OES_texture_float_linear-polyfill.js"></script>
-    <script src="_content/DrDotnet/water/lightgl.js"></script>
-    <script src="_content/DrDotnet/water/cubemap.js"></script>
-    <script src="_content/DrDotnet/water/renderer.js"></script>
-    <script src="_content/DrDotnet/water/water.js"></script>
-    <script src="_content/DrDotnet/water/main.js"></script>
+    <script src="_content/MatBlazor/dist/matBlazor.js"></script>
 
 
 </head>
@@ -35,7 +30,7 @@
     <img id="zneg" style="display: none"  src="_content/DrDotnet/water/zneg.jpg">
     <img id="zpos" style="display: none"  src="_content/DrDotnet/water/zpos.jpg">
 
-    <component type="typeof(DrDotnet.App)" render-mode="ServerPrerendered" />
+    <component type="typeof(DrDotnet.App)" render-mode="Server" />
 
     <div id="blazor-error-ui">
         <environment include="Staging,Production">
