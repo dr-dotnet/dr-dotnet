@@ -1,0 +1,44 @@
+﻿@page "/"
+
+@inject IAnalysesDiscovery _analysesDiscovery;
+@inject NavigationManager _navigationManager
+
+<h3 class="mat-h3">Recent Analyses</h3>
+
+<MatTable Items="@_analyses" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+    <MatTableHeader>
+        <th>Process</th>
+        <th style="min-width:300px;">Date</th>
+        <th>Status</th>
+    </MatTableHeader>
+    <MatTableRow>
+        <td>@context.ProcessName</td>
+        <td>@context.Date</td>
+        <td>@context.Status</td>
+    </MatTableRow>
+</MatTable>
+
+<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New analysis" OnClick="OnNewAnalysisClicked" Style="float: right;"></MatButton>
+ 
+@code
+{
+
+    IEnumerable<AnalysisData> _analyses;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        _analyses = _analysesDiscovery.GetAnalyses();
+    }
+
+    public void OnSelectionChanged(object data)
+    {
+        _navigationManager.NavigateTo($"/analysis/{Guid.NewGuid()}", true);
+    }
+
+    public void OnNewAnalysisClicked(object data)
+    {
+        _navigationManager.NavigateTo("/processes/", true);
+    }
+}

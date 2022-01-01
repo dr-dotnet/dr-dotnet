@@ -1,0 +1,69 @@
+﻿@page "/processes"
+
+@inject IProcessDiscovery _processDiscovery
+@inject NavigationManager _navigationManager
+
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<h3 class="mat-h3">Dotnet Processes</h3>
+
+@if (_processes == null)
+{
+    <div class="mat-elevation-z5" style="padding: 20px;">
+        <h3 class="mat-subtitle1">Scanning processes...</h3>
+        <MatProgressBar Progress="@Progress"></MatProgressBar>
+    </div>
+}
+else
+{
+    <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+    <MatTableHeader>
+        <th>Name</th>
+        <th>Id</th>
+        <th style="min-width:300px;">Start Time</th>
+        <th>Main Module</th>
+    </MatTableHeader>
+    <MatTableRow>
+        <td>@context.ProcessName</td>
+        <td>@context.Id</td>
+        <td>@context.StartTime</td>
+        <td>@context.MainModule.ModuleName</td>
+    </MatTableRow>
+    </MatTable>
+}
+
+@code {
+    private List<System.Diagnostics.Process> _processes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        ScanProcessesAsync(); // Fire and forget
+    }
+
+    private async Task ScanProcessesAsync()
+    {
+        _processes = await _processDiscovery.GetDotnetProcessesAsync(OnProgress);
+
+        StateHasChanged();
+    }
+
+    private float Progress { get; set; }
+
+    private void OnProgress(float progress)
+    {
+        Progress = progress;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSelectionChanged(object data)
+    {
+        _navigationManager.NavigateTo($"/profilers/{(data as System.Diagnostics.Process).Id}", true);
+    }
+
+    public void OnBackClick(object data)
+    {
+        _navigationManager.NavigateTo("/", true);
+    }
+} 
