@@ -1,0 +1,69 @@
+﻿@page "/job/{ProcessId}/{ProfilerId}"
+
+@inject NavigationManager _navigationManager
+@inject IProfilersDiscovery _profilerDiscovery
+
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<h3 class="mat-h3">Job</h3>
+
+<div class="mat-layout-grid">
+    <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6">
+            <h4 class="mat-h4">@_profiler.Name</h4>
+        </div>
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3 mat-body1">
+            @_profiler.Guid
+        </div>
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-2"></div>
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-1"></div>
+
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3"></div>
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-1"></div>
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-8 mat-body1">
+            @_profiler.Description
+        </div>
+
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
+            @if (Started)
+            {
+                <h3 class="mat-subtitle1">Analysis in progress, please wait...</h3>
+                <MatProgressBar Indeterminate="true"></MatProgressBar>
+            }
+            else
+            {
+                <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process and run analysis!" OnClick="OnRunAnalysisClicked" Style="float: right;"></MatButton>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private bool Started { get; set; }
+
+    [Parameter]
+    public string ProcessId { get; set; }
+
+    [Parameter]
+    public string ProfilerId { get; set; }
+
+    public Profiler _profiler;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.Guid.ToString() == ProfilerId).First();
+    }
+
+    private void OnRunAnalysisClicked(object data)
+    {
+        Started = true;
+    }
+
+    public void OnBackClick(object data)
+    {
+        _navigationManager.NavigateTo($"/profilers/{ProcessId}", true);
+    }
+} 

@@ -1,0 +1,25 @@
+﻿@page "/analysis/{AnalysisId}"
+
+@inject ILogger _logger;
+@inject IAnalysesDiscovery _analysisDiscovery;
+@inject NavigationManager _navigationManager
+
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<h3 class="mat-h3">Analysis</h3>
+
+@code {
+
+    [Parameter]
+    public string AnalysisId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    public void OnBackClick(object data)
+    {
+        _navigationManager.NavigateTo("/", true);
+    }
+}

@@ -1,17 +1,72 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@inject ILogger _logger;
 
+<div class="page">
     <div class="main">
         <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+            Dr.Dotnet
+            <a href="https://github.com/ogxd/dr-dotnet" target="_blank">See on Github</a>
         </div>
 
         <div class="content px-4">
             @Body
         </div>
+
     </div>
 </div>
+
+<MatButton OnClick="@OpenDialog" Icon="receipt" Style="position: absolute; right: 0; bottom: 0;">See Logs</MatButton>
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Hi @name</MatDialogTitle>
+    <MatDialogContent>
+        <textarea style="width:100%; min-height: 300px;" @bind="AllLogs" @bind:event="oninput" />
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">Close</MatButton>
+    </MatDialogActions>
+</MatDialog>
+ 
+@code
+{
+    bool dialogIsOpen = false;
+    string name = null;
+    string animal = null;
+    string dialogAnimal = null;
+
+    void OpenDialog()
+    {
+        dialogAnimal = null;
+        dialogIsOpen = true;
+    }
+
+    void OkClick()
+    {
+        animal = dialogAnimal;
+        dialogIsOpen = false;
+    }
+
+    public string AllLogs
+    {
+        get
+        {
+            return _logger.GetAllLogs();
+        }
+        set { /* readonly */ }
+    }
+
+    private void OnMessageLogged(string message)
+    {
+        if (dialogIsOpen)
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+         _logger.MessageLogged += OnMessageLogged;
+    }
+}

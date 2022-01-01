@@ -1,9 +1,7 @@
-// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-
+using System.Net.Http;
 using System.Windows;
 using DrDotnet;
-using DrDotnet.Data;
+using MatBlazor;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DrDotnetDesktop
@@ -13,25 +11,21 @@ namespace DrDotnetDesktop
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly AppState _appState = new();
-
         public MainWindow()
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddBlazorWebView();
-            serviceCollection.AddSingleton<AppState>(_appState);
-            serviceCollection.AddSingleton<WeatherForecastService>();
-            Resources.Add("services", serviceCollection.BuildServiceProvider());
+            var services = new ServiceCollection();
+            services.AddBlazorWebView();
+            services.AddMatBlazor();
+
+            services.AddSingleton<HttpClient>();
+            services.AddSingleton<ILogger, Logger>();
+            services.AddSingleton<IAnalysesDiscovery, AnalysesDiscovery>();
+            services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
+            services.AddSingleton<IProfilersDiscovery, ProfilersDiscovery>();
+
+            Resources.Add("services", services.BuildServiceProvider());
 
             InitializeComponent();
-        }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show(
-                owner: this,
-                messageBoxText: $"Current counter value is: {_appState.Counter}",
-                caption: "Counter");
         }
     }
 
