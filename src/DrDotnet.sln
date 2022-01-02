@@ -5,12 +5,12 @@ VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet", "DrDotnet\DrDotnet.csproj", "{62AF041E-429E-4FE9-9819-DBF3BCFDB45E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnetDesktop", "DrDotnetDesktop\DrDotnetDesktop.csproj", "{2E986D26-107D-48FA-BAA5-C28AE4F449F6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{2E986D26-107D-48FA-BAA5-C28AE4F449F6}"
 	ProjectSection(ProjectDependencies) = postProject
 		{62AF041E-429E-4FE9-9819-DBF3BCFDB45E} = {62AF041E-429E-4FE9-9819-DBF3BCFDB45E}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnetWeb", "DrDotnetWeb\DrDotnetWeb.csproj", "{D717472D-14CA-405C-8258-F6C1875F0F2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Web", "DrDotnet.Web\DrDotnet.Web.csproj", "{D717472D-14CA-405C-8258-F6C1875F0F2C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{62AF041E-429E-4FE9-9819-DBF3BCFDB45E} = {62AF041E-429E-4FE9-9819-DBF3BCFDB45E}
 	EndProjectSection

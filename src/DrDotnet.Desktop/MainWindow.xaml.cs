@@ -4,7 +4,7 @@ using DrDotnet;
 using MatBlazor;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace DrDotnetDesktop
+namespace DrDotnet.Desktop
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
