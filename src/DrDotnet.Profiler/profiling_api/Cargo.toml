@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Olivier Giniaux <oginiaux@gmail.com>"]
 edition = "2018"
 license = "MIT"
-repository = "https://github.com/ogxd/traceman"
+repository = "https://github.com/ogxd/dr-dotnet"
 
 [dependencies]
 uuid = "0.8"

@@ -4,6 +4,3 @@ members = [
     "profiling_api",
     "profiler",
 ]
-
-[build]
-target-dir = "/ddd"
