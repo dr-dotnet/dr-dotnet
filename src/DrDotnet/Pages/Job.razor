@@ -60,6 +60,8 @@
     private void OnRunAnalysisClicked(object data)
     {
         Started = true;
+
+        _profiler.TryProfileProcess(int.Parse(ProcessId));
     }
 
     public void OnBackClick(object data)
