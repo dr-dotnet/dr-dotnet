@@ -1,8 +1,8 @@
-# Traceman
+# Dr-Dotnet 🩺
 
 🚧 Very WIP 😉
 
-The goal is to create a profiler that would ease the tracking of common issues in .NET applications suchs as deadlocks, cpu hotpaths, zombie threads, async hotpaths (stuck tasks), memory leaks.  
+The goal is to create a profiler that would ease the tracking of common issues in .NET applications such as deadlocks, cpu hotpaths, zombie threads, async hotpaths (stuck tasks), memory leaks.  
 It is possible to identify some of these issues using today's existing tools, but with some drawbacks:
 
 - Often you have to explicitely look for such issue.
@@ -21,24 +21,29 @@ The .NET Profiling API is accessible via COM interop (cross-platform thanks to t
   - Should I even consider attach mode? (because of its limitations)
   - Should I even consider start mode? (because it is too invasive and implies process restart, which is bad is issue is live)
 - [ ] Implement IPC through Event Pipe
-- [ ] Add simple UI client for attaching
+- [x] Add simple UI client for attaching
 - [ ] Add simple UI client for setting up on-start profiler
-- [ ] Create web app profiler UI that can work in headless scenarios (eg. linux servers)
+- [x] Create web app profiler UI that can work in headless scenarios (eg. linux servers)
 - [ ] Have web app profiler work when used as a sidecar docker container
+- [ ] Use **ffidji** to have an interface to share profiler specifications between profilers lib and UI
+  - For each profiler: Name, Guid, Description, Duration, Parameters (blob?)
+- [ ] Find out analysis format
+  - What kind of data should it hold? Summary of analysis or should it allow some kind of browsing?
+  - json? yaml? custom?
 
 ## Possibilities
 
-- On object allocated with [ObjectAllocated](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectallocated-method) `COR_PRF_MONITOR_OBJECT_ALLOCATED`
+- On object allocated with [ObjectAllocated](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectallocated-method) `COR_PRF_MONITOR_OBJECT_ALLOCATED` ⚠️
 - Object reference is moved during garbage collection with [MovedReferences](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-movedreferences-method) `COR_PRF_MONITOR_GC`
 - Build reference tree after a GC run with [ObjectReferences](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectreferences-method) `COR_PRF_MONITOR_GC`
 - Object instance allocation per class with [ObjectsAllocatedByClass](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectsallocatedbyclass-method) `COR_PRF_MONITOR_GC`
-- Unmanaged code called from managed code `COR_PRF_MONITOR_CODE_TRANSITIONS`
+- Unmanaged code called from managed code `COR_PRF_MONITOR_CODE_TRANSITIONS` ⚠️
 - Get surviving references after garbage collection `COR_PRF_MONITOR_GC` [SurvivingReferences2](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method)
 - On runtime suspended / resumed `COR_PRF_MONITOR_SUSPENDS` [RuntimeSuspendStarted](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-runtimesuspendstarted-method)
 - On garbage collection started / finished `COR_PRF_MONITOR_GC`
 - On thread created `COR_PRF_MONITOR_THREADS`
 - On exception thrown `COR_PRF_MONITOR_EXCEPTIONS`
-- On method enter / leave with [SetEnterLeaveFunctionHooks3WithInfo](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-setenterleavefunctionhooks3withinfo-method?WT.mc_id=DT-MVP-5003325) `COR_PRF_MONITOR_ENTERLEAVE`
+- On method enter / leave with [SetEnterLeaveFunctionHooks3WithInfo](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-setenterleavefunctionhooks3withinfo-method?WT.mc_id=DT-MVP-5003325) `COR_PRF_MONITOR_ENTERLEAVE` ⚠️
 - Write to event pipe
 - Request stacktrace (per thread) `COR_PRF_ENABLE_STACK_SNAPSHOT`
 - Annnnd a lot more :p... `COR_PRF_MONITOR_GC`
@@ -50,17 +55,18 @@ Any flag from [COR_PRF_MONITOR enumeration](https://docs.microsoft.com/en-us/dot
 ### Profiler is initialized on attach
 
 Only possible on a subset of [COR_PRF_MONITOR enumeration](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration):
--COR_PRF_MONITOR_THREADS
--COR_PRF_MONITOR_MODULE_LOADS
--COR_PRF_MONITOR_ASSEMBLY_LOADS
--COR_PRF_MONITOR_APPDOMAIN_LOADS
--COR_PRF_ENABLE_STACK_SNAPSHOT
--COR_PRF_MONITOR_GC
--COR_PRF_MONITOR_SUSPENDS
--COR_PRF_MONITOR_CLASS_LOADS
--COR_PRF_MONITOR_EXCEPTIONS
--COR_PRF_MONITOR_JIT_COMPILATION
--COR_PRF_ENABLE_REJIT
+
+- `COR_PRF_MONITOR_THREADS`
+- `COR_PRF_MONITOR_MODULE_LOADS`
+- `COR_PRF_MONITOR_ASSEMBLY_LOADS`
+- `COR_PRF_MONITOR_APPDOMAIN_LOADS`
+- `COR_PRF_ENABLE_STACK_SNAPSHOT`
+- `COR_PRF_MONITOR_GC`
+- `COR_PRF_MONITOR_SUSPENDS`
+- `COR_PRF_MONITOR_CLASS_LOADS`
+- `COR_PRF_MONITOR_EXCEPTIONS`
+- `COR_PRF_MONITOR_JIT_COMPILATION`
+- `COR_PRF_ENABLE_REJIT`
 
 ## Useful Links
 
