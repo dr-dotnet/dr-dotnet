@@ -7,6 +7,7 @@
     <PlatformTarget>x64</PlatformTarget>
 	<OutputPath>..\..\bin\$(Configuration)\</OutputPath>
 	<RunPostBuildEvent>Always</RunPostBuildEvent>
+    <UseRazorSourceGenerator>false</UseRazorSourceGenerator>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,15 +27,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\DrDotnetProfiler\**" Link="Profiler\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Content Include="..\DrDotnet.Profiler\**" Link="Profiler\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)\DrDotnetProfiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
+    <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)\DrDotnet.Profiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <PreBuildEvent>cargo build --release --manifest-path="$(SolutionDir)\DrDotnetProfiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
+    <PreBuildEvent>cargo build --release --manifest-path="$(SolutionDir)\DrDotnet.Profiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
   </PropertyGroup>
 
 </Project>
