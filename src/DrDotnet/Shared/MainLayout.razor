@@ -18,9 +18,9 @@
 
 <MatButton OnClick="@OpenDialog" Icon="receipt" Style="position: absolute; right: 0; bottom: 0;">See Logs</MatButton>
 <MatDialog @bind-IsOpen="@dialogIsOpen">
-    <MatDialogTitle>Hi @name</MatDialogTitle>
+    <MatDialogTitle>Logs</MatDialogTitle>
     <MatDialogContent>
-        <textarea style="width:100%; min-height: 300px;" @bind="AllLogs" @bind:event="oninput" />
+        <textarea id="logs" style="height: 70vh; width: 85vw;" @bind="AllLogs" @bind:event="oninput" />
     </MatDialogContent>
     <MatDialogActions>
         <MatButton OnClick="@(e => { dialogIsOpen = false; })">Close</MatButton>

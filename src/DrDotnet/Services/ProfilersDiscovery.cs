@@ -23,17 +23,18 @@ namespace DrDotnet
 
             // Todo: Call dll through interop to ask for available profilers
 
-            profilers.Add(new Profiler { Name = "Exceptions", Guid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82"), Description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." });
-            profilers.Add(new Profiler { Name = "Memory Leak Detector", Guid = Guid.NewGuid(), Description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." });
-            profilers.Add(new Profiler { Name = "Deadlocks Checker", Guid = Guid.NewGuid(), Description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." });
-            profilers.Add(new Profiler { Name = "Synchronous Hot Paths", Guid = Guid.NewGuid(), Description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." });
+            var interopProfilers = Interop.GetAvailableProfilers();
 
-            _logger.Log($"Profilers native call: {GetProfilersInternal()}");
+            foreach (var interopProfiler in interopProfilers.profilers)
+            {
+                profilers.Add(new Profiler {
+                    Name = interopProfiler.name,
+                    Guid = new Guid(interopProfiler.guid),
+                    Description = interopProfiler.description
+                });
+            }
 
             return _profilers = profilers;
         }
-
-        [DllImport("profiler.dll", EntryPoint = "string_from_rust", CharSet = CharSet.Ansi, SetLastError = false)]
-        private static extern String GetProfilersInternal();
     }
 }

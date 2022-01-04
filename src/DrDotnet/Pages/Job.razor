@@ -2,6 +2,7 @@
 
 @inject NavigationManager _navigationManager
 @inject IProfilersDiscovery _profilerDiscovery
+@inject ILogger _logger
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
 
@@ -12,15 +13,11 @@
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6">
             <h4 class="mat-h4">@_profiler.Name</h4>
         </div>
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3 mat-body1">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6 mat-body1">
             @_profiler.Guid
         </div>
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-2"></div>
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-1"></div>
 
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3"></div>
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-1"></div>
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-8 mat-body1">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
             @_profiler.Description
         </div>
 
@@ -32,7 +29,7 @@
             }
             else
             {
-                <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process and run analysis!" OnClick="OnRunAnalysisClicked" Style="float: right;"></MatButton>
+                <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"></MatButton>
             }
         </div>
     </div>
@@ -57,11 +54,13 @@
         _profiler = _profilerDiscovery.GetProfilers().Where(x => x.Guid.ToString() == ProfilerId).First();
     }
 
-    private void OnRunAnalysisClicked(object data)
+    private async Task OnRunAnalysisClicked(object data)
     {
         Started = true;
 
-        _profiler.TryProfileProcess(int.Parse(ProcessId));
+        await _profiler.TryProfileProcess(int.Parse(ProcessId), _logger);
+
+        Started = false;
     }
 
     public void OnBackClick(object data)

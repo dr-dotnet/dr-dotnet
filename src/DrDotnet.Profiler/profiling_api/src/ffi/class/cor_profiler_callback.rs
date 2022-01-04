@@ -202,20 +202,12 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     }
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
-        println!(
-            "CorProfilerCallback hit add_ref! Ref count is: {}",
-            self.ref_count.load(Ordering::Relaxed)
-        );
         // TODO: Which ordering is appropriate?
         let prev_ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed);
         prev_ref_count + 1
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
-        println!(
-            "CorProfilerCallback hit release! Ref count is: {}",
-            self.ref_count.load(Ordering::Relaxed)
-        );
         // Ensure we are not trying to release the memory twice if
         // client calls release despite the ref_count being zero.
         // TODO: Which ordering is appropriate?

@@ -17,6 +17,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
     exceptions_thrown: AtomicUsize,
+    session_id: Uuid,
 }
 
 impl ExceptionsProfiler {
@@ -30,6 +31,7 @@ impl Clone for ExceptionsProfiler {
         ExceptionsProfiler {
             profiler_info: self.profiler_info.clone(),
             exceptions_thrown: AtomicUsize::new(0),
+            session_id: self.session_id.clone()
         }
      }
 }
@@ -40,12 +42,13 @@ impl ClrProfiler for ExceptionsProfiler {
         ExceptionsProfiler {
             profiler_info: None,
             exceptions_thrown: AtomicUsize::new(0),
+            session_id: Uuid::default()
         }
     }
 
     fn get_guid() -> Uuid { Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap() }
     fn get_name() -> String { "Exceptions Profiler".to_owned() }
-    fn get_description() -> String { "Lists occuring exceptions by importance".to_owned() }
+    fn get_description() -> String { "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned() }
 }
 
 impl CorProfilerCallback for ExceptionsProfiler {
@@ -53,7 +56,7 @@ impl CorProfilerCallback for ExceptionsProfiler {
         // Initialize ICorProfilerInfo reference
         self.profiler_info = Some(profiler_info);
 
-        println!("initialize at start");
+        println!("[profiler] Initialize at start");
 
         // Set the event mask
         self.profiler_info().set_event_mask(COR_PRF_MONITOR::COR_PRF_ALLOWABLE_AFTER_ATTACH)?;
@@ -69,6 +72,11 @@ impl CorProfilerCallback for ExceptionsProfiler {
 
 impl CorProfilerCallback2 for ExceptionsProfiler {}
 
+unsafe fn voidp_to_ref<'a, T>(p: *const std::os::raw::c_void) -> &'a T
+{
+    unsafe { &*(p as *const T) }
+}
+
 impl CorProfilerCallback3 for ExceptionsProfiler {
     fn initialize_for_attach(
         &mut self,
@@ -80,21 +88,31 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
         // Initialize ICorProfilerInfo reference
         self.profiler_info = Some(profiler_info);
 
-        println!("initialize with attach");
+        println!("[profiler] Initialize with attach");
 
         // Set the event mask
         //self.profiler_info().set_event_mask(COR_PRF_MONITOR::COR_PRF_ALLOWABLE_AFTER_ATTACH)?;
         self.profiler_info().set_event_mask(COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS)?;
+
+        unsafe {
+            //let vec: [u8; 16] = [0; 16];
+            //std::ptr::copy_nonoverlapping(vec.as_ptr(), client_data as *mut u8, vec.len());
+            //self.session_id = Uuid::from_bytes(*voidp_to_ref::<[u8; 16]>(client_data));
+            let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
+            self.session_id = Uuid::parse_str(&cstr).unwrap();
+        }
+
+        println!("[profiler] Session uuid: {:?}", self.session_id);
 
         Ok(())
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), HRESULT> {
 
-        println!("profiler successfully attached!");
+        println!("[profiler] Profiler successfully attached!");
 
         let result = self.profiler_info().request_profiler_detach(10000);
-        println!("detach request result: {:?}", result);
+        println!("[profiler] Detach request result: {:?}", result);
 
         //thread::spawn(|| {
         //  thread::sleep(Duration::from_millis(5000));
@@ -106,11 +124,11 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), HRESULT> {
 
-        println!("profiler successfully detached!");
+        println!("[profiler] Profiler successfully detached!");
 
         let mut entry = ReportEntry {
             name: "Exceptions".to_owned(),
-            content: format!("exceptions:{}", self.exceptions_thrown.get_mut())
+            content: format!("exceptions:{}", self.exceptions_thrown.load(Ordering::Relaxed))
         };
 
         let mut section = ReportSection {
@@ -129,12 +147,12 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
         report.name = "My Exceptions Report".to_owned();
     
         let json = serde_json::to_string_pretty(&report).unwrap();
-        std::fs::create_dir_all("./tmp");
+        std::fs::create_dir_all("/dr-dotnet");
     
-        let mut f = File::create("./tmp/report.json").expect("Unable to create file");
+        let mut f = File::create(format!("/dr-dotnet/{}.json", self.session_id)).expect("Unable to create file");
         f.write_all(json.as_bytes()).expect("Unable to write data");    
 
-        println!("report written to {}/tmp/report.json", std::env::current_dir().unwrap().display());
+        println!("[profiler] Report written to {}/tmp/report.json", std::env::current_dir().unwrap().display());
 
         Ok(())
     }

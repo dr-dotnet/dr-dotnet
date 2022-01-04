@@ -48,3 +48,11 @@ a, .btn-link {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+.mdc-dialog .mdc-dialog__surface {
+    max-width: none !important;
+}
+
+#logs {
+    font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+}
