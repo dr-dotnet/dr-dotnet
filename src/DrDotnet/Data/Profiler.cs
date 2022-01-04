@@ -1,5 +1,8 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace DrDotnet
 {
@@ -11,16 +14,25 @@ namespace DrDotnet
 
         public string Description { get; init; }
 
-        public bool TryProfileProcess(int processId)
+        public async Task<AnalysisData> TryProfileProcess(int processId, ILogger _logger)
         {
             string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string strWorkPath = System.IO.Path.GetDirectoryName(strExeFilePath);
-            string profilerDll = System.IO.Path.Combine(strWorkPath, "profiler.dll");
+            string strWorkPath = Path.GetDirectoryName(strExeFilePath);
+            string profilerDll = Path.Combine(strWorkPath, "profiler.dll");
+
+            var session_guid = Guid.NewGuid();
 
             DiagnosticsClient client = new DiagnosticsClient(processId);
-            client.AttachProfiler(TimeSpan.FromSeconds(10), Guid, profilerDll, null);
+            client.AttachProfiler(TimeSpan.FromSeconds(10), Guid, profilerDll, Encoding.UTF8.GetBytes(session_guid.ToString()));
 
-            return true;
+            _logger.Log($"Attaching profiler {Guid} with session {session_guid}");
+
+            while (!File.Exists($"/dr-dotnet/{session_guid}.json"))
+            {
+                await Task.Delay(1000);
+            }
+
+            return new AnalysisData();
         }
     }
 }

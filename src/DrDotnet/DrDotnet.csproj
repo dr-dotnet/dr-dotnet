@@ -8,6 +8,9 @@
 	<OutputPath>..\..\bin\$(Configuration)\</OutputPath>
 	<RunPostBuildEvent>Always</RunPostBuildEvent>
     <UseRazorSourceGenerator>false</UseRazorSourceGenerator>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	<Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

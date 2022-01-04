@@ -32,7 +32,7 @@ unsafe fn try_attach<T: Clone + CorProfilerCallback9>(riid: FFI_REFIID, ppv: *mu
 #[no_mangle]
 unsafe extern "system" fn DllGetClassObject(rclsid: FFI_REFCLSID, riid: FFI_REFIID, ppv: *mut FFI_LPVOID) -> FFI_HRESULT {
 
-    println!("[profiler.dll] Entered DllGetClassObject");
+    println!("[profiler] Entered DllGetClassObject");
 
     if ppv.is_null() {
         return FFI_E_FAIL;
