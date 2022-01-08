@@ -37,7 +37,6 @@ impl Clone for ExceptionsProfiler {
 }
 
 impl ClrProfiler for ExceptionsProfiler {
-
     fn new() -> ExceptionsProfiler {
         ExceptionsProfiler {
             profiler_info: None,
@@ -45,10 +44,19 @@ impl ClrProfiler for ExceptionsProfiler {
             session_id: Uuid::default()
         }
     }
+}
 
-    fn get_guid() -> Uuid { Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap() }
-    fn get_name() -> String { "Exceptions Profiler".to_owned() }
-    fn get_description() -> String { "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned() }
+use super::Profiler;
+use super::ProfilerData;
+
+impl Profiler for ExceptionsProfiler {
+    fn get_info() -> ProfilerData {
+        return ProfilerData {
+            guid: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap(),
+            name: "Exceptions Profiler".to_owned(),
+            description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
+        }
+    }
 }
 
 impl CorProfilerCallback for ExceptionsProfiler {
@@ -140,7 +148,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
             guid: uuid::Uuid::default(),
             name: String::default(),
             timestamp: chrono::offset::Local::now(),
-            profiler: ProfilerData::from_profiler::<ExceptionsProfiler>(),
+            profiler: ExceptionsProfiler::get_info(),
             sections: vec![section]
         };
     

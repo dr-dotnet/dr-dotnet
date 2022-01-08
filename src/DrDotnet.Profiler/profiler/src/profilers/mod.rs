@@ -8,7 +8,6 @@ use profiling_api::{
 
 use profiling_api::ffi::{
     ClassFactory as FFIClassFactory,
-    CorProfilerCallback as FFICorProfilerCallback,
     E_FAIL as FFI_E_FAIL,
     GUID as FFI_GUID,
     HRESULT as FFI_HRESULT,
@@ -17,16 +16,46 @@ use profiling_api::ffi::{
     REFIID as FFI_REFIID
 };
 
-unsafe fn is_guid_matching<T: ClrProfiler>(rclsid: FFI_REFCLSID) -> bool {
-    let clsid = FFI_GUID::from(T::get_guid());
-    return *rclsid == clsid;
+use uuid::Uuid;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct ProfilerData {
+    pub guid: Uuid,
+    pub name: String,
+    pub description: String,
 }
 
-unsafe fn try_attach<T: Clone + CorProfilerCallback9>(riid: FFI_REFIID, ppv: *mut FFI_LPVOID) -> FFI_HRESULT {
-    let profiler = T::new();
-    let class_factory: &mut FFIClassFactory<T> = FFIClassFactory::new(profiler);
-    class_factory.QueryInterface(riid, ppv)
+pub trait Profiler {
+    fn get_info() -> ProfilerData;
 }
+
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
+}
+
+macro_rules! register{
+    ($($type:ty),+) => (
+        pub unsafe fn attach(rclsid: FFI_REFCLSID, riid: FFI_REFIID, ppv: *mut FFI_LPVOID) -> FFI_HRESULT {
+            $(
+                let clsid = FFI_GUID::from(<$type>::get_info().guid);
+                if *rclsid == clsid {
+                    let profiler = <$type>::new();
+                    let class_factory: &mut FFIClassFactory<$type> = FFIClassFactory::new(profiler);
+                    return class_factory.QueryInterface(riid, ppv)
+                }
+            )+
+            return FFI_E_FAIL;
+        }
+        pub fn get_profiler_infos() -> [ProfilerData; count!($($type)*)] {
+            return [$(<$type>::get_info(),)+]
+        }
+    )
+}
+
+register!(ExceptionsProfiler);
 
 // Actual COM entry point
 #[no_mangle]
@@ -38,11 +67,5 @@ unsafe extern "system" fn DllGetClassObject(rclsid: FFI_REFCLSID, riid: FFI_REFI
         return FFI_E_FAIL;
     }
 
-    let mut profiler_found = false;
-    profiler_found = is_guid_matching::<ExceptionsProfiler>(rclsid);
-    if profiler_found {
-        return try_attach::<ExceptionsProfiler>(riid, ppv);
-    }
-
-    return FFI_E_FAIL;
+    return attach(rclsid, riid, ppv);
 }

@@ -21,6 +21,9 @@ use u64 as uint64;
 use f32 as float32;
 use f64 as float64;
 
+use crate::profilers::get_profiler_infos;
+use crate::profilers::ProfilerData;
+
 #[no_mangle]
 pub extern "C" fn Alloc_FFI(length :int32) -> *mut libc::c_void
 { 
@@ -71,29 +74,25 @@ unsafe fn get_string(str: String) -> string {
 #[no_mangle]
 pub extern "C" fn GetAvailableProfilers() -> Profilers
 {
-    use crate::profilers::ExceptionsProfiler;
-    use profiling_api::ClrProfiler;
-
     unsafe {
 
-        let ptr = libc::malloc(50 * std::mem::size_of::<Profiler>()) as *mut Profiler;
+        let profiler_infos = get_profiler_infos();
+        let len = profiler_infos.len() as usize;
 
-        for n in 0..50 {
+        let ptr = libc::malloc( len * std::mem::size_of::<Profiler>()) as *mut Profiler;
 
-            let mut p = ptr.offset(n);
+        for n in 0..len {
 
-            (*p).name = get_string(ExceptionsProfiler::get_name());
-            (*p).description = get_string(ExceptionsProfiler::get_description());
-            (*p).guid = get_string(ExceptionsProfiler::get_guid().to_string());
+            let mut p = ptr.offset(n as isize);
+
+            (*p).name = get_string(profiler_infos[n].name.to_owned());
+            (*p).description = get_string(profiler_infos[n].description.to_owned());
+            (*p).guid = get_string(profiler_infos[n].guid.to_string());
         }
-
-        // (*ptr).name = get_string(format!("my name {}", 0));
-        // (*ptr).description = get_string("my description".to_owned());
-        // (*ptr).id = 123;
 
         return Profilers {
             profilers_ptr: ptr,
-            profilers_len: 50,
+            profilers_len: len as i32,
         }
     }
 } 
