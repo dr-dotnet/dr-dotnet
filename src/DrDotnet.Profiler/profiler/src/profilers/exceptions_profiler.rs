@@ -1,3 +1,4 @@
+use dashmap::DashMap;
 use profiling_api::*;
 use uuid::Uuid;
 use std::thread;
@@ -9,8 +10,8 @@ use super::ProfilerData;
 
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
-    exceptions_thrown: AtomicUsize,
-    session_id: Uuid
+    session_id: Uuid,
+    exceptions: DashMap<String, AtomicUsize>,
 }
 
 impl ExceptionsProfiler {
@@ -23,8 +24,8 @@ impl Clone for ExceptionsProfiler {
     fn clone(&self) -> Self { 
         ExceptionsProfiler {
             profiler_info: self.profiler_info.clone(),
-            exceptions_thrown: AtomicUsize::new(0),
-            session_id: self.session_id.clone()
+            session_id: self.session_id.clone(),
+            exceptions: DashMap::new()
         }
      }
 }
@@ -33,8 +34,8 @@ impl ClrProfiler for ExceptionsProfiler {
     fn new() -> ExceptionsProfiler {
         ExceptionsProfiler {
             profiler_info: None,
-            exceptions_thrown: AtomicUsize::new(0),
-            session_id: Uuid::default()
+            session_id: Uuid::default(),
+            exceptions: DashMap::new()
         }
     }
 }
@@ -63,7 +64,13 @@ impl CorProfilerCallback for ExceptionsProfiler {
     }
 
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT> {
-        self.exceptions_thrown.fetch_add(1, Ordering::Relaxed);
+
+        let key = "my exception".to_owned();
+        match self.exceptions.get_mut(&key) {
+            Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
+            None => { self.exceptions.insert(key, AtomicUsize::new(1)); },
+        }
+        
         Ok(())
     }
 }
@@ -128,7 +135,10 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
 
         report.write_line(format!("# Exceptions Report"));
         report.write_line(format!("## Exceptions by Occurrences"));
-        report.write_line(format!("Exceptions: {}", self.exceptions_thrown.load(Ordering::Relaxed)));
+
+        for exception in &self.exceptions {
+            report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
+        }
 
         println!("[profiler] Report written");
 
