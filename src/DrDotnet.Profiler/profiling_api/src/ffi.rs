@@ -657,3 +657,48 @@ bitflags! {
     const miMaxMethodImplVal   =   0xffff;   // Range check value
 }
 }
+bitflags! {
+    pub struct CorTypeAttr: DWORD
+{
+    const tdVisibilityMask        =   0x00000007;   // Used for type visibility information.
+    const tdNotPublic             =   0x00000000;   // Specifies that the type is not in public scope.
+    const tdPublic                =   0x00000001;   // Specifies that the type is in public scope.
+    const tdNestedPublic          =   0x00000002;   // Specifies that the type is nested with public visibility.
+    const tdNestedPrivate         =   0x00000003;   // Specifies that the type is nested with private visibility.
+    const tdNestedFamily          =   0x00000004;   // Specifies that the type is nested with family visibility.
+    const tdNestedAssembly        =   0x00000005;   // Specifies that the type is nested with assembly visibility.
+    const tdNestedFamANDAssem     =   0x00000006;   // Specifies that the type is nested with family and assembly visibility.
+    const tdNestedFamORAssem      =   0x00000007;   // Specifies that the type is nested with family or assembly visibility.
+  
+    const tdLayoutMask            =   0x00000018;   // Gets layout information for the type.
+    const tdAutoLayout            =   0x00000000;   // Specifies that the fields of this type are laid out automatically.
+    const tdSequentialLayout      =   0x00000008;   // Specifies that the fields of this type are laid out sequentially.
+    const tdExplicitLayout        =   0x00000010;   // Specifies that field layout is supplied explicitly.
+  
+    const tdClassSemanticsMask    =   0x00000020;   // Gets semantic information about the type.
+    const tdClass                 =   0x00000000;   // Specifies that the type is a class.
+    const tdInterface             =   0x00000020;   // Specifies that the type is an interface.
+  
+    const tdAbstract              =   0x00000080;   // Specifies that the type is abstract.
+    const tdSealed                =   0x00000100;   // Specifies that the type cannot be extended.
+    const tdSpecialName           =   0x00000400;   // Specifies that the class name is special. Its name describes how.
+  
+    const tdImport                =   0x00001000;   // Specifies that the type is imported.
+    const tdSerializable          =   0x00002000;   // Specifies that the type is serializable.
+    const tdWindowsRuntime        =   0x00004000;   // Specifies that this type is a Windows Runtime type.
+  
+    const tdStringFormatMask      =   0x00030000;   // Gets information about how strings are encoded and formatted.
+    const tdAnsiClass             =   0x00000000;   // Specifies that this type interprets an LPTSTR as ANSI.
+    const tdUnicodeClass          =   0x00010000;   // Specifies that this type interprets an LPTSTR as Unicode.
+    const tdAutoClass             =   0x00020000;   // Specifies that this type interprets an LPTSTR automatically.
+    const tdCustomFormatClass     =   0x00030000;   // Specifies that the type has a non-standard encoding, as specified by CustomFormatMask.
+    const tdCustomFormatMask      =   0x00C00000;   // Use this mask to get non-standard encoding information for native interop. The meaning of the values of these two bits is unspecified.
+  
+    const tdBeforeFieldInit       =   0x00100000;   // Specifies that the type must be initialized before the first attempt to access a static field.
+    const tdForwarder             =   0x00200000;   // Specifies that the type is exported, and a type forwarder.
+  
+    const tdReservedMask          =   0x00040800;   // This flag and the flags below are used internally by the common language runtime.
+    const tdRTSpecialName         =   0x00000800;   // Specifies that the common language runtime should check the name encoding.
+    const tdHasSecurity           =   0x00040000;   // Specifies that the type has security associated with it.
+}
+}

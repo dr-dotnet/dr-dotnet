@@ -1,4 +1,6 @@
+use dashmap::DashMap;
 use profiling_api::*;
+use profiling_api::ffi::{CorOpenFlags, mdTypeDef};
 use uuid::Uuid;
 use std::thread;
 use std::time::Duration;
@@ -9,8 +11,8 @@ use super::ProfilerData;
 
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
-    exceptions_thrown: AtomicUsize,
-    session_id: Uuid
+    session_id: Uuid,
+    exceptions: DashMap<String, AtomicUsize>,
 }
 
 impl ExceptionsProfiler {
@@ -23,8 +25,8 @@ impl Clone for ExceptionsProfiler {
     fn clone(&self) -> Self { 
         ExceptionsProfiler {
             profiler_info: self.profiler_info.clone(),
-            exceptions_thrown: AtomicUsize::new(0),
-            session_id: self.session_id.clone()
+            session_id: self.session_id.clone(),
+            exceptions: DashMap::new()
         }
      }
 }
@@ -33,8 +35,8 @@ impl ClrProfiler for ExceptionsProfiler {
     fn new() -> ExceptionsProfiler {
         ExceptionsProfiler {
             profiler_info: None,
-            exceptions_thrown: AtomicUsize::new(0),
-            session_id: Uuid::default()
+            session_id: Uuid::default(),
+            exceptions: DashMap::new()
         }
     }
 }
@@ -46,6 +48,17 @@ impl Profiler for ExceptionsProfiler {
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
         }
+    }
+}
+
+fn get_type_name(info: &ProfilerInfo, module_id: usize, td: mdTypeDef) -> String {
+    match info.get_module_metadata(module_id, CorOpenFlags::ofRead) {
+        Ok(metadata) =>
+        match metadata.get_type_def_props(td) {
+            Ok(type_props) => type_props.name,
+            _ => "unknown4".to_owned()
+        },
+        _ => "unknown3".to_owned()
     }
 }
 
@@ -63,7 +76,23 @@ impl CorProfilerCallback for ExceptionsProfiler {
     }
 
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT> {
-        self.exceptions_thrown.fetch_add(1, Ordering::Relaxed);
+
+        let info = self.profiler_info();
+        let name = match info.get_class_from_object(thrown_object_id) {
+            Ok(class_id) => //"ok!".to_owned(),
+            match info.get_class_id_info(class_id) {
+                Ok(class_info) => get_type_name(info, class_info.module_id, class_info.token),
+                _ => "unknown2".to_owned()
+            },
+            _ => "unknown1".to_owned()
+        };
+
+        let key = name;
+        match self.exceptions.get_mut(&key) {
+            Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
+            None => { self.exceptions.insert(key, AtomicUsize::new(1)); },
+        }
+        
         Ok(())
     }
 }
@@ -128,7 +157,10 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
 
         report.write_line(format!("# Exceptions Report"));
         report.write_line(format!("## Exceptions by Occurrences"));
-        report.write_line(format!("Exceptions: {}", self.exceptions_thrown.load(Ordering::Relaxed)));
+
+        for exception in &self.exceptions {
+            report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
+        }
 
         println!("[profiler] Report written");
 
