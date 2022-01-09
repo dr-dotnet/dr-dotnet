@@ -1,5 +1,6 @@
 use dashmap::DashMap;
 use profiling_api::*;
+use profiling_api::ffi::{CorOpenFlags, mdTypeDef};
 use uuid::Uuid;
 use std::thread;
 use std::time::Duration;
@@ -50,6 +51,17 @@ impl Profiler for ExceptionsProfiler {
     }
 }
 
+fn get_type_name(info: &ProfilerInfo, module_id: usize, td: mdTypeDef) -> String {
+    match info.get_module_metadata(module_id, CorOpenFlags::ofRead) {
+        Ok(metadata) =>
+        match metadata.get_type_def_props(td) {
+            Ok(type_props) => type_props.name,
+            _ => "unknown4".to_owned()
+        },
+        _ => "unknown3".to_owned()
+    }
+}
+
 impl CorProfilerCallback for ExceptionsProfiler {
     fn initialize(&mut self, profiler_info: ProfilerInfo) -> Result<(), ffi::HRESULT> {
         // Initialize ICorProfilerInfo reference
@@ -65,7 +77,17 @@ impl CorProfilerCallback for ExceptionsProfiler {
 
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT> {
 
-        let key = "my exception".to_owned();
+        let info = self.profiler_info();
+        let name = match info.get_class_from_object(thrown_object_id) {
+            Ok(class_id) => //"ok!".to_owned(),
+            match info.get_class_id_info(class_id) {
+                Ok(class_info) => get_type_name(info, class_info.module_id, class_info.token),
+                _ => "unknown2".to_owned()
+            },
+            _ => "unknown1".to_owned()
+        };
+
+        let key = name;
         match self.exceptions.get_mut(&key) {
             Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
             None => { self.exceptions.insert(key, AtomicUsize::new(1)); },
