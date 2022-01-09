@@ -87,7 +87,7 @@ pub extern "C" fn GetAvailableProfilers() -> Profilers
 
             (*p).name = get_string(profiler_infos[n].name.to_owned());
             (*p).description = get_string(profiler_infos[n].description.to_owned());
-            (*p).guid = get_string(profiler_infos[n].guid.to_string());
+            (*p).guid = get_string(profiler_infos[n].profiler_id.to_string());
         }
 
         return Profilers {

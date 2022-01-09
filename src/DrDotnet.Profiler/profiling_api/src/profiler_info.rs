@@ -31,6 +31,8 @@ pub struct ProfilerInfo {
     info: *const FFICorProfilerInfo,
 }
 
+unsafe impl Send for ProfilerInfo {}
+
 impl ProfilerInfo {
     pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
         ProfilerInfo {

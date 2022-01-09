@@ -8,31 +8,33 @@ namespace DrDotnet
 {
     public class Profiler
     {
-        public string Name { get; init; }
+        public Guid ProfilerId { get; set; }
 
-        public Guid Guid { get; init; }
+        public string Name { get; set; }
 
-        public string Description { get; init; }
+        public string Description { get; set; }
 
-        public async Task<AnalysisData> TryProfileProcess(int processId, ILogger _logger)
+        public async Task<Session> TryProfileProcess(int processId, ILogger _logger)
         {
             string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             string strWorkPath = Path.GetDirectoryName(strExeFilePath);
             string profilerDll = Path.Combine(strWorkPath, "profiler.dll");
 
-            var session_guid = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
 
             DiagnosticsClient client = new DiagnosticsClient(processId);
-            client.AttachProfiler(TimeSpan.FromSeconds(10), Guid, profilerDll, Encoding.UTF8.GetBytes(session_guid.ToString()));
+            client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString()));
 
-            _logger.Log($"Attaching profiler {Guid} with session {session_guid}");
+            _logger.Log($"Attaching profiler {ProfilerId} with session {sessionId} to process {processId}");
 
-            while (!File.Exists($"/dr-dotnet/{session_guid}.json"))
+            var sessionFilePath = Session.GetSessionFilePathFromId(sessionId);
+            while (!File.Exists(sessionFilePath))
             {
+                // Wait until the session manifest has been written
                 await Task.Delay(1000);
             }
 
-            return new AnalysisData();
+            return Session.FromPath(sessionFilePath);
         }
     }
 }

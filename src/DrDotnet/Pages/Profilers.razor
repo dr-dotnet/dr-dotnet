@@ -1,6 +1,6 @@
 ﻿@page "/profilers/{ProcessId}"
 
-@inject IProfilersDiscovery _profilersDiscovery
+@inject IProfilerDiscovery _profilersDiscovery
 @inject NavigationManager _navigationManager
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
@@ -16,12 +16,12 @@ else
     <MatTable Items="@_profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
     <MatTableHeader>
         <th>Name</th>
-        <th>Guid</th>
+        <th style="min-width:300px;">Id</th>
         <th>Description</th>
     </MatTableHeader>
     <MatTableRow>
         <td>@context.Name</td>
-        <td>@context.Guid</td>
+        <td>@context.ProfilerId</td>
         <td>@context.Description</td>
     </MatTableRow>
     </MatTable>
@@ -42,7 +42,7 @@ else
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as Profiler).Guid}", true);
+        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as Profiler).ProfilerId}", true);
     }
 
     public void OnBackClick(object data)
