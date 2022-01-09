@@ -1,7 +1,7 @@
 ﻿@page "/job/{ProcessId}/{ProfilerId}"
 
 @inject NavigationManager _navigationManager
-@inject IProfilersDiscovery _profilerDiscovery
+@inject IProfilerDiscovery _profilerDiscovery
 @inject ILogger _logger
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
@@ -14,7 +14,7 @@
             <h4 class="mat-h4">@_profiler.Name</h4>
         </div>
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6 mat-body1">
-            @_profiler.Guid
+            @_profiler.ProfilerId
         </div>
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
@@ -51,14 +51,14 @@
     {
         base.OnInitialized();
 
-        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.Guid.ToString() == ProfilerId).First();
+        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.ProfilerId.ToString() == ProfilerId).First();
     }
 
     private async Task OnRunAnalysisClicked(object data)
     {
         Started = true;
 
-        await _profiler.TryProfileProcess(int.Parse(ProcessId), _logger);
+        var session = await _profiler.TryProfileProcess(int.Parse(ProcessId), _logger);
 
         Started = false;
     }

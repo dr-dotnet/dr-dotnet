@@ -27,9 +27,9 @@ namespace DrDotnet.Web
 
             services.AddSingleton<HttpClient>();
             services.AddSingleton<ILogger, Logger>();
-            services.AddSingleton<IAnalysesDiscovery, AnalysesDiscovery>();
+            services.AddSingleton<ISessionDiscovery, SessionDiscovery>();
             services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
-            services.AddSingleton<IProfilersDiscovery, ProfilersDiscovery>();
+            services.AddSingleton<IProfilerDiscovery, ProfilesDiscovery>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

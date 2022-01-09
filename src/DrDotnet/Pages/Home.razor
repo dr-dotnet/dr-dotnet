@@ -1,20 +1,20 @@
 ﻿@page "/"
 
-@inject IAnalysesDiscovery _analysesDiscovery;
+@inject ISessionDiscovery _sessionDiscovery;
 @inject NavigationManager _navigationManager
 
 <h3 class="mat-h3">Recent Analyses</h3>
 
-<MatTable Items="@_analyses" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+<MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
     <MatTableHeader>
         <th>Process</th>
         <th style="min-width:300px;">Date</th>
-        <th>Status</th>
+        <th>Profiler</th>
     </MatTableHeader>
     <MatTableRow>
         <td>@context.ProcessName</td>
-        <td>@context.Date</td>
-        <td>@context.Status</td>
+        <td>@context.Timestamp</td>
+        <td>@context.Profiler.Name</td>
     </MatTableRow>
 </MatTable>
 
@@ -23,18 +23,18 @@
 @code
 {
 
-    IEnumerable<AnalysisData> _analyses;
+    IEnumerable<Session> _sessions;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        _analyses = _analysesDiscovery.GetAnalyses();
+        _sessions = _sessionDiscovery.GetSessions();
     }
 
     public void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/analysis/{Guid.NewGuid()}", true);
+        _navigationManager.NavigateTo($"/sessions/{(data as Session).SessionId}", true);
     }
 
     public void OnNewAnalysisClicked(object data)

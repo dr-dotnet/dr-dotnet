@@ -1,0 +1,76 @@
+﻿@page "/sessions/{SessionId}"
+
+@inject ILogger _logger;
+@inject ISessionDiscovery _analysisDiscovery;
+@inject NavigationManager _navigationManager
+
+@using Markdig;
+@using System.IO;
+@using System.Text;
+
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<h3 class="mat-h3">Session</h3>
+
+<div class="mat-layout-grid">
+    <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="SessionId: @Session.SessionId">
+            <h4 class="mat-h4">@Session.ProcessName</h4>
+            <h5 class="mat-h5">@Session.Timestamp</h5>
+        </div>
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="ProfilerId: @Session.Profiler.ProfilerId">
+            <h4 class="mat-h4">Profiler</h4>
+            <h5 class="mat-h5">@Session.Profiler.Name</h5>
+            @Session.Profiler.Description
+        </div>
+    </div>
+</div>
+
+@foreach (var markdownReport in Session.EnumerateFiles().Where(x => x.Extension.ToLower() == ".md"))
+{
+    <div class="mat-layout-grid">
+        <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
+                @markdownReport.Name
+            </div>
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
+                @MarkdownFileToMarkup(markdownReport)
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public string SessionId { get; set; }
+
+    private Session _session;
+    public Session Session {
+        get
+        {
+            if (_session== null)
+            {
+                _session = Session.FromId(new Guid(SessionId));
+            }
+            return _session;
+        }
+    }
+
+    public static MarkupString MarkdownFileToMarkup(FileInfo markdownFile)
+    {
+        string markdownContent = File.ReadAllText(markdownFile.FullName);
+        string htmlContent = Markdown.ToHtml(markdownContent);
+        return new MarkupString(htmlContent);
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    public void OnBackClick(object data)
+    {
+        _navigationManager.NavigateTo("/", true);
+    }
+}

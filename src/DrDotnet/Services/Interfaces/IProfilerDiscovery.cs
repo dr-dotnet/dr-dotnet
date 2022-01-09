@@ -2,7 +2,7 @@
 
 namespace DrDotnet
 {
-    public interface IProfilersDiscovery
+    public interface IProfilerDiscovery
     {
         List<Profiler> GetProfilers();
     }
