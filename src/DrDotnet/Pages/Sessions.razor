@@ -1,7 +1,7 @@
 ﻿@page "/sessions/{SessionId}"
 
 @inject ILogger _logger;
-@inject ISessionDiscovery _analysisDiscovery;
+@inject ISessionDiscovery _sessionDiscovery;
 @inject NavigationManager _navigationManager
 
 @using Markdig;
@@ -51,7 +51,7 @@
         {
             if (_session== null)
             {
-                _session = Session.FromId(new Guid(SessionId));
+                _session = _sessionDiscovery.GetSession(new Guid(SessionId));
             }
             return _session;
         }

@@ -2,6 +2,7 @@
 
 @inject NavigationManager _navigationManager
 @inject IProfilerDiscovery _profilerDiscovery
+@inject ISessionDiscovery _sessionDiscovery
 @inject ILogger _logger
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
@@ -29,7 +30,14 @@
             }
             else
             {
-                <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"></MatButton>
+                if (Session != null)
+                {
+                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="View session results" OnClick="OnViewSessionResultsClicked" Style="float: right;"></MatButton>
+                }
+                else
+                {
+                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"></MatButton>
+                }
             }
         </div>
     </div>
@@ -38,6 +46,7 @@
 @code {
 
     private bool Started { get; set; }
+    private Session Session { get; set; }
 
     [Parameter]
     public string ProcessId { get; set; }
@@ -58,9 +67,15 @@
     {
         Started = true;
 
-        var session = await _profiler.TryProfileProcess(int.Parse(ProcessId), _logger);
+        var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
+        Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
 
         Started = false;
+    }
+
+    public void OnViewSessionResultsClicked(object data)
+    {
+        _navigationManager.NavigateTo($"/sessions/{Session.SessionId}", true);
     }
 
     public void OnBackClick(object data)

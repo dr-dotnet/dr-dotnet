@@ -15,12 +15,13 @@ namespace DrDotnet
 
         public Profiler Profiler { get; set; }
 
-        public const string SESSION_ROOT_DIR = "dr-dotnet";
+        private string _sessionFilePath;
+
         public const string SESSION_FILE_NAME = "session.json";
 
         public IEnumerable<FileInfo> EnumerateFiles()
         {
-            return new DirectoryInfo($"/{SESSION_ROOT_DIR}/{SessionId}").EnumerateFiles();
+            return new FileInfo(_sessionFilePath).Directory.EnumerateFiles();
         }
 
         public static Session FromPath(string sessionFilePath)
@@ -34,17 +35,10 @@ namespace DrDotnet
                 throw new FileNotFoundException($"There is no session file at path '{sessionFilePath}'");
 
             var jsonString = File.ReadAllText(sessionFilePath);
-            return JsonSerializer.Deserialize<Session>(jsonString, options);
-        }
+            var session = JsonSerializer.Deserialize<Session>(jsonString, options);
+            session._sessionFilePath = sessionFilePath;
 
-        public static Session FromId(Guid sessionId)
-        {
-            return FromPath(GetSessionFilePathFromId(sessionId));
-        }
-
-        public static string GetSessionFilePathFromId(Guid sessionId)
-        {
-            return $"/{SESSION_ROOT_DIR}/{sessionId}/{SESSION_FILE_NAME}";
+            return session;
         }
     }
 }
