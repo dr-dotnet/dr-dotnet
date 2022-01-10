@@ -15,6 +15,10 @@ namespace DrDotnet.Web
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                    //webBuilder.UseSetting("https_port", "51376");
+                    //webBuilder.UseUrls("http://localhost:51376");
+                    webBuilder.UseUrls(@"http://*:92");
+                    webBuilder.UseSetting(WebHostDefaults.DetailedErrorsKey, "true");
                 });
     }
 }

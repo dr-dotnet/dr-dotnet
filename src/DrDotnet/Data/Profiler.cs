@@ -2,7 +2,6 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DrDotnet
 {
@@ -14,7 +13,7 @@ namespace DrDotnet
 
         public string Description { get; set; }
 
-        public async Task<Session> TryProfileProcess(int processId, ILogger _logger)
+        public Guid StartProfilingSession(int processId, ILogger logger)
         {
             string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             string strWorkPath = Path.GetDirectoryName(strExeFilePath);
@@ -25,16 +24,9 @@ namespace DrDotnet
             DiagnosticsClient client = new DiagnosticsClient(processId);
             client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString()));
 
-            _logger.Log($"Attaching profiler {ProfilerId} with session {sessionId} to process {processId}");
+            logger.Log($"Attached profiler {ProfilerId} with session {sessionId} to process {processId}");
 
-            var sessionFilePath = Session.GetSessionFilePathFromId(sessionId);
-            while (!File.Exists(sessionFilePath))
-            {
-                // Wait until the session manifest has been written
-                await Task.Delay(1000);
-            }
-
-            return Session.FromPath(sessionFilePath);
+            return sessionId;
         }
     }
 }

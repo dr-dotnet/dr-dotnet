@@ -3,7 +3,7 @@
 @inject ISessionDiscovery _sessionDiscovery;
 @inject NavigationManager _navigationManager
 
-<h3 class="mat-h3">Recent Analyses</h3>
+<h3 class="mat-h3">Recent Sessions</h3>
 
 <MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
     <MatTableHeader>
@@ -18,7 +18,7 @@
     </MatTableRow>
 </MatTable>
 
-<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New analysis" OnClick="OnNewAnalysisClicked" Style="float: right;"></MatButton>
+<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"></MatButton>
  
 @code
 {
@@ -37,7 +37,7 @@
         _navigationManager.NavigateTo($"/sessions/{(data as Session).SessionId}", true);
     }
 
-    public void OnNewAnalysisClicked(object data)
+    public void OnNewSessionClicked(object data)
     {
         _navigationManager.NavigateTo("/processes/", true);
     }
