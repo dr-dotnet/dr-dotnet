@@ -5,9 +5,9 @@ use uuid::Uuid;
 use std::thread;
 use std::time::Duration;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
 use crate::report::*;
-use super::Profiler;
-use super::ProfilerData;
+use crate::profilers::*;
 
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
@@ -21,6 +21,16 @@ impl ExceptionsProfiler {
     }
 }
 
+impl Profiler for ExceptionsProfiler {
+    fn get_info() -> ProfilerData {
+        return ProfilerData {
+            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap(),
+            name: "Exceptions Profiler".to_owned(),
+            description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
+        }
+    }
+}
+
 impl Clone for ExceptionsProfiler {
     fn clone(&self) -> Self { 
         ExceptionsProfiler {
@@ -28,7 +38,7 @@ impl Clone for ExceptionsProfiler {
             session_id: self.session_id.clone(),
             exceptions: DashMap::new()
         }
-     }
+    }
 }
 
 impl ClrProfiler for ExceptionsProfiler {
@@ -41,29 +51,10 @@ impl ClrProfiler for ExceptionsProfiler {
     }
 }
 
-impl Profiler for ExceptionsProfiler {
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap(),
-            name: "Exceptions Profiler".to_owned(),
-            description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
-        }
-    }
-}
-
-fn get_type_name(info: &ProfilerInfo, module_id: usize, td: mdTypeDef) -> String {
-    match info.get_module_metadata(module_id, CorOpenFlags::ofRead) {
-        Ok(metadata) =>
-        match metadata.get_type_def_props(td) {
-            Ok(type_props) => type_props.name,
-            _ => "unknown4".to_owned()
-        },
-        _ => "unknown3".to_owned()
-    }
-}
-
-impl CorProfilerCallback for ExceptionsProfiler {
-    fn initialize(&mut self, profiler_info: ProfilerInfo) -> Result<(), ffi::HRESULT> {
+impl CorProfilerCallback for ExceptionsProfiler
+{
+    fn initialize(&mut self, profiler_info: ProfilerInfo) -> Result<(), ffi::HRESULT>
+    {
         // Initialize ICorProfilerInfo reference
         self.profiler_info = Some(profiler_info);
 
@@ -75,13 +66,13 @@ impl CorProfilerCallback for ExceptionsProfiler {
         Ok(())
     }
 
-    fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT> {
-
+    fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
+    {
         let info = self.profiler_info();
         let name = match info.get_class_from_object(thrown_object_id) {
-            Ok(class_id) => //"ok!".to_owned(),
+            Ok(class_id) =>
             match info.get_class_id_info(class_id) {
-                Ok(class_info) => get_type_name(info, class_info.module_id, class_info.token),
+                Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
                 _ => "unknown2".to_owned()
             },
             _ => "unknown1".to_owned()
@@ -99,14 +90,10 @@ impl CorProfilerCallback for ExceptionsProfiler {
 
 impl CorProfilerCallback2 for ExceptionsProfiler {}
 
-impl CorProfilerCallback3 for ExceptionsProfiler {
-    fn initialize_for_attach(
-        &mut self,
-        profiler_info: ProfilerInfo,
-        client_data: *const std::os::raw::c_void,
-        client_data_length: u32,
-    ) -> Result<(), ffi::HRESULT> {
-
+impl CorProfilerCallback3 for ExceptionsProfiler
+{
+    fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    {
         // Initialize ICorProfilerInfo reference
         self.profiler_info = Some(profiler_info);
 
@@ -129,8 +116,8 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
         Ok(())
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
-
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
+    {
         println!("[profiler] Profiler successfully attached!");
 
         use std::thread::*;
@@ -147,8 +134,8 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
         Ok(())
     }
 
-    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
-
+    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
+    {
         println!("[profiler] Profiler successfully detached!");
 
         let session = Session::create_session(self.session_id, ExceptionsProfiler::get_info());
@@ -174,20 +161,3 @@ impl CorProfilerCallback6 for ExceptionsProfiler {}
 impl CorProfilerCallback7 for ExceptionsProfiler {}
 impl CorProfilerCallback8 for ExceptionsProfiler {}
 impl CorProfilerCallback9 for ExceptionsProfiler {}
-
-#[derive(Clone)]
-struct MyStruct();
-
-impl MyStruct{
-
-    fn fire_and_forget(&self) {
-        let slf = self.clone();
-        thread::spawn(move || {
-            slf.do_something();
-        });
-    }
-
-    fn do_something(&self) {
-        println!("Hello!");
-    }
-}
