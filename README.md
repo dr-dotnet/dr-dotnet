@@ -17,19 +17,25 @@ The .NET Profiling API is accessible via COM interop (cross-platform thanks to t
 - [x] Manage to initialize on attach
 - [x] Write profiler POC in rust
 - [x] Add a functional build flow (profiler + attacher)
-- [ ] Figure out what I really want feature-wise
+- [x] Figure out what I really want feature-wise
   - Should I even consider attach mode? (because of its limitations)
-  - Should I even consider start mode? (because it is too invasive and implies process restart, which is bad is issue is live)
-- [ ] Implement IPC through Event Pipe
+  - ~~Should I even consider start mode? (because it is too invasive and implies process restart, which is bad is issue is live)~~
+- [ ] ~~Implement IPC through Event Pipe~~
 - [x] Add simple UI client for attaching
-- [ ] Add simple UI client for setting up on-start profiler
+- [ ] ~~Add simple UI client for setting up on-start profiler~~
 - [x] Create web app profiler UI that can work in headless scenarios (eg. linux servers)
 - [ ] Have web app profiler work when used as a sidecar docker container
-- [ ] Use **ffidji** to have an interface to share profiler specifications between profilers lib and UI
+- [x] Use **ffidji** to have an interface to share profiler specifications between profilers lib and UI
   - For each profiler: Name, Guid, Description, Duration, Parameters (blob?)
-- [ ] Find out analysis format
+- [x] Find out analysis format
   - What kind of data should it hold? Summary of analysis or should it allow some kind of browsing?
   - json? yaml? custom?
+- [x] Implement wrapper around CLR types API
+- [ ] Add utilitary function to get stack traces (possible to get line n° ?)
+- [ ] Finish the exception profiler (add stack traces, ordering by importance, duration, ...)
+- [ ] Choose next profiler
+  - Memory leak detector with suriviving references?
+  - High allocations (ObjectsAllocatedByClass)?
 
 ## Possibilities
 
