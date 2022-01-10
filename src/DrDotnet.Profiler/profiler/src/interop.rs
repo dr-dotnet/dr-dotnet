@@ -21,7 +21,7 @@ use u64 as uint64;
 use f32 as float32;
 use f64 as float64;
 
-use crate::profilers::get_profiler_infos;
+use crate::get_profiler_infos;
 use crate::profilers::ProfilerData;
 
 #[no_mangle]
@@ -75,7 +75,6 @@ unsafe fn get_string(str: String) -> string {
 pub extern "C" fn GetAvailableProfilers() -> Profilers
 {
     unsafe {
-
         let profiler_infos = get_profiler_infos();
         let len = profiler_infos.len() as usize;
 
