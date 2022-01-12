@@ -1,10 +1,9 @@
 use dashmap::DashMap;
 use profiling_api::*;
-use profiling_api::ffi::{CorOpenFlags, mdTypeDef};
 use uuid::Uuid;
 use std::thread;
 use std::time::Duration;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicIsize, Ordering};
 
 use crate::report::*;
 use crate::profilers::*;
@@ -12,7 +11,7 @@ use crate::profilers::*;
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    exceptions: DashMap<String, AtomicUsize>,
+    exceptions: DashMap<String, AtomicIsize>,
 }
 
 impl ExceptionsProfiler {
@@ -51,37 +50,52 @@ impl ClrProfiler for ExceptionsProfiler {
     }
 }
 
+unsafe extern "system" fn stack_snapshot_callback(method_id: usize, ip: usize, frame_info: usize, context_size: u32, context: *const u8, client_data: *const libc::c_void) -> i32 {
+    let client_data = client_data as *mut StackData;
+    let info = &(*client_data).profiler_info;
+    let stacktrace = &mut (*client_data).stacktrace;
+    stacktrace.push(extensions::get_method_name(info, method_id)); // Not the most optimal way since it will pre allocate on every string
+    return 0;
+}
+
+pub struct StackData {
+    profiler_info: ProfilerInfo,
+    stacktrace: Vec<String>
+}
+
 impl CorProfilerCallback for ExceptionsProfiler
 {
     fn initialize(&mut self, profiler_info: ProfilerInfo) -> Result<(), ffi::HRESULT>
     {
-        // Initialize ICorProfilerInfo reference
-        self.profiler_info = Some(profiler_info);
-
         println!("[profiler] Initialize at start");
-
-        // Set the event mask
+        self.profiler_info = Some(profiler_info);
         self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_ALLOWABLE_AFTER_ATTACH)?;
-
         Ok(())
     }
 
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
     {
-        let info = self.profiler_info();
-        let name = match info.get_class_from_object(thrown_object_id) {
+        let pinfo = self.profiler_info();
+        let name = match pinfo.get_class_from_object(thrown_object_id) {
             Ok(class_id) =>
-            match info.get_class_id_info(class_id) {
-                Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
+            match pinfo.get_class_id_info(class_id) {
+                Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
                 _ => "unknown2".to_owned()
             },
             _ => "unknown1".to_owned()
         };
 
-        let key = name;
+        let sdt = StackData { profiler_info: pinfo.clone(), stacktrace: vec![] };
+        let sd = &sdt as *const StackData;
+        let sd = sd as *const std::ffi::c_void;
+
+        pinfo.do_stack_snapshot(0, stack_snapshot_callback, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, sd, std::ptr::null(), 0).ok();
+
+        //let key = name;
+        let key = format!("{}: {}", name, sdt.stacktrace.join(" <- ")); // Key is stacktrace
         match self.exceptions.get_mut(&key) {
             Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
-            None => { self.exceptions.insert(key, AtomicUsize::new(1)); },
+            None => { self.exceptions.insert(key, AtomicIsize::new(1)); },
         }
         
         Ok(())
@@ -94,19 +108,11 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        // Initialize ICorProfilerInfo reference
-        self.profiler_info = Some(profiler_info);
-
         println!("[profiler] Initialize with attach");
-
-        // Set the event mask
-        //self.profiler_info().set_event_mask(COR_PRF_MONITOR::COR_PRF_ALLOWABLE_AFTER_ATTACH)?;
-        self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS)?;
+        self.profiler_info = Some(profiler_info);
+        self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS | ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT)?;
 
         unsafe {
-            //let vec: [u8; 16] = [0; 16];
-            //std::ptr::copy_nonoverlapping(vec.as_ptr(), client_data as *mut u8, vec.len());
-            //self.session_id = Uuid::from_bytes(*voidp_to_ref::<[u8; 16]>(client_data));
             let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
             self.session_id = Uuid::parse_str(&cstr).unwrap();
         }
@@ -122,13 +128,13 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 
         use std::thread::*;
 
-        let pi = self.profiler_info().clone();
+        let pinfo = self.profiler_info().clone();
 
         thread::spawn(move || {
             sleep(Duration::from_secs(10));
             // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-requestprofilerdetach-method
             // https://github.com/Potapy4/dotnet-coreclr/blob/master/Documentation/Profiling/davbr-blog-archive/Profiler%20Detach.md#requestprofilerdetach
-            pi.request_profiler_detach(3000);
+            pinfo.request_profiler_detach(3000).ok();
         });
 
         Ok(())
@@ -145,7 +151,9 @@ impl CorProfilerCallback3 for ExceptionsProfiler
         report.write_line(format!("# Exceptions Report"));
         report.write_line(format!("## Exceptions by Occurrences"));
 
-        for exception in &self.exceptions {
+        use itertools::Itertools;
+
+        for exception in self.exceptions.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
             report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
         }
 

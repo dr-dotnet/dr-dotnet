@@ -248,9 +248,10 @@ impl CorProfilerInfo for ProfilerInfo {
             S_OK => {
                 let metadata_import = unsafe { metadata_import.assume_init() };
                 let token = unsafe { token.assume_init() };
+                let metadata_import = super::MetadataImport::new(metadata_import);
                 Ok(FunctionTokenAndMetadata {
-                    token,
                     metadata_import,
+                    token,
                 })
             }
             _ => Err(hr),

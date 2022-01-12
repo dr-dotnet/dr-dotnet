@@ -25,7 +25,7 @@ namespace Fibonacci
                             Interlocked.Add(ref sum, myType.Fibonacci(1000));
                             try
                             {
-                                throw new ArgumentNullException("test");
+                                MyMethod1();
                             } catch
                             {
 
@@ -37,6 +37,16 @@ namespace Fibonacci
 
             Console.WriteLine("Press key to exit");
             Console.Read();
+        }
+
+        static void MyMethod1()
+        {
+            ThrowSomeException();
+        }
+
+        static void ThrowSomeException()
+        {
+            throw new ArgumentNullException("test");
         }
     }
 

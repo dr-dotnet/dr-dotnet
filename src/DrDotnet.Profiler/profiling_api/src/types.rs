@@ -5,6 +5,7 @@ use crate::ffi::{
     COR_PRF_FUNCTION_ARGUMENT_RANGE, COR_PRF_HIGH_MONITOR, COR_PRF_MODULE_FLAGS, COR_PRF_MONITOR,
     COR_PRF_RUNTIME_TYPE, LPCBYTE, PCCOR_SIGNATURE, CorTypeAttr,
 };
+
 pub struct ArrayClassInfo {
     pub element_type: CorElementType,
     pub element_class_id: Option<ClassID>,
@@ -21,7 +22,7 @@ pub struct FunctionInfo {
     pub token: mdMethodDef,
 }
 pub struct FunctionTokenAndMetadata {
-    pub metadata_import: *mut MetaDataImport,
+    pub metadata_import: super::MetadataImport,
     pub token: mdMethodDef,
 }
 #[derive(Debug)]
