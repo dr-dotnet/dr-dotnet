@@ -1,6 +1,6 @@
 mod i_class_factory;
 mod i_cor_profiler_assembly_reference_provider;
-mod i_cor_profiler_callback;
+mod i_cor_profiler_callback_1;
 mod i_cor_profiler_callback_2;
 mod i_cor_profiler_callback_3;
 mod i_cor_profiler_callback_4;
@@ -36,7 +36,7 @@ mod i_unknown;
 
 pub use self::i_class_factory::IClassFactory;
 pub use self::i_cor_profiler_assembly_reference_provider::ICorProfilerAssemblyReferenceProvider;
-pub use self::i_cor_profiler_callback::ICorProfilerCallback;
+pub use self::i_cor_profiler_callback_1::ICorProfilerCallback;
 pub use self::i_cor_profiler_callback_2::ICorProfilerCallback2;
 pub use self::i_cor_profiler_callback_3::ICorProfilerCallback3;
 pub use self::i_cor_profiler_callback_4::ICorProfilerCallback4;
