@@ -9,7 +9,8 @@ use crate::profilers::*;
 pub struct MemoryLeakProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    exceptions: DashMap<String, AtomicIsize>,
+    surviving_references: DashMap<String, AtomicIsize>,
+    collections: AtomicIsize,
 }
 
 impl Profiler for MemoryLeakProfiler {
@@ -31,7 +32,8 @@ impl Clone for MemoryLeakProfiler {
         MemoryLeakProfiler {
             profiler_info: self.profiler_info.clone(),
             session_id: self.session_id.clone(),
-            exceptions: DashMap::new()
+            surviving_references: DashMap::new(),
+            collections: AtomicIsize::new(0)
         }
     }
 }
@@ -41,7 +43,8 @@ impl ClrProfiler for MemoryLeakProfiler {
         MemoryLeakProfiler {
             profiler_info: None,
             session_id: Uuid::default(),
-            exceptions: DashMap::new()
+            surviving_references: DashMap::new(),
+            collections: AtomicIsize::new(0)
         }
     }
 }
@@ -52,6 +55,8 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 {
     fn surviving_references(&mut self, object_id_range_start: &[ffi::ObjectID], object_id_range_length: &[u32]) -> Result<(), ffi::HRESULT>
     {
+        println!("SURVIVING REFERENCES!");
+
         for i in 0..object_id_range_start.len()
         {
             let pinfo = self.profiler_info();
@@ -65,11 +70,18 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
             };
     
             let key = name;
-            match self.exceptions.get_mut(&key) {
+            match self.surviving_references.get_mut(&key) {
                 Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
-                None => { self.exceptions.insert(key, AtomicIsize::new(1)); },
+                None => { self.surviving_references.insert(key, AtomicIsize::new(1)); },
             }
         }
+
+        Ok(())
+    }
+
+    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
+    {
+        self.collections.fetch_add(1, Ordering::Relaxed);
 
         Ok(())
     }
@@ -81,7 +93,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
     {
         println!("[profiler] Initialize with attach");
         self.profiler_info = Some(profiler_info);
-        
+
         match self.profiler_info().set_event_mask_2(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE) {
             Ok(_) => (),
             Err(hresult) => println!("Error setting event mask: {:x}", hresult)
@@ -111,13 +123,15 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 
         let mut report = session.create_report("summary.md".to_owned());
 
-        report.write_line(format!("# Exceptions Report"));
-        report.write_line(format!("## Exceptions by Occurrences"));
+        report.write_line(format!("# Memory Leak Report"));
+        report.write_line(format!("## Total Collections"));
+        report.write_line(format!("**Total Collections**: {}", self.collections.load(Ordering::Relaxed)));
+        report.write_line(format!("## Surviving References by Class"));
 
         use itertools::Itertools;
 
-        for exception in self.exceptions.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
-            report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
+        for surviving_reference in self.surviving_references.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
+            report.write_line(format!("- {}: {}", surviving_reference.key(), surviving_reference.value().load(Ordering::Relaxed)));
         }
 
         println!("[profiler] Report written");
@@ -131,6 +145,8 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
     fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
     {
+        println!("SURVIVING REFERENCES 2!");
+
         for i in 0..object_id_range_start.len()
         {
             let pinfo = self.profiler_info();
@@ -144,9 +160,10 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             };
     
             let key = name;
-            match self.exceptions.get_mut(&key) {
-                Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
-                None => { self.exceptions.insert(key, AtomicIsize::new(1)); },
+            let val = c_object_id_range_length[i] as isize;
+            match self.surviving_references.get_mut(&key) {
+                Some(pair) => { pair.value().fetch_add(val, Ordering::Relaxed); },
+                None => { self.surviving_references.insert(key, AtomicIsize::new(val)); },
             }
         }
 
