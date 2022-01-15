@@ -22,7 +22,7 @@ namespace DrDotnet
             var sessionId = Guid.NewGuid();
 
             DiagnosticsClient client = new DiagnosticsClient(processId);
-            client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString()));
+            client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
             logger.Log($"Attached profiler {ProfilerId} with session {sessionId} to process {processId}");
 

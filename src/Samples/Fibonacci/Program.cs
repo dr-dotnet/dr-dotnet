@@ -6,11 +6,11 @@ namespace Fibonacci
 {
     class Program
     {
+        public static ulong StaticValue;
+
         static void Main(string[] args)
         {
             Console.WriteLine("Start");
-
-            var myType = new MyType();
 
             long sum = 0;
 
@@ -20,6 +20,8 @@ namespace Fibonacci
                 {
                     while (true)
                     {
+                        var myType = new MyType();
+
                         unchecked
                         {
                             Interlocked.Add(ref sum, myType.Fibonacci(1000));
@@ -62,6 +64,11 @@ namespace Fibonacci
                 b = c;
             }
             return c;
+        }
+
+        ~MyType()
+        {
+            Program.StaticValue++;
         }
     }
 }

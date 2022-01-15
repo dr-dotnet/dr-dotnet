@@ -14,12 +14,6 @@ pub struct ExceptionsProfiler {
     exceptions: DashMap<String, AtomicIsize>,
 }
 
-impl ExceptionsProfiler {
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
-    }
-}
-
 impl Profiler for ExceptionsProfiler {
     fn get_info() -> ProfilerData {
         return ProfilerData {
@@ -27,6 +21,10 @@ impl Profiler for ExceptionsProfiler {
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
         }
+    }
+
+    fn profiler_info(&self) -> &ProfilerInfo {
+        self.profiler_info.as_ref().unwrap()
     }
 }
 
@@ -50,29 +48,8 @@ impl ClrProfiler for ExceptionsProfiler {
     }
 }
 
-unsafe extern "system" fn stack_snapshot_callback(method_id: usize, ip: usize, frame_info: usize, context_size: u32, context: *const u8, client_data: *const libc::c_void) -> i32 {
-    let client_data = client_data as *mut StackData;
-    let info = &(*client_data).profiler_info;
-    let stacktrace = &mut (*client_data).stacktrace;
-    stacktrace.push(extensions::get_method_name(info, method_id)); // Not the most optimal way since it will pre allocate on every string
-    return 0;
-}
-
-pub struct StackData {
-    profiler_info: ProfilerInfo,
-    stacktrace: Vec<String>
-}
-
 impl CorProfilerCallback for ExceptionsProfiler
 {
-    fn initialize(&mut self, profiler_info: ProfilerInfo) -> Result<(), ffi::HRESULT>
-    {
-        println!("[profiler] Initialize at start");
-        self.profiler_info = Some(profiler_info);
-        self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_ALLOWABLE_AFTER_ATTACH)?;
-        Ok(())
-    }
-
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
     {
         let pinfo = self.profiler_info();
@@ -85,14 +62,7 @@ impl CorProfilerCallback for ExceptionsProfiler
             _ => "unknown1".to_owned()
         };
 
-        let sdt = StackData { profiler_info: pinfo.clone(), stacktrace: vec![] };
-        let sd = &sdt as *const StackData;
-        let sd = sd as *const std::ffi::c_void;
-
-        pinfo.do_stack_snapshot(0, stack_snapshot_callback, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, sd, std::ptr::null(), 0).ok();
-
-        //let key = name;
-        let key = format!("{}: {}", name, sdt.stacktrace.join(" <- ")); // Key is stacktrace
+        let key = name;
         match self.exceptions.get_mut(&key) {
             Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
             None => { self.exceptions.insert(key, AtomicIsize::new(1)); },
@@ -110,7 +80,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler
     {
         println!("[profiler] Initialize with attach");
         self.profiler_info = Some(profiler_info);
-        self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS | ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT)?;
+        self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS /*| ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT*/)?;
 
         unsafe {
             let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
@@ -125,18 +95,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
         println!("[profiler] Profiler successfully attached!");
-
-        use std::thread::*;
-
-        let pinfo = self.profiler_info().clone();
-
-        thread::spawn(move || {
-            sleep(Duration::from_secs(10));
-            // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-requestprofilerdetach-method
-            // https://github.com/Potapy4/dotnet-coreclr/blob/master/Documentation/Profiling/davbr-blog-archive/Profiler%20Detach.md#requestprofilerdetach
-            pinfo.request_profiler_detach(3000).ok();
-        });
-
+        detach_after_duration::<ExceptionsProfiler>(&self, 10);
         Ok(())
     }
 

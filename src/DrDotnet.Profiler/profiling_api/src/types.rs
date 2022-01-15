@@ -1,10 +1,4 @@
-use crate::ffi::{
-    mdMethodDef, mdTypeDef, AppDomainID, AssemblyID, ClassID, ClrInstanceID, CorElementType,
-    CorMethodAttr, CorMethodImpl, CorProfilerMethodEnum, FunctionID, MetaDataImport, ModuleID,
-    ProcessID, ReJITID, BYTE, COR_FIELD_OFFSET, COR_PRF_FRAME_INFO, COR_PRF_FUNCTION_ARGUMENT_INFO,
-    COR_PRF_FUNCTION_ARGUMENT_RANGE, COR_PRF_HIGH_MONITOR, COR_PRF_MODULE_FLAGS, COR_PRF_MONITOR,
-    COR_PRF_RUNTIME_TYPE, LPCBYTE, PCCOR_SIGNATURE, CorTypeAttr,
-};
+use crate::ffi::*;
 
 pub struct ArrayClassInfo {
     pub element_type: CorElementType,

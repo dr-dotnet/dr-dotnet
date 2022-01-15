@@ -4,7 +4,7 @@ mod interop;
 mod macros;
 
 // All profilers registered
-register!(ExceptionsProfiler);
+register!(ExceptionsProfiler, AllocationByClassProfiler, MemoryLeakProfiler);
 
 // Actual COM entry point
 #[no_mangle]
