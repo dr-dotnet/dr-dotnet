@@ -22,14 +22,13 @@
  
 @code
 {
-
     IEnumerable<Session> _sessions;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        _sessions = _sessionDiscovery.GetSessions();
+        _sessions = _sessionDiscovery.GetSessions().OrderByDescending(x => x.Timestamp);
     }
 
     public void OnSelectionChanged(object data)
