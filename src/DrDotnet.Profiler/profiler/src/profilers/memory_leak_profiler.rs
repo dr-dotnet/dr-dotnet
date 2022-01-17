@@ -60,8 +60,9 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         for i in 0..object_id_range_start.len()
         {
             let pinfo = self.profiler_info();
-            let name = match pinfo.get_class_from_object(object_id_range_start[i]) {
-                Ok(class_id) =>
+            let name = 
+            match pinfo.get_class_from_object(object_id_range_start[i]) {
+                Ok(class_id) => 
                 match pinfo.get_class_id_info(class_id) {
                     Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
                     _ => "unknown2".to_owned()

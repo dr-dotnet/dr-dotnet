@@ -53,7 +53,8 @@ impl CorProfilerCallback for ExceptionsProfiler
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
     {
         let pinfo = self.profiler_info();
-        let name = match pinfo.get_class_from_object(thrown_object_id) {
+        let name = 
+        match pinfo.get_class_from_object(thrown_object_id) {
             Ok(class_id) =>
             match pinfo.get_class_id_info(class_id) {
                 Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
