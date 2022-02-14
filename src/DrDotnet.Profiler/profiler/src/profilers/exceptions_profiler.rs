@@ -52,6 +52,9 @@ impl CorProfilerCallback for ExceptionsProfiler
 {
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
     {
+        std::fs::write("test.txt", "exception_thrown");
+
+        println!("exception_thrown");
         let pinfo = self.profiler_info();
         let name = 
         match pinfo.get_class_from_object(thrown_object_id) {
@@ -83,12 +86,19 @@ impl CorProfilerCallback3 for ExceptionsProfiler
         self.profiler_info = Some(profiler_info);
         self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS /*| ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT*/)?;
 
-        unsafe {
-            let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
-            self.session_id = Uuid::parse_str(&cstr).unwrap();
+        if client_data_length > 0 
+        {
+            unsafe {
+                let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
+                self.session_id = Uuid::parse_str(&cstr).unwrap();
+            }
+    
+            println!("[profiler] Session uuid: {:?}", self.session_id);
         }
-
-        println!("[profiler] Session uuid: {:?}", self.session_id);
+        else 
+        {
+            println!("[profiler] No Session ID in additional data");
+        }
 
         Ok(())
     }
