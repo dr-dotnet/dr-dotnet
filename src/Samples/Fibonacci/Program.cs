@@ -106,9 +106,17 @@ namespace Fibonacci
                 if (i % 1000 == 0)
                 {
                     GC.Collect();
-                    Console.WriteLine($"Did {i} iterations Allocated={GC.GetAllocatedBytesForCurrentThread()}");
+                    //Console.WriteLine($"Did {i} iterations Allocated={GC.GetAllocatedBytesForCurrentThread()}");
                 }
 
+                try
+                {
+                    throw new Exception("pouet");
+                }
+                catch
+                {
+
+                }
 
                 int[] m_array = new int[100];
             }

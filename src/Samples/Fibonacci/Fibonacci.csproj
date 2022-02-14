@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
 	  <TargetFramework>net6.0</TargetFramework>
 	  <StartupObject>Fibonacci.Program</StartupObject>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>..\..\..\bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

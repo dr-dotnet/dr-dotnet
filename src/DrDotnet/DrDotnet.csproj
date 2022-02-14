@@ -34,6 +34,10 @@
     <Content Include="..\DrDotnet.Profiler\**" Link="Profiler\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Remove="..\DrDotnet.Profiler\profiler\src\profilers\test_profiler.rs" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)\DrDotnet.Profiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
   </PropertyGroup>

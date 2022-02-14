@@ -55,6 +55,8 @@ impl CorProfilerCallback for AllocationByClassProfiler
 {
     fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT>
     {
+        self.allocations_by_class.insert("test".to_owned(), AtomicIsize::new(123));
+
         for i in 0..class_ids.len() {
             
             let pinfo = self.profiler_info();
@@ -93,14 +95,10 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
         println!("[profiler] Initialize with attach");
         self.profiler_info = Some(profiler_info);
         
-        match self.profiler_info().set_event_mask_2(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE) {
+        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
             Ok(_) => (),
             Err(hresult) => println!("Error setting event mask: {:x}", hresult)
         }
-
-        let dd = self.profiler_info().get_event_mask_2().unwrap();
-        println!("Events low: {:?}", dd.events_low);
-        println!("Events high: {:?}", dd.events_high);
 
         unsafe {
             let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
@@ -133,6 +131,8 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
         report.write_line(format!("## Allocations by Class"));
 
         use itertools::Itertools;
+
+        report.write_line(format!("**Total Types**: {}", self.allocations_by_class.len()));
 
         for allocations_for_class in self.allocations_by_class.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
             report.write_line(format!("- {}: {}", allocations_for_class.key(), allocations_for_class.value().load(Ordering::Relaxed)));

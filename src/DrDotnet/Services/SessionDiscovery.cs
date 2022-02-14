@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace DrDotnet
@@ -10,12 +8,10 @@ namespace DrDotnet
     public class SessionDiscovery : ISessionDiscovery
     {
         private ILogger _logger;
-        private IWebHostEnvironment _env;
 
-        public SessionDiscovery(ILogger logger, IWebHostEnvironment env)
+        public SessionDiscovery(ILogger logger)
         {
             _logger = logger;
-            _env = env;
         }
 
         public string RootDir {
@@ -29,11 +25,6 @@ namespace DrDotnet
         public List<Session> GetSessions()
         {
             var sessions = new List<Session>();
-
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
 
             string[] subdirectoryEntries = Directory.GetDirectories(RootDir);
             foreach (string subdirectory in subdirectoryEntries)

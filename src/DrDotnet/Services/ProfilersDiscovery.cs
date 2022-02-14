@@ -3,12 +3,12 @@ using System.Collections.Generic;
 
 namespace DrDotnet
 {
-    public class ProfilesDiscovery : IProfilerDiscovery
+    public class ProfilersDiscovery : IProfilerDiscovery
     {
         private ILogger _logger;
         private List<Profiler> _profilers;
 
-        public ProfilesDiscovery(ILogger logger)
+        public ProfilersDiscovery(ILogger logger)
         {
             _logger = logger;
         }

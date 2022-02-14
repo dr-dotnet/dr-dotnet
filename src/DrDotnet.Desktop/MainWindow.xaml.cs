@@ -24,7 +24,7 @@ namespace DrDotnet.Desktop
             services.AddSingleton<ILogger, Logger>();
             services.AddSingleton<ISessionDiscovery, SessionDiscovery>();
             services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
-            services.AddSingleton<IProfilerDiscovery, ProfilesDiscovery>();
+            services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
 
             Resources.Add("services", services.BuildServiceProvider());
 
