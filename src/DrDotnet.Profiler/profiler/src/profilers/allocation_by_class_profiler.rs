@@ -55,8 +55,6 @@ impl CorProfilerCallback for AllocationByClassProfiler
 {
     fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT>
     {
-        self.allocations_by_class.insert("test".to_owned(), AtomicIsize::new(123));
-
         for i in 0..class_ids.len() {
             
             let pinfo = self.profiler_info();
@@ -92,36 +90,31 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Initialize with attach");
         self.profiler_info = Some(profiler_info);
         
         match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
             Ok(_) => (),
-            Err(hresult) => println!("Error setting event mask: {:x}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
 
-        unsafe {
-            let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
-            self.session_id = Uuid::parse_str(&cstr).unwrap();
+        match init_session(client_data, client_data_length) {
+            Ok(uuid) => {
+                self.session_id = uuid;
+                Ok(())
+            },
+            Err(err) => Err(err)
         }
-
-        println!("[profiler] Session uuid: {:?}", self.session_id);
-
-        Ok(())
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Profiler successfully attached!");
         detach_after_duration::<AllocationByClassProfiler>(&self, 10);
         Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Profiler successfully detached!");
-
-        let session = Session::create_session(self.session_id, AllocationByClassProfiler::get_info());
+        let session = Session::get_session(self.session_id, AllocationByClassProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 
@@ -132,13 +125,11 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
 
         use itertools::Itertools;
 
-        report.write_line(format!("**Total Types**: {}", self.allocations_by_class.len()));
-
         for allocations_for_class in self.allocations_by_class.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
             report.write_line(format!("- {}: {}", allocations_for_class.key(), allocations_for_class.value().load(Ordering::Relaxed)));
         }
 
-        println!("[profiler] Report written");
+        info!("Report written");
 
         Ok(())
     }

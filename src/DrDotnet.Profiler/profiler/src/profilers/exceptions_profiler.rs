@@ -52,9 +52,6 @@ impl CorProfilerCallback for ExceptionsProfiler
 {
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
     {
-        std::fs::write("test.txt", "exception_thrown");
-
-        println!("exception_thrown");
         let pinfo = self.profiler_info();
         let name = 
         match pinfo.get_class_from_object(thrown_object_id) {
@@ -82,39 +79,31 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Initialize with attach");
         self.profiler_info = Some(profiler_info);
-        self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS /*| ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT*/)?;
 
-        if client_data_length > 0 
-        {
-            unsafe {
-                let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
-                self.session_id = Uuid::parse_str(&cstr).unwrap();
-            }
-    
-            println!("[profiler] Session uuid: {:?}", self.session_id);
-        }
-        else 
-        {
-            println!("[profiler] No Session ID in additional data");
+        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS) {
+            Ok(_) => (),
+            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
 
-        Ok(())
+        match init_session(client_data, client_data_length) {
+            Ok(uuid) => {
+                self.session_id = uuid;
+                Ok(())
+            },
+            Err(err) => Err(err)
+        }
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Profiler successfully attached!");
         detach_after_duration::<ExceptionsProfiler>(&self, 10);
         Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Profiler successfully detached!");
-
-        let session = Session::create_session(self.session_id, ExceptionsProfiler::get_info());
+        let session = Session::get_session(self.session_id, ExceptionsProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 
@@ -127,7 +116,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler
             report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
         }
 
-        println!("[profiler] Report written");
+        info!("Report written");
 
         Ok(())
     }

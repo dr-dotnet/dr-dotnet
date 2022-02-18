@@ -1070,22 +1070,40 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .initialize_for_attach(profiler_info, pvClientData, cbClientData);
         match result {
-            Ok(_) => S_OK,
-            Err(error) => error,
+            Ok(_) => {
+                info!("Profiler successfully initialized");
+                S_OK
+            },
+            Err(error) => {
+                info!("Profiler failed initializing {:x}", error);
+                error
+            },
         }
     }
     pub unsafe extern "system" fn ProfilerAttachComplete(&mut self) -> HRESULT {
         let result = self.profiler.profiler_attach_complete();
         match result {
-            Ok(_) => S_OK,
-            Err(error) => error,
+            Ok(_) => {
+                info!("Profiler successfully attached");
+                S_OK
+            },
+            Err(error) => {
+                info!("Profiler failed attaching {:x}", error);
+                error
+            },
         }
     }
     pub unsafe extern "system" fn ProfilerDetachSucceeded(&mut self) -> HRESULT {
         let result = self.profiler.profiler_detach_succeeded();
         match result {
-            Ok(_) => S_OK,
-            Err(error) => error,
+            Ok(_) => {
+                info!("Profiler successfully detached");
+                S_OK
+            },
+            Err(error) => {
+                info!("Profiler failed detaching {:x}", error);
+                error
+            },
         }
     }
     pub unsafe extern "system" fn ReJITCompilationStarted(
