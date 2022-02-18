@@ -55,7 +55,11 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 {
     fn surviving_references(&mut self, object_id_range_start: &[ffi::ObjectID], object_id_range_length: &[u32]) -> Result<(), ffi::HRESULT>
     {
-        println!("SURVIVING REFERENCES!");
+        let k = "custom".to_owned();
+        match self.surviving_references.get_mut(&k) {
+            Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
+            None => { self.surviving_references.insert(k, AtomicIsize::new(1)); },
+        }
 
         for i in 0..object_id_range_start.len()
         {
@@ -71,9 +75,10 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
             };
     
             let key = name;
+            let value = object_id_range_length[i] as isize;
             match self.surviving_references.get_mut(&key) {
-                Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
-                None => { self.surviving_references.insert(key, AtomicIsize::new(1)); },
+                Some(pair) => { pair.value().fetch_add(value, Ordering::Relaxed); },
+                None => { self.surviving_references.insert(key, AtomicIsize::new(value)); },
             }
         }
 
@@ -92,35 +97,31 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Initialize with attach");
         self.profiler_info = Some(profiler_info);
 
-        match self.profiler_info().set_event_mask_2(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE) {
+        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
             Ok(_) => (),
-            Err(hresult) => println!("Error setting event mask: {:x}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
-        unsafe {
-            let cstr = std::ffi::CStr::from_ptr(client_data as *const _).to_string_lossy();
-            self.session_id = Uuid::parse_str(&cstr).unwrap();
+        
+        match init_session(client_data, client_data_length) {
+            Ok(uuid) => {
+                self.session_id = uuid;
+                Ok(())
+            },
+            Err(err) => Err(err)
         }
-
-        println!("[profiler] Session uuid: {:?}", self.session_id);
-
-        Ok(())
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Profiler successfully attached!");
         detach_after_duration::<MemoryLeakProfiler>(&self, 10);
         Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        println!("[profiler] Profiler successfully detached!");
-
-        let session = Session::create_session(self.session_id, MemoryLeakProfiler::get_info());
+        let session = Session::get_session(self.session_id, MemoryLeakProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 
@@ -135,7 +136,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
             report.write_line(format!("- {}: {}", surviving_reference.key(), surviving_reference.value().load(Ordering::Relaxed)));
         }
 
-        println!("[profiler] Report written");
+        info!("Report written");
 
         Ok(())
     }
@@ -146,8 +147,6 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
     fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
     {
-        println!("SURVIVING REFERENCES 2!");
-
         for i in 0..object_id_range_start.len()
         {
             let pinfo = self.profiler_info();
@@ -172,7 +171,6 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
     }
 }
 
-//impl CorProfilerCallback3 for MemoryLeakProfiler {}
 impl CorProfilerCallback5 for MemoryLeakProfiler {}
 impl CorProfilerCallback6 for MemoryLeakProfiler {}
 impl CorProfilerCallback7 for MemoryLeakProfiler {}

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Local};
 
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::io::BufWriter;
 use std::fs::File;
 use std::io::Write;
@@ -20,7 +20,7 @@ pub struct Session {
 
 impl Session {
 
-    pub fn create_session(session_id: Uuid, profiler: ProfilerData) -> Session {
+    pub fn get_session(session_id: Uuid, profiler: ProfilerData) -> Session {
 
         let process_name = std::env::current_exe().unwrap()
             .file_name().unwrap()
@@ -38,21 +38,25 @@ impl Session {
         let json = serde_json::to_string_pretty(&report).unwrap();
 
         // Write session report
-        std::fs::create_dir_all(report.get_directory());
-        let mut session_stream = File::create(format!("{}/session.json", report.get_directory())).expect("Unable to create file");
-        session_stream.write_all(json.as_bytes()).expect("Unable to write data");    
+        let jsonPath = format!("{}/session.json", Session::get_directory(session_id));
+        if !Path::exists(Path::new(&jsonPath)) {
+            let mut session_stream = File::create(jsonPath).expect("Unable to create file");
+            session_stream.write_all(json.as_bytes()).expect("Unable to write data");    
+        }
 
         return report;
     }
 
     pub fn create_report(&self, filename: String) -> Report {
-        let path = PathBuf::from(format!(r"{}/{}", self.get_directory(), filename));
+        let path = PathBuf::from(format!(r"{}/{}", Session::get_directory(self.session_id), filename));
         let file = File::create(&path).unwrap();
         return Report { writer: BufWriter::new(file) };
     }
 
-    pub fn get_directory(&self) -> String {
-        return format!(r"/dr-dotnet/{}", self.session_id.to_string());
+    pub fn get_directory(session_id: Uuid) -> String {
+        let directory_path = format!(r"/dr-dotnet/{}", session_id.to_string());
+        std::fs::create_dir_all(&directory_path);
+        return directory_path;
     }
 }
 
