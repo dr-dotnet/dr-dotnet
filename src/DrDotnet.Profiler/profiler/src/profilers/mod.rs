@@ -7,6 +7,9 @@ pub use memory_leak_profiler::MemoryLeakProfiler as MemoryLeakProfiler;
 pub mod allocation_by_class_profiler;
 pub use allocation_by_class_profiler::AllocationByClassProfiler as AllocationByClassProfiler;
 
+pub mod runtime_pause_profiler;
+pub use runtime_pause_profiler::RuntimePauseProfiler as RuntimePauseProfiler;
+
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use profiling_api::*;
@@ -52,11 +55,11 @@ fn init_logging(uuid: Uuid) {
 
 #[cfg(not(debug_assertions))]
 fn init_logging(uuid: Uuid) {
-    let config = ConfigBuilder::new().set_max_level(LevelFilter.Error).build();
+    let config = ConfigBuilder::new().set_max_level(LevelFilter::Error).build();
     CombinedLogger::init(
         vec![
-            TermLogger::new(LevelFilter::Warn, config, TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, config,File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
+            TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
+            WriteLogger::new(LevelFilter::Info, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
         ]
     ).unwrap();
 }
