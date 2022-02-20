@@ -99,14 +99,7 @@ impl CorProfilerCallback for GCPauseProfiler {
         Ok(())
     }
 
-    fn runtime_suspend_finished(&mut self) -> Result<(), ffi::HRESULT> {
-        let current = Instant::now();
-        let gc_pause = GCPause { start: self.last_start, end: current };
-        self.gc_pauses.push(gc_pause);
-        Ok(())
-    }
-
-    fn runtime_suspend_aborted(&mut self) -> Result<(), ffi::HRESULT> {
+    fn runtime_resume_started(&mut self) -> Result<(), ffi::HRESULT> {
         let current = Instant::now();
         let gc_pause = GCPause { start: self.last_start, end: current };
         self.gc_pauses.push(gc_pause);
@@ -163,28 +156,30 @@ impl CorProfilerCallback3 for GCPauseProfiler
 
         report.write_line(format!("- Percentage of time suspended: {}%", percentage_of_time_suspended));
 
+        // Todo: make a table
+
         let durations_1000ms = self.get_durations(Duration::from_millis(1000));
-        report.write_line(format!("- GC part on 99p over 1s delta: {}ms", durations_1000ms[(0.99f64 * (durations_1000ms.len() as f64)).floor() as usize].as_millis()));
-        report.write_line(format!("- GC part on 95p over 1s delta: {}ms", durations_1000ms[(0.95f64 * (durations_1000ms.len() as f64)).floor() as usize].as_millis()));
-        report.write_line(format!("- GC part on 50p over 1s delta: {}ms", durations_1000ms[(0.50f64 * (durations_1000ms.len() as f64)).floor() as usize].as_millis()));
+        report.write_line(format!("- GC part on 99p over 1s delta: {}μs", durations_1000ms[(0.99f64 * (durations_1000ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- GC part on 95p over 1s delta: {}μs", durations_1000ms[(0.95f64 * (durations_1000ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- GC part on 50p over 1s delta: {}μs", durations_1000ms[(0.50f64 * (durations_1000ms.len() as f64)).floor() as usize].as_micros()));
 
         let durations_400ms = self.get_durations(Duration::from_millis(400));
-        report.write_line(format!("- GC part on 99p over 400ms delta: {}ms", durations_400ms[(0.99f64 * (durations_400ms.len() as f64)).floor() as usize].as_millis()));
-        report.write_line(format!("- GC part on 95p over 400ms delta: {}ms", durations_400ms[(0.95f64 * (durations_400ms.len() as f64)).floor() as usize].as_millis()));
-        report.write_line(format!("- GC part on 50p over 400ms delta: {}ms", durations_400ms[(0.50f64 * (durations_400ms.len() as f64)).floor() as usize].as_millis()));
+        report.write_line(format!("- GC part on 99p over 400ms delta: {}μs", durations_400ms[(0.99f64 * (durations_400ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- GC part on 95p over 400ms delta: {}μs", durations_400ms[(0.95f64 * (durations_400ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- GC part on 50p over 400ms delta: {}μs", durations_400ms[(0.50f64 * (durations_400ms.len() as f64)).floor() as usize].as_micros()));
 
         let durations_50ms = self.get_durations(Duration::from_millis(50));
-        report.write_line(format!("- GC part on 99p over 50ms delta: {}ms", durations_50ms[(0.99f64 * (durations_50ms.len() as f64)).floor() as usize].as_millis()));
-        report.write_line(format!("- GC part on 95p over 50ms delta: {}ms", durations_50ms[(0.95f64 * (durations_50ms.len() as f64)).floor() as usize].as_millis()));
-        report.write_line(format!("- GC part on 50p over 50ms delta: {}ms", durations_50ms[(0.50f64 * (durations_50ms.len() as f64)).floor() as usize].as_millis()));
+        report.write_line(format!("- GC part on 99p over 50ms delta: {}μs", durations_50ms[(0.99f64 * (durations_50ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- GC part on 95p over 50ms delta: {}μs", durations_50ms[(0.95f64 * (durations_50ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- GC part on 50p over 50ms delta: {}μs", durations_50ms[(0.50f64 * (durations_50ms.len() as f64)).floor() as usize].as_micros()));
 
-        let latency = durations_400ms
-             .iter()
-             .map(|&w| 100f64 * w.as_secs_f64() / Duration::from_millis(400).as_secs_f64());
+        // let latency = durations_400ms
+        //      .iter()
+        //      .map(|&w| 100f64 * w.as_secs_f64() / Duration::from_millis(400).as_secs_f64());
 
-        for l in latency {
-            report.write_line(format!("- {}%", l))
-        }
+        // for l in latency {
+        //     report.write_line(format!("- {}%", l))
+        // }
 
         info!("Report written");
 
