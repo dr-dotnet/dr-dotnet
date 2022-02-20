@@ -5,23 +5,23 @@ use std::time::{Instant, Duration};
 use crate::report::*;
 use crate::profilers::*;
 
-pub struct GCPause {
+pub struct RuntimePause {
     start: Instant,
     end: Instant,
     reason: ffi::COR_PRF_SUSPEND_REASON
 }
 
-pub struct GCPauseProfiler {
+pub struct RuntimePauseProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    gc_pauses: Vec<GCPause>,
+    gc_pauses: Vec<RuntimePause>,
     last_start: Instant,
     last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON,
     profiling_start: Instant,
     profiling_end: Instant,
 }
 
-impl GCPauseProfiler {
+impl RuntimePauseProfiler {
     fn get_durations(&self, interval: Duration) -> Vec<Duration> {
         let mut current = self.profiling_start;
         let mut last_start = self.gc_pauses[0].start;
@@ -54,7 +54,7 @@ impl GCPauseProfiler {
     }
 }
 
-impl Profiler for GCPauseProfiler {
+impl Profiler for RuntimePauseProfiler {
     fn get_info() -> ProfilerData {
         return ProfilerData {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E85").unwrap(),
@@ -68,9 +68,9 @@ impl Profiler for GCPauseProfiler {
     }
 }
 
-impl Clone for GCPauseProfiler {
+impl Clone for RuntimePauseProfiler {
     fn clone(&self) -> Self { 
-        GCPauseProfiler {
+        RuntimePauseProfiler {
             profiler_info: self.profiler_info.clone(),
             session_id: self.session_id.clone(),
             gc_pauses: Vec::new(),
@@ -82,9 +82,9 @@ impl Clone for GCPauseProfiler {
     }
 }
 
-impl ClrProfiler for GCPauseProfiler {
-    fn new() -> GCPauseProfiler {
-        GCPauseProfiler {
+impl ClrProfiler for RuntimePauseProfiler {
+    fn new() -> RuntimePauseProfiler {
+        RuntimePauseProfiler {
             profiler_info: None,
             session_id: Uuid::default(),
             gc_pauses: Vec::new(),
@@ -96,7 +96,7 @@ impl ClrProfiler for GCPauseProfiler {
     }
 }
 
-impl CorProfilerCallback for GCPauseProfiler {
+impl CorProfilerCallback for RuntimePauseProfiler {
 
     fn runtime_suspend_started(&mut self, suspend_reason: ffi::COR_PRF_SUSPEND_REASON) -> Result<(), ffi::HRESULT> {
         self.last_start = Instant::now();
@@ -106,15 +106,15 @@ impl CorProfilerCallback for GCPauseProfiler {
 
     fn runtime_resume_started(&mut self) -> Result<(), ffi::HRESULT> {
         let current = Instant::now();
-        let gc_pause = GCPause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone() };
+        let gc_pause = RuntimePause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone() };
         self.gc_pauses.push(gc_pause);
         Ok(())
     }
 }
 
-impl CorProfilerCallback2 for GCPauseProfiler {}
+impl CorProfilerCallback2 for RuntimePauseProfiler {}
 
-impl CorProfilerCallback3 for GCPauseProfiler
+impl CorProfilerCallback3 for RuntimePauseProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
@@ -137,7 +137,7 @@ impl CorProfilerCallback3 for GCPauseProfiler
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
         self.profiling_start = Instant::now();
-        detach_after_duration::<GCPauseProfiler>(&self, 20);
+        detach_after_duration::<RuntimePauseProfiler>(&self, 20);
         Ok(())
     }
 
@@ -145,7 +145,7 @@ impl CorProfilerCallback3 for GCPauseProfiler
     {
         self.profiling_end = Instant::now();
 
-        let session = Session::get_session(self.session_id, GCPauseProfiler::get_info());
+        let session = Session::get_session(self.session_id, RuntimePauseProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 
@@ -204,9 +204,9 @@ impl CorProfilerCallback3 for GCPauseProfiler
     }
 }
 
-impl CorProfilerCallback4 for GCPauseProfiler {}
-impl CorProfilerCallback5 for GCPauseProfiler {}
-impl CorProfilerCallback6 for GCPauseProfiler {}
-impl CorProfilerCallback7 for GCPauseProfiler {}
-impl CorProfilerCallback8 for GCPauseProfiler {}
-impl CorProfilerCallback9 for GCPauseProfiler {}
+impl CorProfilerCallback4 for RuntimePauseProfiler {}
+impl CorProfilerCallback5 for RuntimePauseProfiler {}
+impl CorProfilerCallback6 for RuntimePauseProfiler {}
+impl CorProfilerCallback7 for RuntimePauseProfiler {}
+impl CorProfilerCallback8 for RuntimePauseProfiler {}
+impl CorProfilerCallback9 for RuntimePauseProfiler {}
