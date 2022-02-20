@@ -8,6 +8,7 @@ use crate::profilers::*;
 pub struct GCPause {
     start: Instant,
     end: Instant,
+    reason: ffi::COR_PRF_SUSPEND_REASON
 }
 
 pub struct GCPauseProfiler {
@@ -15,6 +16,7 @@ pub struct GCPauseProfiler {
     session_id: Uuid,
     gc_pauses: Vec<GCPause>,
     last_start: Instant,
+    last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON,
     profiling_start: Instant,
     profiling_end: Instant,
 }
@@ -73,6 +75,7 @@ impl Clone for GCPauseProfiler {
             session_id: self.session_id.clone(),
             gc_pauses: Vec::new(),
             last_start: Instant::now(),
+            last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON::COR_PRF_SUSPEND_OTHER,
             profiling_start: Instant::now(),
             profiling_end: Instant::now(),
         }
@@ -86,6 +89,7 @@ impl ClrProfiler for GCPauseProfiler {
             session_id: Uuid::default(),
             gc_pauses: Vec::new(),
             last_start: Instant::now(),
+            last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON::COR_PRF_SUSPEND_OTHER,
             profiling_start: Instant::now(),
             profiling_end: Instant::now(),
         }
@@ -96,12 +100,13 @@ impl CorProfilerCallback for GCPauseProfiler {
 
     fn runtime_suspend_started(&mut self, suspend_reason: ffi::COR_PRF_SUSPEND_REASON) -> Result<(), ffi::HRESULT> {
         self.last_start = Instant::now();
+        self.last_suspend_reason = suspend_reason;
         Ok(())
     }
 
     fn runtime_resume_started(&mut self) -> Result<(), ffi::HRESULT> {
         let current = Instant::now();
-        let gc_pause = GCPause { start: self.last_start, end: current };
+        let gc_pause = GCPause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone() };
         self.gc_pauses.push(gc_pause);
         Ok(())
     }
@@ -144,8 +149,8 @@ impl CorProfilerCallback3 for GCPauseProfiler
 
         let mut report = session.create_report("summary.md".to_owned());
 
-        report.write_line(format!("# GC Pauses Report"));
-        report.write_line(format!("## Time Spent Quantiles"));
+        report.write_line(format!("# Runtime Pauses Report"));
+        report.write_line(format!("## General"));
 
         let total_time = self.profiling_end - self.profiling_start;
         let mut total_suspended_time = Duration::ZERO;
@@ -154,32 +159,44 @@ impl CorProfilerCallback3 for GCPauseProfiler
         }
         let percentage_of_time_suspended = 100f64 * (total_suspended_time.as_secs_f64() / total_time.as_secs_f64());
 
+        report.write_line(format!("- Number of pauses: {}", self.gc_pauses.len()));
         report.write_line(format!("- Percentage of time suspended: {}%", percentage_of_time_suspended));
 
-        // Todo: make a table
+        let max_time_spent = self.gc_pauses
+            .iter()
+            .map(|pause| pause.end - pause.start)
+            .max()
+            .unwrap();
 
-        let durations_1000ms = self.get_durations(Duration::from_millis(1000));
-        report.write_line(format!("- GC part on 99p over 1s delta: {}μs", durations_1000ms[(0.99f64 * (durations_1000ms.len() as f64)).floor() as usize].as_micros()));
-        report.write_line(format!("- GC part on 95p over 1s delta: {}μs", durations_1000ms[(0.95f64 * (durations_1000ms.len() as f64)).floor() as usize].as_micros()));
-        report.write_line(format!("- GC part on 50p over 1s delta: {}μs", durations_1000ms[(0.50f64 * (durations_1000ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("- Longuest pause: {}ms", max_time_spent.as_millis()));
 
-        let durations_400ms = self.get_durations(Duration::from_millis(400));
-        report.write_line(format!("- GC part on 99p over 400ms delta: {}μs", durations_400ms[(0.99f64 * (durations_400ms.len() as f64)).floor() as usize].as_micros()));
-        report.write_line(format!("- GC part on 95p over 400ms delta: {}μs", durations_400ms[(0.95f64 * (durations_400ms.len() as f64)).floor() as usize].as_micros()));
-        report.write_line(format!("- GC part on 50p over 400ms delta: {}μs", durations_400ms[(0.50f64 * (durations_400ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("## Quantiles"));
 
-        let durations_50ms = self.get_durations(Duration::from_millis(50));
-        report.write_line(format!("- GC part on 99p over 50ms delta: {}μs", durations_50ms[(0.99f64 * (durations_50ms.len() as f64)).floor() as usize].as_micros()));
-        report.write_line(format!("- GC part on 95p over 50ms delta: {}μs", durations_50ms[(0.95f64 * (durations_50ms.len() as f64)).floor() as usize].as_micros()));
-        report.write_line(format!("- GC part on 50p over 50ms delta: {}μs", durations_50ms[(0.50f64 * (durations_50ms.len() as f64)).floor() as usize].as_micros()));
+        report.write_line(format!("Suspending the runtime will inevitably increase latency of an application. The symptoms depends on the type of application. For instance, for a backend application, that means increased response time."));
+        report.write_line(format!("It is however not an easy task to quantify the impact of a suspended runtime, because it depends on how often it occurs and for how long the runtime is paused."));
+        report.write_line(format!("One interesting approach is to measure the pause time quantiles accordingly to a time frame."));
+        report.new_line();
+        report.write_line(format!("**For instance:** Let's say for a backend application we have a latency of about 200ms each for 100 consecutive requests. We can measure how much pause time we have on a 200ms time interval and compute a quantile based of the results."));
+        report.write_line(format!("In this example, a 95p for 200ms of 50ms means that for 95 of the requests, less than 50ms was wasted, but more than 50ms was wasted in runtime pause for the remaining 5 requests."));
 
-        // let latency = durations_400ms
-        //      .iter()
-        //      .map(|&w| 100f64 * w.as_secs_f64() / Duration::from_millis(400).as_secs_f64());
+        report.new_line();
+        report.write_line(format!("Interval | 50p | 95p | 99p"));
+        report.write_line(format!("-: | -: | -: | -:"));
 
-        // for l in latency {
-        //     report.write_line(format!("- {}%", l))
-        // }
+        let mut write_row = |duration: Duration| {
+            let durations = self.get_durations(duration);
+            let quantile_99p = durations[(0.99f64 * (durations.len() as f64)).floor() as usize];
+            let quantile_95p = durations[(0.95f64 * (durations.len() as f64)).floor() as usize];
+            let quantile_50p = durations[(0.50f64 * (durations.len() as f64)).floor() as usize];
+            report.write_line(format!("{}ms | {}ms | {}ms | {}ms", duration.as_millis(), quantile_50p.as_millis(), quantile_95p.as_millis(), quantile_99p.as_millis()));
+        };
+
+        write_row(Duration::from_millis(1000));
+        write_row(Duration::from_millis(750));
+        write_row(Duration::from_millis(500));
+        write_row(Duration::from_millis(250));
+        write_row(Duration::from_millis(100));
+        write_row(Duration::from_millis(50));
 
         info!("Report written");
 

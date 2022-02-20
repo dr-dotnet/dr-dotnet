@@ -59,8 +59,10 @@
 
     public static MarkupString MarkdownFileToMarkup(FileInfo markdownFile)
     {
+        var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+
         string markdownContent = File.ReadAllText(markdownFile.FullName);
-        string htmlContent = Markdown.ToHtml(markdownContent);
+        string htmlContent = Markdown.ToHtml(markdownContent, pipeline);
         return new MarkupString(htmlContent);
     }
 
