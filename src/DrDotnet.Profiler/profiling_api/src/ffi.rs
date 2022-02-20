@@ -200,7 +200,7 @@ pub enum COR_PRF_TRANSITION_REASON {
     COR_PRF_TRANSITION_RETURN = 1,
 }
 #[repr(C)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum COR_PRF_SUSPEND_REASON {
     COR_PRF_SUSPEND_OTHER = 0,
     COR_PRF_SUSPEND_FOR_GC = 1,
