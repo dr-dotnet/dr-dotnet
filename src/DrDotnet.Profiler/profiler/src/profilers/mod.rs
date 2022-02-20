@@ -7,8 +7,8 @@ pub use memory_leak_profiler::MemoryLeakProfiler as MemoryLeakProfiler;
 pub mod allocation_by_class_profiler;
 pub use allocation_by_class_profiler::AllocationByClassProfiler as AllocationByClassProfiler;
 
-pub mod gc_pause_profiler;
-pub use gc_pause_profiler::GCPauseProfiler as GCPauseProfiler;
+pub mod runtime_pause_profiler;
+pub use runtime_pause_profiler::RuntimePauseProfiler as RuntimePauseProfiler;
 
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
