@@ -66,6 +66,10 @@ pub struct Report {
 
 impl Report {
     pub fn write_line(&mut self, text: String) {
-        self.writer.write(format!("{}\n", text).as_bytes()).unwrap();
+        self.writer.write(format!("{}\r\n", text).as_bytes()).unwrap();
+    }
+
+    pub fn new_line(&mut self) {
+        self.writer.write(b"\r\n").unwrap();
     }
 }
