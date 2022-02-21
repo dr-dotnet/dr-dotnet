@@ -1,7 +1,8 @@
+use std::ops::Add;
+
 use dashmap::DashMap;
 use profiling_api::*;
 use uuid::Uuid;
-use std::sync::atomic::{AtomicIsize, Ordering};
 
 use crate::report::*;
 use crate::profilers::*;
@@ -9,8 +10,8 @@ use crate::profilers::*;
 pub struct MemoryLeakProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    surviving_references: DashMap<String, AtomicIsize>,
-    collections: AtomicIsize,
+    surviving_references: DashMap<String, u64>,
+    collections: u64,
 }
 
 impl Profiler for MemoryLeakProfiler {
@@ -33,7 +34,7 @@ impl Clone for MemoryLeakProfiler {
             profiler_info: self.profiler_info.clone(),
             session_id: self.session_id.clone(),
             surviving_references: DashMap::new(),
-            collections: AtomicIsize::new(0)
+            collections: 0
         }
     }
 }
@@ -44,7 +45,7 @@ impl ClrProfiler for MemoryLeakProfiler {
             profiler_info: None,
             session_id: Uuid::default(),
             surviving_references: DashMap::new(),
-            collections: AtomicIsize::new(0)
+            collections: 0
         }
     }
 }
@@ -53,14 +54,9 @@ impl CorProfilerCallback for MemoryLeakProfiler {}
 
 impl CorProfilerCallback2 for MemoryLeakProfiler
 {
+    /*
     fn surviving_references(&mut self, object_id_range_start: &[ffi::ObjectID], object_id_range_length: &[u32]) -> Result<(), ffi::HRESULT>
     {
-        let k = "custom".to_owned();
-        match self.surviving_references.get_mut(&k) {
-            Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
-            None => { self.surviving_references.insert(k, AtomicIsize::new(1)); },
-        }
-
         for i in 0..object_id_range_start.len()
         {
             let pinfo = self.profiler_info();
@@ -75,19 +71,20 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
             };
     
             let key = name;
-            let value = object_id_range_length[i] as isize;
+            let value = object_id_range_length[i] as u64;
             match self.surviving_references.get_mut(&key) {
-                Some(pair) => { pair.value().fetch_add(value, Ordering::Relaxed); },
-                None => { self.surviving_references.insert(key, AtomicIsize::new(value)); },
+                Some(pair) => { pair.value().add(value); },
+                None => { self.surviving_references.insert(key, value); },
             }
         }
 
         Ok(())
     }
+    */
 
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
-        self.collections.fetch_add(1, Ordering::Relaxed);
+        self.collections += 1;
 
         Ok(())
     }
@@ -127,13 +124,13 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 
         report.write_line(format!("# Memory Leak Report"));
         report.write_line(format!("## Total Collections"));
-        report.write_line(format!("**Total Collections**: {}", self.collections.load(Ordering::Relaxed)));
+        report.write_line(format!("**Total Collections**: {}", self.collections));
         report.write_line(format!("## Surviving References by Class"));
 
         use itertools::Itertools;
 
-        for surviving_reference in self.surviving_references.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
-            report.write_line(format!("- {}: {}", surviving_reference.key(), surviving_reference.value().load(Ordering::Relaxed)));
+        for surviving_reference in self.surviving_references.iter().sorted_by_key(|x| -(*x.value() as i128)) {
+            report.write_line(format!("- {}: {}", surviving_reference.key(), surviving_reference.value()));
         }
 
         info!("Report written");
@@ -147,23 +144,50 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
     fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
     {
+        fn get_inner_type(info: &ProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize {
+            // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
+            match info.is_array_class(class_id) {
+                Ok(array_class_info) => {
+                    *array_dimension = *array_dimension + 1;
+                    // TODO: Handle array_class_info.rank
+                    get_inner_type(info, array_class_info.element_class_id.unwrap(), array_dimension)
+                },
+                Err(_) => class_id,
+            }
+        }
+
         for i in 0..object_id_range_start.len()
         {
+            let mut array_dimension = 0;
             let pinfo = self.profiler_info();
-            let name = match pinfo.get_class_from_object(object_id_range_start[i]) {
-                Ok(class_id) =>
-                match pinfo.get_class_id_info(class_id) {
-                    Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
-                    _ => "unknown2".to_owned()
-                },
+            let mut key = match pinfo.get_class_from_object(object_id_range_start[i]) {
+                Ok(class_id) => {
+                    let class_id = get_inner_type(pinfo, class_id, &mut array_dimension);
+                    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
+                    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
+                    match pinfo.get_class_id_info(class_id) {
+                        Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
+                        _ => "unknown2".to_owned()
+                    }
+                }
                 _ => "unknown1".to_owned()
             };
-    
-            let key = name;
-            let val = c_object_id_range_length[i] as isize;
+
+            if array_dimension > 0 {
+                let mut brackets = String::with_capacity(array_dimension);
+                for _ in 0..array_dimension {
+                    brackets.push_str("[]");
+                }
+                key.push_str(&brackets);
+                // let size = pinfo.get_object_size_2(object_id_range_start[i]).unwrap();
+                // let s = format!("({})", size);
+                // key.push_str(&s);
+            }
+
+            let value = c_object_id_range_length[i] as u64;
             match self.surviving_references.get_mut(&key) {
-                Some(pair) => { pair.value().fetch_add(val, Ordering::Relaxed); },
-                None => { self.surviving_references.insert(key, AtomicIsize::new(val)); },
+                Some(pair) => { pair.value().add(value); },
+                None => { self.surviving_references.insert(key, value); },
             }
         }
 

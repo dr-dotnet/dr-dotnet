@@ -737,7 +737,10 @@ impl CorProfilerInfo2 for ProfilerInfo {
                     type_args,
                 })
             }
-            _ => Err(hr),
+            _ => {
+                warn!("info.get_class_id_info_2({}) failed (0x{})", class_id, format!("{:01$x}", hr, 8));
+                Err(hr)
+            },
         }
     }
     fn get_code_info_2(&self, function_id: FunctionID) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {

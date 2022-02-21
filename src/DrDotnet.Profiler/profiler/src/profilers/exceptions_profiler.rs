@@ -1,8 +1,6 @@
 use dashmap::DashMap;
 use profiling_api::*;
 use uuid::Uuid;
-use std::thread;
-use std::time::Duration;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 use crate::report::*;

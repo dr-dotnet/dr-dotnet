@@ -5,6 +5,7 @@ pub struct ArrayClassInfo {
     pub element_class_id: Option<ClassID>,
     pub rank: u32,
 }
+#[derive(Debug)]
 pub struct ClassInfo {
     pub module_id: ModuleID,
     pub token: mdTypeDef,
@@ -48,6 +49,7 @@ pub struct ClassLayout {
     pub field_offset: Vec<COR_FIELD_OFFSET>,
     pub class_size_bytes: u32,
 }
+#[derive(Debug)]
 pub struct ClassInfo2 {
     pub module_id: ModuleID,
     pub token: mdTypeDef,
