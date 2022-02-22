@@ -1,6 +1,7 @@
+use std::borrow::BorrowMut;
 use std::ops::Add;
 
-use dashmap::DashMap;
+use std::collections::HashMap;
 use profiling_api::*;
 use uuid::Uuid;
 
@@ -10,7 +11,7 @@ use crate::profilers::*;
 pub struct MemoryLeakProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    surviving_references: DashMap<String, u64>,
+    surviving_references: HashMap<String, u64>,
     collections: u64,
 }
 
@@ -18,8 +19,8 @@ impl Profiler for MemoryLeakProfiler {
     fn get_info() -> ProfilerData {
         return ProfilerData {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E83").unwrap(),
-            name: "Memory Leak Sniffer [WIP]".to_owned(),
-            description: "Sniff sniff... oh look ma a leak".to_owned(),
+            name: "Memory Leak Finder".to_owned(),
+            description: "Look for managed memory leaks".to_owned(),
         }
     }
 
@@ -33,7 +34,7 @@ impl Clone for MemoryLeakProfiler {
         MemoryLeakProfiler {
             profiler_info: self.profiler_info.clone(),
             session_id: self.session_id.clone(),
-            surviving_references: DashMap::new(),
+            surviving_references: HashMap::new(),
             collections: 0
         }
     }
@@ -44,7 +45,7 @@ impl ClrProfiler for MemoryLeakProfiler {
         MemoryLeakProfiler {
             profiler_info: None,
             session_id: Uuid::default(),
-            surviving_references: DashMap::new(),
+            surviving_references: HashMap::new(),
             collections: 0
         }
     }
@@ -100,7 +101,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
-        
+
         match init_session(client_data, client_data_length) {
             Ok(uuid) => {
                 self.session_id = uuid;
@@ -112,6 +113,10 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
+        if self.profiler_info().force_gc().is_err() {
+            error!("Force GC failed");
+        }
+        
         detach_after_duration::<MemoryLeakProfiler>(&self, 10);
         Ok(())
     }
@@ -129,8 +134,8 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 
         use itertools::Itertools;
 
-        for surviving_reference in self.surviving_references.iter().sorted_by_key(|x| -(*x.value() as i128)) {
-            report.write_line(format!("- {}: {}", surviving_reference.key(), surviving_reference.value()));
+        for surviving_reference in self.surviving_references.iter().sorted_by_key(|x| -(*x.1 as i128)) {
+            report.write_line(format!("- {}: {}", surviving_reference.0, surviving_reference.1));
         }
 
         info!("Report written");
@@ -155,6 +160,9 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
                 Err(_) => class_id,
             }
         }
+
+        // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getobjectgeneration-method
+        // Use this to track new but long living objects
 
         for i in 0..object_id_range_start.len()
         {
@@ -184,11 +192,14 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
                 // key.push_str(&s);
             }
 
-            let value = c_object_id_range_length[i] as u64;
-            match self.surviving_references.get_mut(&key) {
-                Some(pair) => { pair.value().add(value); },
-                None => { self.surviving_references.insert(key, value); },
-            }
+            let value = 1; // c_object_id_range_length[i] as u64;
+
+            *self.surviving_references.entry(key).or_insert(1) += 1;
+
+            // match self.surviving_references.get_mut(&key) {
+            //     Some(pair) => { *pair += value; },
+            //     None => { self.surviving_references.insert(key, value); },
+            // }
         }
 
         Ok(())
