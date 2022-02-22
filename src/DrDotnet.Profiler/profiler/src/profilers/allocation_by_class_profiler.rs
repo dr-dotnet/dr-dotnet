@@ -55,6 +55,7 @@ impl CorProfilerCallback for AllocationByClassProfiler
 {
     fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT>
     {
+        // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo10-enumerateobjectreferences-method
         for i in 0..class_ids.len() {
             
             let pinfo = self.profiler_info();

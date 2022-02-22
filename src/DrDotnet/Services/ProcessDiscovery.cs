@@ -33,6 +33,10 @@ namespace DrDotnet
                 for (int i = 0; i < processes.Length; i++)
                 {
                     progressCallback(1f * i / processes.Length);
+
+                    if (processes[i].ProcessName.StartsWith("DrDotnet"))
+                        continue;
+                    
                     try
                     {
                         foreach (ProcessModule pm in processes[i].Modules)
