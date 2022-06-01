@@ -26,7 +26,7 @@ public class GCPausesProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(30_000)]
     [NonParallelizable]
-    public async Task Profiler_Counts_Allocations_By_Class()
+    public async Task Profiler_Counts_Runtime_Pauses()
     {
         ILogger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
@@ -62,9 +62,8 @@ public class GCPausesProfilerTests : ProfilerTests
         var content = File.ReadAllText(summary.FullName);
         
         Console.WriteLine(content);
-        Console.WriteLine(node.Name);
         
-        //Assert.IsTrue(content.Contains("DrDotnet.Tests.TestException:"));
-        //Assert.IsFalse(content.Contains("DrDotnet.Tests.TestException: 0"));
+        Assert.IsTrue(content.Contains("Number of pauses:"));
+        Assert.IsFalse(content.Contains("Number of pauses: 0"));
     }
 }

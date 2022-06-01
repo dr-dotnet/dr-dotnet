@@ -26,7 +26,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(30_000)]
     [NonParallelizable]
-    public async Task Profiler_Counts_Allocations_By_Class()
+    public async Task Profiler_Detects_Memory_Leaks()
     {
         ILogger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
@@ -64,8 +64,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
         Console.WriteLine(content);
         Console.WriteLine(node.Name);
         
-        //Assert.IsTrue(content.Contains("DrDotnet.Tests.TestException:"));
-        //Assert.IsFalse(content.Contains("DrDotnet.Tests.TestException: 0"));
+        // TODO
     }
 }
 

@@ -8,7 +8,8 @@ use crate::profilers::*;
 pub struct RuntimePause {
     start: Instant,
     end: Instant,
-    reason: ffi::COR_PRF_SUSPEND_REASON
+    reason: ffi::COR_PRF_SUSPEND_REASON,
+    gc_reason: ffi::COR_PRF_GC_REASON
 }
 
 pub struct RuntimePauseProfiler {
@@ -17,6 +18,7 @@ pub struct RuntimePauseProfiler {
     gc_pauses: Vec<RuntimePause>,
     last_start: Instant,
     last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON,
+    last_gc_reason: ffi::COR_PRF_GC_REASON,
     profiling_start: Instant,
     profiling_end: Instant,
 }
@@ -76,6 +78,7 @@ impl Clone for RuntimePauseProfiler {
             gc_pauses: Vec::new(),
             last_start: Instant::now(),
             last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON::COR_PRF_SUSPEND_OTHER,
+            last_gc_reason: ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED,
             profiling_start: Instant::now(),
             profiling_end: Instant::now(),
         }
@@ -90,6 +93,7 @@ impl ClrProfiler for RuntimePauseProfiler {
             gc_pauses: Vec::new(),
             last_start: Instant::now(),
             last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON::COR_PRF_SUSPEND_OTHER,
+            last_gc_reason: ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED,
             profiling_start: Instant::now(),
             profiling_end: Instant::now(),
         }
@@ -106,13 +110,27 @@ impl CorProfilerCallback for RuntimePauseProfiler {
 
     fn runtime_resume_started(&mut self) -> Result<(), ffi::HRESULT> {
         let current = Instant::now();
-        let gc_pause = RuntimePause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone() };
+        let gc_pause = RuntimePause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone(), gc_reason: self.last_gc_reason.clone() };
         self.gc_pauses.push(gc_pause);
         Ok(())
     }
 }
 
-impl CorProfilerCallback2 for RuntimePauseProfiler {}
+impl CorProfilerCallback2 for RuntimePauseProfiler {
+
+    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
+        //self.last_start = Instant::now();
+        self.last_gc_reason = reason;
+        Ok(())
+    }
+
+    fn garbage_collection_finished(&mut self) -> Result<(), ffi::HRESULT> {
+        //let current = Instant::now();
+        //let gc_pause = RuntimePause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone() };
+        //self.gc_pauses.push(gc_pause);
+        Ok(())
+    }
+}
 
 impl CorProfilerCallback3 for RuntimePauseProfiler
 {
@@ -197,6 +215,17 @@ impl CorProfilerCallback3 for RuntimePauseProfiler
         write_row(Duration::from_millis(250));
         write_row(Duration::from_millis(100));
         write_row(Duration::from_millis(50));
+
+        report.write_line(format!("## All Pauses"));
+        report.new_line();
+        report.write_line(format!("Iteration | Reason | Duration (ms)"));
+        report.write_line(format!("-: | -: | -:"));
+
+        let mut i = 1;
+        for pause in self.gc_pauses.iter() {
+            report.write_line(format!("{} | {:?} | {}", i, pause.reason, (pause.end - pause.start).as_millis()));
+            i += 1;
+        }
 
         info!("Report written");
 
