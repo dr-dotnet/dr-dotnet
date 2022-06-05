@@ -35,7 +35,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
         // Intentionally allocates memory
-        int i = 0;
+        int i = 1;
         Node node = new Node();
         ThreadPool.QueueUserWorkItem(async _ =>
         {
@@ -46,14 +46,16 @@ public class GCSurvivorsProfilerTests : ProfilerTests
                 {
                     await Task.Delay(10);
                 }
-                if (i % 1000 == 0)
+                if (i % 10000 == 0)
                 {
-                    GC.Collect();
+                    //GC.Collect();
                 }
             }
         });
 
         var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+
+        Console.WriteLine("Session Directory: " + session.Path);
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
         

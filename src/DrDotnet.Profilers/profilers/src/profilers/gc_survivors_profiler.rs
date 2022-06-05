@@ -12,6 +12,7 @@ pub struct GCSurvivorsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
     surviving_references: HashMap<String, u64>,
+    object_to_referencers: HashMap<usize, Vec<usize>>,
     collections: u64,
 }
 
@@ -36,6 +37,7 @@ impl Clone for GCSurvivorsProfiler {
             profiler_info: self.profiler_info.clone(),
             session_id: self.session_id.clone(),
             surviving_references: HashMap::new(),
+            object_to_referencers: HashMap::new(),
             collections: 0
         }
     }
@@ -47,46 +49,47 @@ impl ClrProfiler for GCSurvivorsProfiler {
             profiler_info: None,
             session_id: Uuid::default(),
             surviving_references: HashMap::new(),
+            object_to_referencers: HashMap::new(),
             collections: 0
         }
     }
 }
 
-impl CorProfilerCallback for GCSurvivorsProfiler {}
-
-impl CorProfilerCallback2 for GCSurvivorsProfiler
+impl CorProfilerCallback for GCSurvivorsProfiler
 {
-    /*
-    fn surviving_references(&mut self, object_id_range_start: &[ffi::ObjectID], object_id_range_length: &[u32]) -> Result<(), ffi::HRESULT>
+    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
     {
-        for i in 0..object_id_range_start.len()
-        {
-            let pinfo = self.profiler_info();
-            let name = 
-            match pinfo.get_class_from_object(object_id_range_start[i]) {
-                Ok(class_id) => 
-                match pinfo.get_class_id_info(class_id) {
-                    Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
-                    _ => "unknown2".to_owned()
+        // Create dependency tree, but from object to referencers, instead of object to its references.
+        // This is usefull for being able to browse from any object back to its roots.
+        for object_ref_id in object_ref_ids {
+            match self.object_to_referencers.get_mut(&object_ref_id) {
+                Some(referencers) => {
+                    referencers.push(object_id);
                 },
-                _ => "unknown1".to_owned()
-            };
-    
-            let key = name;
-            let value = object_id_range_length[i] as u64;
-            match self.surviving_references.get_mut(&key) {
-                Some(pair) => { pair.value().add(value); },
-                None => { self.surviving_references.insert(key, value); },
+                None => {
+                    self.object_to_referencers.insert(*object_ref_id, vec![object_id]);
+                }
             }
         }
 
         Ok(())
     }
-    */
+}
 
+impl CorProfilerCallback2 for GCSurvivorsProfiler
+{
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
         self.collections += 1;
+
+        let mut c = 0;
+        for gen in generation_collected {
+            if *gen == 1 {
+                c += 1;
+            }
+        }
+
+        info!("GC Gen {} for reason {:?}", c, reason);
 
         Ok(())
     }
@@ -114,11 +117,12 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        if self.profiler_info().force_gc().is_err() {
-            error!("Force GC failed");
-        }
+        // if self.profiler_info().force_gc().is_err() {
+        //     error!("Force GC failed");
+        // }
         
-        detach_after_duration::<GCSurvivorsProfiler>(&self, 10);
+        //detach_after_duration::<GCSurvivorsProfiler>(&self, 10);
+
         Ok(())
     }
 
@@ -150,6 +154,14 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
     fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
     {
+        info!("Collecting surviving references...");
+
+        // We can disable GC monitoring right away to avoid unecessary overhead on runtime
+        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
+            Ok(_) => (),
+            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
+        }
+
         fn get_inner_type(info: &ProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize {
             // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
             match info.is_array_class(class_id) {
@@ -162,20 +174,17 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
             }
         }
 
-        // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getobjectgeneration-method
-        // Use this to track new but long living objects
-
-        for i in 0..object_id_range_start.len()
-        {
+        fn get_object_class_name(info: &ProfilerInfo, object_id: ffi::ObjectID) -> String {
             let mut array_dimension = 0;
-            let pinfo = self.profiler_info();
-            let mut key = match pinfo.get_class_from_object(object_id_range_start[i]) {
+
+            let mut name = match info.get_class_from_object(object_id) {
                 Ok(class_id) => {
-                    let class_id = get_inner_type(pinfo, class_id, &mut array_dimension);
+                    // As the class could be an array, we recursively dig until we find the inner type that is not an array
+                    let class_id = get_inner_type(info, class_id, &mut array_dimension);
                     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
                     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-                    match pinfo.get_class_id_info(class_id) {
-                        Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
+                    match info.get_class_id_info(class_id) {
+                        Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
                         _ => "unknown2".to_owned()
                     }
                 }
@@ -183,25 +192,59 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
             };
 
             if array_dimension > 0 {
-                let mut brackets = String::with_capacity(array_dimension);
+                let mut brackets = String::with_capacity(array_dimension * 2);
                 for _ in 0..array_dimension {
                     brackets.push_str("[]");
                 }
-                key.push_str(&brackets);
-                // let size = pinfo.get_object_size_2(object_id_range_start[i]).unwrap();
-                // let s = format!("({})", size);
-                // key.push_str(&s);
+                name.push_str(&brackets);
             }
 
-            let value = 1; // c_object_id_range_length[i] as u64;
+            return name;
+        }
 
-            *self.surviving_references.entry(key).or_insert(1) += 1;
+        // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getobjectgeneration-method
+        // Use this to track new but long living objects
+
+        for i in 0..object_id_range_start.len()
+        {
+            let pinfo = self.profiler_info();
+
+            let mut key = get_object_class_name(pinfo, object_id_range_start[i]);
+
+            // Append referencers
+            match self.object_to_referencers.get(&object_id_range_start[i]) {
+                Some(referencers) => {
+                    for referencer in referencers {
+                        key.push_str("<-");
+                        //let refname = get_object_class_name(pinfo, *referencer);
+
+                        let mut name = match pinfo.get_class_from_object(*referencer) {
+                            Ok(class_id) => {
+                                "dddsfsd".to_owned()
+                            }
+                            _ => "unknown1".to_owned()
+                        };
+
+
+                        key.push_str(&name);
+                    }
+                },
+                None => { }
+            }
+
+            let value = c_object_id_range_length[i] as u64;
+
+            *self.surviving_references.entry(key).or_insert(0) += value;
 
             // match self.surviving_references.get_mut(&key) {
             //     Some(pair) => { *pair += value; },
             //     None => { self.surviving_references.insert(key, value); },
             // }
         }
+
+        // We're done, we can detach :)
+        let profiler_info = self.profiler_info().clone();
+        profiler_info.request_profiler_detach(3000).ok();
 
         Ok(())
     }

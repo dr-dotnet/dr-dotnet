@@ -24,6 +24,8 @@ public class Session
         return new FileInfo(_sessionFilePath).Directory.EnumerateFiles();
     }
 
+    public string Path => _sessionFilePath;
+
     public static Session FromPath(string sessionFilePath)
     {
         var options = new JsonSerializerOptions
