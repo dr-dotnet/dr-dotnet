@@ -3,30 +3,29 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace DrDotnet
+namespace DrDotnet;
+
+public class Profiler
 {
-    public class Profiler
+    public Guid ProfilerId { get; set; }
+
+    public string Name { get; set; }
+
+    public string Description { get; set; }
+
+    public Guid StartProfilingSession(int processId, ILogger logger)
     {
-        public Guid ProfilerId { get; set; }
+        string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        string strWorkPath = Path.GetDirectoryName(strExeFilePath);
+        string profilerDll = Path.Combine(strWorkPath, "profiler.dll");
 
-        public string Name { get; set; }
+        var sessionId = Guid.NewGuid();
 
-        public string Description { get; set; }
+        DiagnosticsClient client = new DiagnosticsClient(processId);
+        client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
-        public Guid StartProfilingSession(int processId, ILogger logger)
-        {
-            string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string strWorkPath = Path.GetDirectoryName(strExeFilePath);
-            string profilerDll = Path.Combine(strWorkPath, "profiler.dll");
+        logger.Log($"Attached profiler {ProfilerId} with session {sessionId} to process {processId}");
 
-            var sessionId = Guid.NewGuid();
-
-            DiagnosticsClient client = new DiagnosticsClient(processId);
-            client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
-
-            logger.Log($"Attached profiler {ProfilerId} with session {sessionId} to process {processId}");
-
-            return sessionId;
-        }
+        return sessionId;
     }
 }

@@ -23,6 +23,21 @@ pub struct RuntimePauseProfiler {
     profiling_end: Instant,
 }
 
+impl Profiler for RuntimePauseProfiler {
+    fn get_info() -> ProfilerData {
+        return ProfilerData {
+            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E85").unwrap(),
+            name: "GC Pause Profiler".to_owned(),
+            description: "Measures the impact of GC pauses on response time".to_owned(),
+            isReleased: false,
+        }
+    }
+
+    fn profiler_info(&self) -> &ProfilerInfo {
+        self.profiler_info.as_ref().unwrap()
+    }
+}
+
 impl RuntimePauseProfiler {
     fn get_durations(&self, interval: Duration) -> Vec<Duration> {
         let mut current = self.profiling_start;
@@ -53,20 +68,6 @@ impl RuntimePauseProfiler {
         durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         return durations;
-    }
-}
-
-impl Profiler for RuntimePauseProfiler {
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E85").unwrap(),
-            name: "GC Pause Profiler".to_owned(),
-            description: "Measures the impact of GC pauses on response time".to_owned(),
-        }
-    }
-
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
     }
 }
 
@@ -119,6 +120,14 @@ impl CorProfilerCallback for RuntimePauseProfiler {
 impl CorProfilerCallback2 for RuntimePauseProfiler {
 
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
+        let mut max_gen = 0;
+        let mut gen_index = 0;
+        for gen in generation_collected {
+            if *gen == 1 {
+                max_gen = gen_index;
+            }
+            gen_index += 1;
+        }
         //self.last_start = Instant::now();
         self.last_gc_reason = reason;
         Ok(())

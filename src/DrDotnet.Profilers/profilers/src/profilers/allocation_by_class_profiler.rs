@@ -21,6 +21,7 @@ impl Profiler for AllocationByClassProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E84").unwrap(),
             name: "Allocations by Class".to_owned(),
             description: "For now, just allocations by class".to_owned(),
+            isReleased: false,
         }
     }
 

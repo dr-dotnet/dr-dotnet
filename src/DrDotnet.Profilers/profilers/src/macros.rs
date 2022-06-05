@@ -11,6 +11,7 @@ macro_rules! register{
         use profiling_api::*;
         use profilers::*;
 
+        // Attaches the profiler with the given rclsid to the targeted process.
         pub unsafe fn attach(rclsid: ffi::REFCLSID, riid: ffi::REFIID, ppv: *mut ffi::LPVOID) -> ffi::HRESULT {
             $(
                 let clsid = ffi::GUID::from(<$type>::get_info().profiler_id);
@@ -23,6 +24,8 @@ macro_rules! register{
             return ffi::E_FAIL;
         }
 
+        // Returns the list of profilers that are registered, along with their information.
+        // This function is called through PInvoke from the UI in order to list available profilers.
         pub fn get_profiler_infos() -> [ProfilerData; count!($($type)*)] {
             return [$(<$type>::get_info(),)+]
         }

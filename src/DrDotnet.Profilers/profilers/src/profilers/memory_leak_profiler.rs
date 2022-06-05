@@ -21,6 +21,7 @@ impl Profiler for MemoryLeakProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E83").unwrap(),
             name: "Memory Leak Finder".to_owned(),
             description: "Look for managed memory leaks".to_owned(),
+            isReleased: false,
         }
     }
 

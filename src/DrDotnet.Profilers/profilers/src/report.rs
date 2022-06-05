@@ -9,6 +9,7 @@ use std::io::Write;
 
 use crate::profilers::ProfilerData;
 
+// A Session refers to a profiling session. In conists in a process, a profiler, and a timestamp at which the profiling was done.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
@@ -20,6 +21,8 @@ pub struct Session {
 
 impl Session {
 
+    // Returns a Session from its UID and ProfilerData.
+    // If the Session report is not present on the disk, it will be written at the same time.
     pub fn get_session(session_id: Uuid, profiler: ProfilerData) -> Session {
 
         let process_name = std::env::current_exe().unwrap()
@@ -47,12 +50,14 @@ impl Session {
         return report;
     }
 
+    // Create a new report for a given Session, ready to be filled up.
     pub fn create_report(&self, filename: String) -> Report {
         let path = PathBuf::from(format!(r"{}/{}", Session::get_directory(self.session_id), filename));
         let file = File::create(&path).unwrap();
         return Report { writer: BufWriter::new(file) };
     }
 
+    // Returns the directy path for this Session.
     pub fn get_directory(session_id: Uuid) -> String {
         let directory_path = format!(r"/dr-dotnet/{}", session_id.to_string());
         std::fs::create_dir_all(&directory_path);
@@ -60,6 +65,7 @@ impl Session {
     }
 }
 
+// A Session can contain several reports, which are usually files like markdown summaries or charts.
 pub struct Report {
     pub writer: BufWriter<File>,
 }

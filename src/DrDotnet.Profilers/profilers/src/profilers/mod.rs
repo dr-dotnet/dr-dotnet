@@ -25,6 +25,7 @@ pub struct ProfilerData {
     pub profiler_id: Uuid,
     pub name: String,
     pub description: String,
+    pub isReleased: bool,
 }
 
 pub trait Profiler: CorProfilerCallback9 {
