@@ -14,7 +14,7 @@ public class ProfilersDiscovery : IProfilerDiscovery
         _logger = logger;
     }
 
-    public List<Profiler> GetProfilers()
+    public List<Profiler> GetProfilers(bool listUnreleasedProfilers = false)
     {
         if (_profilers != null)
             return _profilers;
@@ -25,11 +25,15 @@ public class ProfilersDiscovery : IProfilerDiscovery
 
         foreach (var interopProfiler in interopProfilers.profilers)
         {
-            profilers.Add(new Profiler {
-                Name = interopProfiler.name,
-                ProfilerId = new Guid(interopProfiler.guid),
-                Description = interopProfiler.description
-            });
+            if (listUnreleasedProfilers || interopProfiler.isReleased)
+            {
+                profilers.Add(new Profiler
+                {
+                    Name = interopProfiler.name,
+                    ProfilerId = new Guid(interopProfiler.guid),
+                    Description = interopProfiler.description
+                });
+            }
         }
 
         return _profilers = profilers;

@@ -51,6 +51,7 @@ pub struct Profiler
     name: string,
     description: string,
     guid: string,
+    isReleased: bool,
 } 
 
 pub struct Profilers
@@ -91,6 +92,7 @@ pub extern "C" fn GetAvailableProfilers() -> Profilers
             (*p).name = get_string(profiler_infos[n].name.to_owned());
             (*p).description = get_string(profiler_infos[n].description.to_owned());
             (*p).guid = get_string(profiler_infos[n].profiler_id.to_string());
+            (*p).isReleased = profiler_infos[n].isReleased;
         }
 
         return Profilers {

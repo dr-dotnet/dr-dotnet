@@ -18,7 +18,7 @@ impl Profiler for ExceptionsProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap(),
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
-            isReleased: false,
+            isReleased: true,
         }
     }
 

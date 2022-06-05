@@ -17,7 +17,7 @@ public class Profiler
     {
         string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
         string strWorkPath = Path.GetDirectoryName(strExeFilePath);
-        string profilerDll = Path.Combine(strWorkPath, "profiler.dll");
+        string profilerDll = Path.Combine(strWorkPath, "profilers.dll");
 
         var sessionId = Guid.NewGuid();
 

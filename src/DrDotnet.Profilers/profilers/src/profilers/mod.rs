@@ -10,6 +10,9 @@ pub use allocation_by_class_profiler::AllocationByClassProfiler as AllocationByC
 pub mod runtime_pause_profiler;
 pub use runtime_pause_profiler::RuntimePauseProfiler as RuntimePauseProfiler;
 
+pub mod gc_survivors_profiler;
+pub use gc_survivors_profiler::GCSurvivorsProfiler as GCSurvivorsProfiler;
+
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use profiling_api::*;

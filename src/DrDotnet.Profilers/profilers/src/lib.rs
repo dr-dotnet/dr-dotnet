@@ -7,7 +7,7 @@ mod macros;
 extern crate log;
 
 // Create function to list and attach profilers
-register!(ExceptionsProfiler, AllocationByClassProfiler, MemoryLeakProfiler, RuntimePauseProfiler);
+register!(GCSurvivorsProfiler, ExceptionsProfiler, AllocationByClassProfiler, MemoryLeakProfiler, RuntimePauseProfiler);
 
 // Actual COM entry point
 #[no_mangle]

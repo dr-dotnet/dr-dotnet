@@ -11,6 +11,17 @@ It is possible to identify some of these issues using today's existing tools, bu
 
 The .NET Profiling API is accessible via COM interop (cross-platform thanks to the Platform Adaptation Layer) and allows little overheap profiling compared to other methods while giving a wide range of possibilities for profiling purpose. Perfview uses this API (on top of ETW) however it does it from managed code calling mocked COM objects written in C#. For the project, the idea would be to do it in C++ or even better in Rust (ideally Rust + including CoreCLR headers in kind of a hybrid fashion, if that is possible). Then the offline tooling (UI) can be in C# or any other "productive" language.
 
+## How to build
+
+### Prerequisites
+- .NET SDK 6.0
+- Rust toolchain
+- I guess that's it :)
+
+### Building
+- Compile either DrDotnet.Web or DrDotnet.Desktop, depending on how you plan to use DrDotnet.
+The DrDotnet.csproj has a prebuild step that will try to build the Rust profilers. If it fails, you'll find the Rust compiler output in the Output window for instance if you are using Visual Studio.
+
 ## Todo
 
 - [x] Manage to initialize at start

@@ -31,6 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\..\README.md" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="..\DrDotnet.Profilers\**" Link="Profilers\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
