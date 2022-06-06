@@ -24,7 +24,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
     [Test]
     [Order(1)]
-    [Timeout(30_000)]
+    [Timeout(120_000)]
     [NonParallelizable]
     public async Task Profiler_Detects_Memory_Leaks()
     {
@@ -44,7 +44,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
                 node.Child = node = new Node { Name = "mynode" + i++, List = new List<int>() };
                 if (i % 100 == 0)
                 {
-                    await Task.Delay(10);
+                    await Task.Delay(20);
                 }
                 if (i % 10000 == 0)
                 {
