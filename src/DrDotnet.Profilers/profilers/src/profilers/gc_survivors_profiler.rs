@@ -88,6 +88,76 @@ impl CorProfilerCallback for GCSurvivorsProfiler
     }
 }
 
+impl GCSurvivorsProfiler
+{
+    fn append_referencers(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, name: &mut String, depth: u32)
+    {
+        if depth > 10 {
+            return;
+        } 
+
+        match self.object_to_referencers.get(&object_id) {
+            Some(referencers) => {
+                for referencer in referencers {
+
+                    let gen = info.get_object_generation(*referencer).unwrap();
+
+                    if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                        let refname = GCSurvivorsProfiler::get_object_class_name(info, *referencer);
+                        name.push_str(format!("--> held by {} ({:?})", refname, gen.generation).as_str());
+                    }
+
+                    // Recursive
+                    self.append_referencers(info, *referencer, name, depth + 1);
+                }
+            },
+            None => {}
+        }
+    }
+
+    fn get_inner_type(info: &ProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize
+    {
+        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
+        match info.is_array_class(class_id) {
+            Ok(array_class_info) => {
+                *array_dimension = *array_dimension + 1;
+                // TODO: Handle array_class_info.rank
+                GCSurvivorsProfiler::get_inner_type(info, array_class_info.element_class_id.unwrap(), array_dimension)
+            },
+            Err(_) => class_id,
+        }
+    }
+
+    fn get_object_class_name(info: &ProfilerInfo, object_id: ffi::ObjectID) -> String
+    {
+        let mut array_dimension = 0;
+
+        let mut name = match info.get_class_from_object(object_id) {
+            Ok(class_id) => {
+                // As the class could be an array, we recursively dig until we find the inner type that is not an array
+                let class_id = GCSurvivorsProfiler::get_inner_type(info, class_id, &mut array_dimension);
+                // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
+                // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
+                match info.get_class_id_info(class_id) {
+                    Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
+                    _ => "unknown2".to_owned()
+                }
+            }
+            _ => "unknown1".to_owned()
+        };
+
+        if array_dimension > 0 {
+            let mut brackets = String::with_capacity(array_dimension * 2);
+            for _ in 0..array_dimension {
+                brackets.push_str("[]");
+            }
+            name.push_str(&brackets);
+        }
+
+        return name;
+    }
+}
+
 impl CorProfilerCallback2 for GCSurvivorsProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
@@ -117,103 +187,27 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             return Ok(())
         }
 
-        info!("surviving references to process: {}", self.surviving_references.len());
-
-        fn get_inner_type(info: &ProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize {
-            // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
-            match info.is_array_class(class_id) {
-                Ok(array_class_info) => {
-                    *array_dimension = *array_dimension + 1;
-                    // TODO: Handle array_class_info.rank
-                    get_inner_type(info, array_class_info.element_class_id.unwrap(), array_dimension)
-                },
-                Err(_) => class_id,
-            }
+        // Disable profiling to free some resources
+        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
+            Ok(_) => (),
+            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
 
-        fn get_object_class_name(info: &ProfilerInfo, object_id: ffi::ObjectID) -> String {
-            let mut array_dimension = 0;
-
-            let mut name = match info.get_class_from_object(object_id) {
-                Ok(class_id) => {
-                    // As the class could be an array, we recursively dig until we find the inner type that is not an array
-                    let class_id = get_inner_type(info, class_id, &mut array_dimension);
-                    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
-                    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-                    match info.get_class_id_info(class_id) {
-                        Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
-                        _ => "unknown2".to_owned()
-                    }
-                }
-                _ => "unknown1".to_owned()
-            };
-
-            if array_dimension > 0 {
-                let mut brackets = String::with_capacity(array_dimension * 2);
-                for _ in 0..array_dimension {
-                    brackets.push_str("[]");
-                }
-                name.push_str(&brackets);
-            }
-
-            return name;
-        }
+        info!("Surviving references to process: {}", self.surviving_references.len());
 
         for (object_id, number) in self.surviving_references.iter()
         {
             let pinfo = self.profiler_info();
-            let mut name = get_object_class_name(pinfo, *object_id);
+            let mut name = GCSurvivorsProfiler::get_object_class_name(pinfo, *object_id);
 
-            info!(">> {}", name);
+            self.append_referencers(pinfo, *object_id, &mut name, 0);
 
-            // TODO: Get root reference
-            match self.object_to_referencers.get(object_id) {
-                Some(referencers) => {
-                    for referencer in referencers {
-                        name.push_str("<-");
-                        //let refname = get_object_class_name(pinfo, *referencer);
-                        let info = self.profiler_info();
-                        // let dname = match info.get_object_generation(12345) {
-                        //     Ok(class_id) => {
-                        //         "dddsfsd".to_owned()
-                        //     }
-                        //     _ => "unknown1".to_owned()
-                        // };
-
-                        // let mut name = match pinfo.get_class_from_object(123456) {
-                        //     Ok(class_id) => {
-                        //         "dddsfsd".to_owned()
-                        //     }
-                        //     _ => "unknown1".to_owned()
-                        // };
-
-                        //name.push_str(&dname);
-                    }
-                },
-                None => { }
-            }
+            info!(">>> {}", name);
         }
 
-        /*
-        for (object_id, referencers) in self.object_to_referencers.iter() {
-
-            let pinfo = self.profiler_info();
-            let mut name = get_object_class_name(pinfo, *object_id);
-
-            let gen = pinfo.get_object_generation(*object_id).unwrap();
-            name.push_str(format!("{:?}", gen.generation).as_str());
-
-            for referencer in referencers {
-                name.push_str(" <- ");
-                //let refname = get_object_class_name(pinfo, *referencer);
-                let info = self.profiler_info();
-                
-                name.push_str(&get_object_class_name(pinfo, *referencer));
-            }
-
-            *self.surviving_references.entry(name).or_insert(0) += 1;
-        }
-        */
+        // We're done, we can detach :)
+        let profiler_info = self.profiler_info().clone();
+        profiler_info.request_profiler_detach(3000).ok();
 
         Ok(())
     }
@@ -241,12 +235,6 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        // if self.profiler_info().force_gc().is_err() {
-        //     error!("Force GC failed");
-        // }
-        
-        detach_after_duration::<GCSurvivorsProfiler>(&self, 30);
-
         Ok(())
     }
 
@@ -280,108 +268,9 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
     {
         //info!("Collecting surviving references...");
 
-        // We can disable GC monitoring right away to avoid unecessary overhead on runtime
-        // match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
-        //     Ok(_) => (),
-        //     Err(hresult) => error!("Error setting event mask: {:x}", hresult)
-        // }
-
         for object_id in object_id_range_start {
             *self.surviving_references.entry(*object_id).or_insert(0) += 1;
         }
-
-        /*
-        fn get_inner_type(info: &ProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize {
-            // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
-            match info.is_array_class(class_id) {
-                Ok(array_class_info) => {
-                    *array_dimension = *array_dimension + 1;
-                    // TODO: Handle array_class_info.rank
-                    get_inner_type(info, array_class_info.element_class_id.unwrap(), array_dimension)
-                },
-                Err(_) => class_id,
-            }
-        }
-
-        fn get_object_class_name(info: &ProfilerInfo, object_id: ffi::ObjectID) -> String {
-            let mut array_dimension = 0;
-
-            let mut name = match info.get_class_from_object(object_id) {
-                Ok(class_id) => {
-                    // As the class could be an array, we recursively dig until we find the inner type that is not an array
-                    let class_id = get_inner_type(info, class_id, &mut array_dimension);
-                    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
-                    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-                    match info.get_class_id_info(class_id) {
-                        Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
-                        _ => "unknown2".to_owned()
-                    }
-                }
-                _ => "unknown1".to_owned()
-            };
-
-            if array_dimension > 0 {
-                let mut brackets = String::with_capacity(array_dimension * 2);
-                for _ in 0..array_dimension {
-                    brackets.push_str("[]");
-                }
-                name.push_str(&brackets);
-            }
-
-            return name;
-        }
-
-        // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getobjectgeneration-method
-        // Use this to track new but long living objects
-
-        for i in 0..object_id_range_start.len()
-        {
-            let pinfo = self.profiler_info();
-
-            let mut key = get_object_class_name(pinfo, object_id_range_start[i]);
-
-            // Append referencers
-            match self.object_to_referencers.get(&object_id_range_start[i]) {
-                Some(referencers) => {
-                    for referencer in referencers {
-                        key.push_str("<-");
-                        //let refname = get_object_class_name(pinfo, *referencer);
-                        let info = self.profiler_info();
-                        let name = match info.get_object_generation(12345) {
-                            Ok(class_id) => {
-                                "dddsfsd".to_owned()
-                            }
-                            _ => "unknown1".to_owned()
-                        };
-
-                        // let mut name = match pinfo.get_class_from_object(123456) {
-                        //     Ok(class_id) => {
-                        //         "dddsfsd".to_owned()
-                        //     }
-                        //     _ => "unknown1".to_owned()
-                        // };
-
-
-                        key.push_str(&name);
-                    }
-                },
-                None => { }
-            }
-
-            let value = c_object_id_range_length[i] as u64;
-
-            *self.surviving_references.entry(key).or_insert(0) += value;
-
-            // match self.surviving_references.get_mut(&key) {
-            //     Some(pair) => { *pair += value; },
-            //     None => { self.surviving_references.insert(key, value); },
-            // }
-        }
-        */
-
-        // We're done, we can detach :)
-        // let profiler_info = self.profiler_info().clone();
-        // profiler_info.request_profiler_detach(3000).ok();
 
         Ok(())
     }
