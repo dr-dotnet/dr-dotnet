@@ -3,13 +3,11 @@
 // Append surviving objects  https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
 // On GC end, if there are surviving objects in map (not empty), 
 
-use std::borrow::BorrowMut;
-use std::ops::Add;
-
 use std::collections::HashMap;
 use profiling_api::*;
 use profiling_api::ffi::ObjectID;
 use uuid::Uuid;
+use itertools::Itertools;
 
 use crate::report::*;
 use crate::profilers::*;
@@ -19,7 +17,7 @@ pub struct GCSurvivorsProfiler {
     session_id: Uuid,
     surviving_references: HashMap<ObjectID, u64>,
     object_to_referencers: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
-    collections: u64,
+    serialized_survivor_branches: HashMap<String, u64>,
 }
 
 impl Profiler for GCSurvivorsProfiler {
@@ -44,7 +42,7 @@ impl Clone for GCSurvivorsProfiler {
             session_id: self.session_id.clone(),
             surviving_references: HashMap::new(),
             object_to_referencers: HashMap::new(),
-            collections: 0
+            serialized_survivor_branches: HashMap::new(),
         }
     }
 }
@@ -56,7 +54,7 @@ impl ClrProfiler for GCSurvivorsProfiler {
             session_id: Uuid::default(),
             surviving_references: HashMap::new(),
             object_to_referencers: HashMap::new(),
-            collections: 0
+            serialized_survivor_branches: HashMap::new(),
         }
     }
 }
@@ -90,28 +88,61 @@ impl CorProfilerCallback for GCSurvivorsProfiler
 
 impl GCSurvivorsProfiler
 {
-    fn append_referencers(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, name: &mut String, depth: u32)
+    pub fn append_referencers(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String>
     {
-        if depth > 10 {
+        let mut branches = Vec::new();
+
+        self.append_referencers_recursive(info, object_id, &mut String::new(), -max_depth, &mut branches);
+
+        return branches;
+    }
+
+    // Recursively drill through references until we find a gen 2 object.
+    fn append_referencers_recursive(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
+    {
+        let gen = info.get_object_generation(object_id).unwrap();
+
+        let refname = GCSurvivorsProfiler::get_object_class_name(info, object_id);
+        branch.push_str(refname.as_str());
+        if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+            branch.push_str(" (Gen 2)");
+        }
+
+        // Escape in case of circular references (could be done in a better way)
+        if depth > 0 {
+            // Only add branches that are rooted to gen 2
+            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                branches.push(branch.clone());
+            }
             return;
-        } 
+        }
 
         match self.object_to_referencers.get(&object_id) {
             Some(referencers) => {
+
+                let mut i = 0;
                 for referencer in referencers {
 
-                    let gen = info.get_object_generation(*referencer).unwrap();
-
-                    if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                        let refname = GCSurvivorsProfiler::get_object_class_name(info, *referencer);
-                        name.push_str(format!("--> held by {} ({:?})", refname, gen.generation).as_str());
+                    if i > 0 {
+                        // New branch. We clone the current branch to append next holders
+                        let branch = &mut branch.clone();
+                        branch.push_str(" < ");
+                        self.append_referencers_recursive(info, *referencer, branch, depth + 1, branches);
+                    } else {
+                        // Same branch, we keep on this same branch
+                        branch.push_str(" < ");
+                        self.append_referencers_recursive(info, *referencer, branch, depth + 1, branches);
                     }
 
-                    // Recursive
-                    self.append_referencers(info, *referencer, name, depth + 1);
+                    i += 1;
                 }
             },
-            None => {}
+            None => {
+                // Only add branches that are rooted to gen 2
+                if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                    branches.push(branch.clone());
+                }
+            }
         }
     }
 
@@ -162,7 +193,10 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
-        self.collections += 1;
+        // Data from previous garbage collections are no longer valid, so we clear it when a new garbage collection starts.
+        self.surviving_references.clear();
+        self.object_to_referencers.clear();
+        self.serialized_survivor_branches.clear();
 
         let mut c = 0;
         for gen in generation_collected {
@@ -170,9 +204,6 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
                 c += 1;
             }
         }
-
-        self.surviving_references.clear();
-        self.object_to_referencers.clear();
 
         info!("GC started on gen {} for reason {:?}", c, reason);
 
@@ -198,11 +229,11 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         for (object_id, number) in self.surviving_references.iter()
         {
             let pinfo = self.profiler_info();
-            let mut name = GCSurvivorsProfiler::get_object_class_name(pinfo, *object_id);
 
-            self.append_referencers(pinfo, *object_id, &mut name, 0);
-
-            info!(">>> {}", name);
+            for branch in self.append_referencers(pinfo, *object_id, 10)
+            {
+                *self.serialized_survivor_branches.entry(branch).or_insert(0u64) += 1;
+            }
         }
 
         // We're done, we can detach :)
@@ -244,15 +275,11 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
         let mut report = session.create_report("summary.md".to_owned());
 
-        report.write_line(format!("# Memory Leak Report"));
-        report.write_line(format!("## Total Collections"));
-        report.write_line(format!("**Total Collections**: {}", self.collections));
+        report.write_line(format!("# GC Survivors Report"));
         report.write_line(format!("## Surviving References by Class"));
 
-        use itertools::Itertools;
-
-        for surviving_reference in self.surviving_references.iter().sorted_by_key(|x| -(*x.1 as i128)) {
-            report.write_line(format!("- {}: {}", surviving_reference.0, surviving_reference.1));
+        for surviving_reference in self.serialized_survivor_branches.iter().sorted_by_key(|x| -(*x.1 as i128)) {
+            report.write_line(format!("- ({}) {}", surviving_reference.1, surviving_reference.0));
         }
 
         info!("Report written");
