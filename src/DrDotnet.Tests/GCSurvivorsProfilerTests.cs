@@ -24,9 +24,9 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
     [Test]
     [Order(1)]
-    [Timeout(120_000)]
+    [Timeout(160_000)]
     [NonParallelizable]
-    public async Task Profiler_Detects_Memory_Leaks()
+    public async Task Profiler_Detects_GC_Survivors_Referenced_From_Gen2()
     {
         ILogger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
@@ -35,20 +35,20 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
         // Intentionally allocates memory
-        int i = 1;
-        Node node = new Node();
-        ThreadPool.QueueUserWorkItem(async _ =>
+        var survivingObjects = new List<SurvivingObject>();
+
+        var _ = Task.Run(async () =>
         {
-            while (true)
+            for (int i = 0; i < 100000; i++)
             {
-                node.Child = node = new Node { Name = "mynode" + i++, List = new List<int>() };
+                survivingObjects.Add(new SurvivingObject());
                 if (i % 100 == 0)
                 {
                     await Task.Delay(20);
                 }
                 if (i % 10000 == 0)
                 {
-                    //GC.Collect();
+                    GC.Collect(0);
                 }
             }
         });
@@ -64,8 +64,13 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         var content = File.ReadAllText(summary.FullName);
         
         Console.WriteLine(content);
-        Console.WriteLine(node.Name);
+        Console.WriteLine(survivingObjects.Count);
         
         // TODO
     }
+}
+
+public class SurvivingObject
+{
+
 }

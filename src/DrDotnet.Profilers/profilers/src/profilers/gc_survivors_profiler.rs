@@ -118,23 +118,25 @@ impl GCSurvivorsProfiler
         }
 
         match self.object_to_referencers.get(&object_id) {
-            Some(referencers) => {
+            Some(referencers) =>
+            {
+                let branch_current_len = branch.len();
 
-                let mut i = 0;
-                for referencer in referencers {
-
-                    if i > 0 {
-                        // New branch. We clone the current branch to append next holders
-                        let branch = &mut branch.clone();
-                        branch.push_str(" < ");
-                        self.append_referencers_recursive(info, *referencer, branch, depth + 1, branches);
-                    } else {
+                for i in 0..referencers.len()
+                {
+                    if i == 0
+                    {
                         // Same branch, we keep on this same branch
                         branch.push_str(" < ");
-                        self.append_referencers_recursive(info, *referencer, branch, depth + 1, branches);
+                        self.append_referencers_recursive(info, referencers[0], branch, depth + 1, branches);
                     }
-
-                    i += 1;
+                    else
+                    {
+                        // New branch. We clone the current branch to append next holders
+                        let mut branch_copy = branch[..branch_current_len].to_string();
+                        branch_copy.push_str(" < ");
+                        self.append_referencers_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
+                    }
                 }
             },
             None => {
@@ -198,7 +200,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         self.object_to_referencers.clear();
         self.serialized_survivor_branches.clear();
 
-        let mut c = 0;
+        let mut c = -1;
         for gen in generation_collected {
             if *gen == 1 {
                 c += 1;
@@ -230,11 +232,13 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         {
             let pinfo = self.profiler_info();
 
-            for branch in self.append_referencers(pinfo, *object_id, 10)
+            for branch in self.append_referencers(pinfo, *object_id, 3)
             {
                 *self.serialized_survivor_branches.entry(branch).or_insert(0u64) += 1;
             }
         }
+
+        info!("Successfully processed surviving references :)");
 
         // We're done, we can detach :)
         let profiler_info = self.profiler_info().clone();
@@ -266,6 +270,9 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
+        // Security timeout
+        detach_after_duration::<GCSurvivorsProfiler>(&self, 120);
+
         Ok(())
     }
 
@@ -275,11 +282,17 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
         let mut report = session.create_report("summary.md".to_owned());
 
-        report.write_line(format!("# GC Survivors Report"));
-        report.write_line(format!("## Surviving References by Class"));
-
-        for surviving_reference in self.serialized_survivor_branches.iter().sorted_by_key(|x| -(*x.1 as i128)) {
-            report.write_line(format!("- ({}) {}", surviving_reference.1, surviving_reference.0));
+        if self.serialized_survivor_branches.len() == 0 {
+            report.write_line("**Profiler was unable to get a GC surviving references callback! (120 seconds timeout)**".to_string());
+        }
+        else
+        {
+            report.write_line(format!("# GC Survivors Report"));
+            report.write_line(format!("## Surviving References by Class"));
+    
+            for surviving_reference in self.serialized_survivor_branches.iter().sorted_by_key(|x| -(*x.1 as i128)) {
+                report.write_line(format!("- ({}) {}", surviving_reference.1, surviving_reference.0));
+            }
         }
 
         info!("Report written");
@@ -293,9 +306,10 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
     fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
     {
-        //info!("Collecting surviving references...");
+        info!("Collecting surviving references...");
 
         for object_id in object_id_range_start {
+            // TODO: Only add zouz that were not gen 2 ?
             *self.surviving_references.entry(*object_id).or_insert(0) += 1;
         }
 
@@ -303,6 +317,7 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
     }
 }
 
+/* // Does this callback even works?
 impl CorProfilerCallback5 for GCSurvivorsProfiler
 {
     fn conditional_weak_table_element_references(
@@ -317,7 +332,9 @@ impl CorProfilerCallback5 for GCSurvivorsProfiler
             Ok(())
     }
 }
+*/
 
+impl CorProfilerCallback5 for GCSurvivorsProfiler {}
 impl CorProfilerCallback6 for GCSurvivorsProfiler {}
 impl CorProfilerCallback7 for GCSurvivorsProfiler {}
 impl CorProfilerCallback8 for GCSurvivorsProfiler {}
