@@ -108,30 +108,30 @@ impl GCSurvivorsProfiler
             branch.push_str(" (Gen 2)");
         }
 
-        // Escape in case of circular references (could be done in a better way)
-        if depth > 0 {
+        let mut add_branch = || {
             // Only add branches that are rooted to gen 2
             if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
                 branches.push(branch.clone());
             }
+        };
+
+        // Escape in case of circular references (could be done in a better way)
+        if depth > 0 {
+            add_branch();
             return;
         }
 
         match self.object_to_referencers.get(&object_id) {
-            Some(referencers) =>
-            {
+            Some(referencers) => {
                 let branch_current_len = branch.len();
 
-                for i in 0..referencers.len()
-                {
-                    if i == 0
-                    {
+                for i in 0..referencers.len() {
+                    if i == 0 {
                         // Same branch, we keep on this same branch
                         branch.push_str(" < ");
                         self.append_referencers_recursive(info, referencers[0], branch, depth + 1, branches);
                     }
-                    else
-                    {
+                    else {
                         // New branch. We clone the current branch to append next holders
                         let mut branch_copy = branch[..branch_current_len].to_string();
                         branch_copy.push_str(" < ");
@@ -140,10 +140,7 @@ impl GCSurvivorsProfiler
                 }
             },
             None => {
-                // Only add branches that are rooted to gen 2
-                if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                    branches.push(branch.clone());
-                }
+                add_branch();
             }
         }
     }
@@ -228,12 +225,9 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
 
         info!("Surviving references to process: {}", self.surviving_references.len());
 
-        for (object_id, number) in self.surviving_references.iter()
-        {
-            let pinfo = self.profiler_info();
-
-            for branch in self.append_referencers(pinfo, *object_id, 3)
-            {
+        for (object_id, number) in self.surviving_references.iter() {
+            let info = self.profiler_info();
+            for branch in self.append_referencers(info, *object_id, 3) {
                 *self.serialized_survivor_branches.entry(branch).or_insert(0u64) += 1;
             }
         }
@@ -285,8 +279,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
         if self.serialized_survivor_branches.len() == 0 {
             report.write_line("**Profiler was unable to get a GC surviving references callback! (120 seconds timeout)**".to_string());
         }
-        else
-        {
+        else {
             report.write_line(format!("# GC Survivors Report"));
             report.write_line(format!("## Surviving References by Class"));
     
@@ -310,7 +303,12 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
 
         for object_id in object_id_range_start {
             // TODO: Only add zouz that were not gen 2 ?
-            *self.surviving_references.entry(*object_id).or_insert(0) += 1;
+            let info = self.profiler_info();
+            let gen = info.get_object_generation(*object_id).unwrap();
+
+            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_0 {
+                *self.surviving_references.entry(*object_id).or_insert(0) += 1;
+            }
         }
 
         Ok(())
