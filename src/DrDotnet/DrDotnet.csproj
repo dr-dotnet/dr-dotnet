@@ -31,15 +31,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\DrDotnet.Profiler\**" Link="Profiler\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Content Include="..\..\README.md" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\DrDotnet.Profilers\**" Link="Profilers\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\DrDotnet.Interop\**" Link="Interop\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\DrDotnet.Interop\Interop.cs" Link="Interop\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)\DrDotnet.Profiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
+    <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)\DrDotnet.Profilers\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <PreBuildEvent>cargo build --release --manifest-path="$(SolutionDir)\DrDotnet.Profiler\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
+    <PreBuildEvent>cargo build --release --manifest-path="$(SolutionDir)\DrDotnet.Profilers\Cargo.toml" --target-dir="..\..\bin"</PreBuildEvent>
   </PropertyGroup>
 
 </Project>

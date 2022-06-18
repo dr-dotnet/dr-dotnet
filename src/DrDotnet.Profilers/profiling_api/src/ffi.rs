@@ -212,7 +212,7 @@ pub enum COR_PRF_SUSPEND_REASON {
     COR_PRF_SUSPEND_FOR_REJIT = 8,
 }
 #[repr(C)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum COR_PRF_GC_REASON {
     COR_PRF_GC_INDUCED = 1,
     COR_PRF_GC_OTHER = 0,

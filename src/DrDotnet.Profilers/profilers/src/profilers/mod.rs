@@ -10,6 +10,9 @@ pub use allocation_by_class_profiler::AllocationByClassProfiler as AllocationByC
 pub mod runtime_pause_profiler;
 pub use runtime_pause_profiler::RuntimePauseProfiler as RuntimePauseProfiler;
 
+pub mod gc_survivors_profiler;
+pub use gc_survivors_profiler::GCSurvivorsProfiler as GCSurvivorsProfiler;
+
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use profiling_api::*;
@@ -25,6 +28,7 @@ pub struct ProfilerData {
     pub profiler_id: Uuid,
     pub name: String,
     pub description: String,
+    pub isReleased: bool,
 }
 
 pub trait Profiler: CorProfilerCallback9 {
@@ -47,7 +51,7 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64)
 fn init_logging(uuid: Uuid) {
     CombinedLogger::init(
         vec![
-            TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
+            TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
             WriteLogger::new(LevelFilter::Info, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_directory(uuid))).unwrap()),
         ]
     ).unwrap();
@@ -59,7 +63,7 @@ fn init_logging(uuid: Uuid) {
     CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
+            WriteLogger::new(LevelFilter::Warn, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
         ]
     ).unwrap();
 }

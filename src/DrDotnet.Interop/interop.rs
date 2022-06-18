@@ -43,7 +43,8 @@ pub struct Profiler
 { 
     name: string,
     description: string,
-    id: int32,
+    guid: string,
+    isReleased: bool,
 } 
 
 pub struct Profilers

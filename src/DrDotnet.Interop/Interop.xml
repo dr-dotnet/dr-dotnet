@@ -1,15 +1,19 @@
-<Interface name="SampleInterface">
+<Interface namespace="DrDotnet.Interop" name="NativeProfilersInterface">
+  
     <!--define your custom types-->
     <Type name="Profiler">
         <Field name="name" type="string"/>
         <Field name="description" type="string"/>
         <Field name="guid" type="string"/>
+        <Field name="isReleased" type="bool"/>
     </Type>
     <Type name="Profilers">
         <Field name="profilers" type="Profiler" array="true"/>
     </Type>
+  
     <!--define your methods-->
     <Method name="GetAvailableProfilers">
         <Return name="profilers" type="Profilers"/>
     </Method>
+  
 </Interface>

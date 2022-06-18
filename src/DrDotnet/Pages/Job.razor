@@ -67,8 +67,17 @@
     {
         Started = true;
 
-        var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
-        Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
+        try
+        {
+            _logger.Log($"Start profiling!");
+            var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
+            _logger.Log($"Successfully attached to process!");
+            Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.Log("ERROR: " + ex);
+        }
 
         Started = false;
     }
