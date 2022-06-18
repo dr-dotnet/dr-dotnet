@@ -54,6 +54,7 @@ pub struct Profiler
     isReleased: bool,
 } 
 
+#[repr(C)]
 pub struct Profilers
 { 
     profilers_ptr: *const Profiler,
