@@ -243,6 +243,14 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
 
         Ok(())
     }
+
+    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback2-rootreferences2-method
+    fn root_references_2(&mut self, root_ref_ids: &[ObjectID], root_kinds: &[ffi::COR_PRF_GC_ROOT_KIND], root_flags: &[ffi::COR_PRF_GC_ROOT_FLAGS], root_ids: &[ffi::UINT_PTR]) -> Result<(), ffi::HRESULT> {
+        
+        info!("Root references ({})", root_ids.len());
+
+        Ok(())
+    }
 }
 
 impl CorProfilerCallback3 for GCSurvivorsProfiler
