@@ -1,6 +1,3 @@
-use std::borrow::BorrowMut;
-use std::ops::Add;
-
 use std::collections::HashMap;
 use profiling_api::*;
 use uuid::Uuid;
@@ -21,6 +18,7 @@ impl Profiler for MemoryLeakProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E83").unwrap(),
             name: "Memory Leak Finder".to_owned(),
             description: "Look for managed memory leaks".to_owned(),
+            isReleased: false,
         }
     }
 
@@ -55,34 +53,6 @@ impl CorProfilerCallback for MemoryLeakProfiler {}
 
 impl CorProfilerCallback2 for MemoryLeakProfiler
 {
-    /*
-    fn surviving_references(&mut self, object_id_range_start: &[ffi::ObjectID], object_id_range_length: &[u32]) -> Result<(), ffi::HRESULT>
-    {
-        for i in 0..object_id_range_start.len()
-        {
-            let pinfo = self.profiler_info();
-            let name = 
-            match pinfo.get_class_from_object(object_id_range_start[i]) {
-                Ok(class_id) => 
-                match pinfo.get_class_id_info(class_id) {
-                    Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
-                    _ => "unknown2".to_owned()
-                },
-                _ => "unknown1".to_owned()
-            };
-    
-            let key = name;
-            let value = object_id_range_length[i] as u64;
-            match self.surviving_references.get_mut(&key) {
-                Some(pair) => { pair.value().add(value); },
-                None => { self.surviving_references.insert(key, value); },
-            }
-        }
-
-        Ok(())
-    }
-    */
-
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
         self.collections += 1;

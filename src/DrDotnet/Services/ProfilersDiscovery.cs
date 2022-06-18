@@ -1,37 +1,41 @@
-﻿using System;
+﻿using DrDotnet.Interop;
+using System;
 using System.Collections.Generic;
 
-namespace DrDotnet
+namespace DrDotnet;
+
+public class ProfilersDiscovery : IProfilerDiscovery
 {
-    public class ProfilersDiscovery : IProfilerDiscovery
+    private ILogger _logger;
+    private List<Profiler> _profilers;
+
+    public ProfilersDiscovery(ILogger logger)
     {
-        private ILogger _logger;
-        private List<Profiler> _profilers;
+        _logger = logger;
+    }
 
-        public ProfilersDiscovery(ILogger logger)
+    public List<Profiler> GetProfilers(bool listUnreleasedProfilers = false)
+    {
+        if (_profilers != null)
+            return _profilers;
+
+        var profilers = new List<Profiler>();
+
+        var interopProfilers = NativeProfilersInterface.GetAvailableProfilers();
+
+        foreach (var interopProfiler in interopProfilers.profilers)
         {
-            _logger = logger;
-        }
-
-        public List<Profiler> GetProfilers()
-        {
-            if (_profilers != null)
-                return _profilers;
-
-            var profilers = new List<Profiler>();
-
-            var interopProfilers = Interop.GetAvailableProfilers();
-
-            foreach (var interopProfiler in interopProfilers.profilers)
+            if (listUnreleasedProfilers || interopProfiler.isReleased)
             {
-                profilers.Add(new Profiler {
+                profilers.Add(new Profiler
+                {
                     Name = interopProfiler.name,
                     ProfilerId = new Guid(interopProfiler.guid),
                     Description = interopProfiler.description
                 });
             }
-
-            return _profilers = profilers;
         }
+
+        return _profilers = profilers;
     }
 }

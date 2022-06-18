@@ -11,7 +11,36 @@ It is possible to identify some of these issues using today's existing tools, bu
 
 The .NET Profiling API is accessible via COM interop (cross-platform thanks to the Platform Adaptation Layer) and allows little overheap profiling compared to other methods while giving a wide range of possibilities for profiling purpose. Perfview uses this API (on top of ETW) however it does it from managed code calling mocked COM objects written in C#. For the project, the idea would be to do it in C++ or even better in Rust (ideally Rust + including CoreCLR headers in kind of a hybrid fashion, if that is possible). Then the offline tooling (UI) can be in C# or any other "productive" language.
 
-## Todo
+## What is it?
+
+You can view DrDotnet like a "framework for creating and using simple but problem-focused dotnet profilers". It consists in two parts:
+- A set of specific profilers based on the native dotnet CLR profiling interfaces (written in Rustlang)
+- A profiling session system and a user interface that can be used remotely or locally (written in Dotnet Blazor)
+DrDotnet can be installed or shipped in a sidecar container on a remote host (Windows or Linux) and used remotely.
+
+## What it is mean to be in the future?
+
+- Cover most dotnet performance issues, especially those that are difficult to investigate at the moment because of a lack of (compatible) tooling or user-friendliness
+- It shall remain a relatively simple tool to use, as opposed to walking or a multi-gigabytes memory dump in WinDBG or trace in PerfView for instance, because it's not meant to be a replacement.
+
+## Motivations
+
+> Unfortunately very few perf tools highlight the generational effect even though that's a cornerstone of the .NET GC.
+
+## How to build
+
+### Prerequisites
+- .NET SDK 6.0
+- Rust toolchain
+- I guess that's it :)
+
+### Building
+- Compile either DrDotnet.Web or DrDotnet.Desktop, depending on how you plan to use DrDotnet.
+The DrDotnet.csproj has a prebuild step that will try to build the Rust profilers. If it fails, you'll find the Rust compiler output in the Output window for instance if you are using Visual Studio.
+
+## First Iterations
+
+### Todo
 
 - [x] Manage to initialize at start
 - [x] Manage to initialize on attach
@@ -37,7 +66,7 @@ The .NET Profiling API is accessible via COM interop (cross-platform thanks to t
   - Memory leak detector with suriviving references?
   - High allocations (ObjectsAllocatedByClass)?
 
-## Possibilities
+### Possibilities
 
 - On object allocated with [ObjectAllocated](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectallocated-method) `COR_PRF_MONITOR_OBJECT_ALLOCATED` ⚠️
 - Object reference is moved during garbage collection with [MovedReferences](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-movedreferences-method) `COR_PRF_MONITOR_GC`
@@ -54,11 +83,11 @@ The .NET Profiling API is accessible via COM interop (cross-platform thanks to t
 - Request stacktrace (per thread) `COR_PRF_ENABLE_STACK_SNAPSHOT`
 - Annnnd a lot more :p... `COR_PRF_MONITOR_GC`
 
-### Profiler is initialized on application start
+#### Profiler is initialized on application start
 
 Any flag from [COR_PRF_MONITOR enumeration](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration).
 
-### Profiler is initialized on attach
+#### Profiler is initialized on attach
 
 Only possible on a subset of [COR_PRF_MONITOR enumeration](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration):
 

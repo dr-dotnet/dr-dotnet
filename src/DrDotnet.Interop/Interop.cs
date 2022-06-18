@@ -19,11 +19,11 @@ using float16 = System.Half;
 using float32 = System.Single;
 using float64 = System.Double;
 
-namespace FFIDJI
+namespace DrDotnet.Interop
 { 
-    public static class SampleInterface
+    public static class NativeProfilersInterface
     { 
-        public const string LIBRARY_NAME = "MyNativeLibrary.dll";
+        public const string LIBRARY_NAME = "profilers.dll";
 
         private readonly struct Arr<T>
         { 
@@ -76,7 +76,8 @@ namespace FFIDJI
         { 
             public string name;
             public string description;
-            public int32 id;
+            public string guid;
+            public bool isReleased;
         } 
 
         [StructLayout(LayoutKind.Sequential)]
@@ -84,13 +85,15 @@ namespace FFIDJI
         { 
             public string_FFI name;
             public string_FFI description;
-            public int32 id;
+            public string_FFI guid;
+            public bool isReleased;
         } 
 
         private static unsafe void Free(Profiler_FFI input)
         { 
             Free(input.name);
             Free(input.description);
+            Free(input.guid);
         } 
 
         private static Profiler Convert(Profiler_FFI data_FFI)
@@ -99,7 +102,8 @@ namespace FFIDJI
             { 
                 name = Convert(data_FFI.name),
                 description = Convert(data_FFI.description),
-                id = data_FFI.id,
+                guid = Convert(data_FFI.guid),
+                isReleased = data_FFI.isReleased,
             };
         } 
 
@@ -109,7 +113,8 @@ namespace FFIDJI
             { 
                 name = Convert(data.name),
                 description = Convert(data.description),
-                id = Convert(data.id),
+                guid = Convert(data.guid),
+                isReleased = Convert(data.isReleased),
             };
         } 
 

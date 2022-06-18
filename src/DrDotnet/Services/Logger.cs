@@ -1,26 +1,25 @@
 ﻿using System;
 using System.Text;
 
-namespace DrDotnet
+namespace DrDotnet;
+
+public class Logger : ILogger
 {
-    public class Logger : ILogger
+    public event Action<string> MessageLogged;
+
+    private StringBuilder _allLogs = new StringBuilder();
+
+    public string GetAllLogs()
     {
-        public event Action<string> MessageLogged;
+        return _allLogs.ToString();
+    }
 
-        private StringBuilder _allLogs = new StringBuilder();
+    public void Log(string message)
+    {
+        var logMessage = $"[{DateTime.Now}] {message}\n";
+        MessageLogged?.Invoke(logMessage);
+        Console.Write(logMessage);
 
-        public string GetAllLogs()
-        {
-            return _allLogs.ToString();
-        }
-
-        public void Log(string message)
-        {
-            var logMessage = $"[{DateTime.Now}] {message}\n";
-            MessageLogged?.Invoke(logMessage);
-            Console.Write(logMessage);
-
-            _allLogs.Append(logMessage);
-        }
+        _allLogs.Append(logMessage);
     }
 }

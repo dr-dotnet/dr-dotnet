@@ -70,8 +70,8 @@ public class AllocationByClassProfilerTests : ProfilerTests
         
         Console.WriteLine(content);
         
-        //Assert.IsTrue(content.Contains("DrDotnet.Tests.TestException:"));
-        //Assert.IsFalse(content.Contains("DrDotnet.Tests.TestException: 0"));
+        Assert.IsTrue(content.Contains("System.String:"));
+        Assert.IsTrue(content.Contains("Node:"));
     }
 
     public class Node

@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace DrDotnet.Tests;
 
-public class MemoryLeakProfilerTests : ProfilerTests
+public class GCSurvivorsProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E83}");
+    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E86}");
 
     [Test]
     [Order(0)]
@@ -24,9 +24,9 @@ public class MemoryLeakProfilerTests : ProfilerTests
 
     [Test]
     [Order(1)]
-    [Timeout(30_000)]
+    [Timeout(160_000)]
     [NonParallelizable]
-    public async Task Profiler_Detects_Memory_Leaks()
+    public async Task Profiler_Detects_GC_Survivors_Referenced_From_Gen2()
     {
         ILogger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
@@ -35,25 +35,27 @@ public class MemoryLeakProfilerTests : ProfilerTests
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
         // Intentionally allocates memory
-        int i = 0;
-        Node node = new Node();
-        ThreadPool.QueueUserWorkItem(async _ =>
+        var survivingObjects = new List<SurvivingObject>();
+
+        var _ = Task.Run(async () =>
         {
-            while (true)
+            for (int i = 0; i < 100000; i++)
             {
-                node.Child = node = new Node { Name = "mynode" + i++, List = new List<int>() };
+                survivingObjects.Add(new SurvivingObject());
                 if (i % 100 == 0)
                 {
-                    await Task.Delay(10);
+                    await Task.Delay(20);
                 }
-                if (i % 1000 == 0)
+                if (i % 10000 == 0)
                 {
-                    GC.Collect();
+                    GC.Collect(0);
                 }
             }
         });
 
         var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+
+        Console.WriteLine("Session Directory: " + session.Path);
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
         
@@ -62,15 +64,13 @@ public class MemoryLeakProfilerTests : ProfilerTests
         var content = File.ReadAllText(summary.FullName);
         
         Console.WriteLine(content);
-        Console.WriteLine(node.Name);
+        Console.WriteLine(survivingObjects.Count);
         
         // TODO
     }
 }
 
-public class Node
+public class SurvivingObject
 {
-    public string Name;
-    public Node Child;
-    public List<int> List;
+
 }
