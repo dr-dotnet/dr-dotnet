@@ -12,12 +12,13 @@ use itertools::Itertools;
 use crate::report::*;
 use crate::profilers::*;
 
+#[derive(Default)]
 pub struct GCSurvivorsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
     surviving_references: HashMap<ObjectID, u64>,
     object_to_referencers: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
-    serialized_survivor_branches: HashMap<String, u64>,
+    serialized_survivor_branches: HashMap<String, u64>
 }
 
 impl Profiler for GCSurvivorsProfiler {
@@ -43,6 +44,7 @@ impl Clone for GCSurvivorsProfiler {
             surviving_references: HashMap::new(),
             object_to_referencers: HashMap::new(),
             serialized_survivor_branches: HashMap::new(),
+            ..Default::default()
         }
     }
 }
@@ -55,6 +57,7 @@ impl ClrProfiler for GCSurvivorsProfiler {
             surviving_references: HashMap::new(),
             object_to_referencers: HashMap::new(),
             serialized_survivor_branches: HashMap::new(),
+            ..Default::default()
         }
     }
 }
@@ -307,6 +310,23 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
             let gen = info.get_object_generation(*object_id).unwrap();
 
             if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_0 {
+                *self.surviving_references.entry(*object_id).or_insert(0) += 1;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn moved_references_2(&mut self, old_object_id_range_start: &[ObjectID], new_object_id_range_start: &[ObjectID], object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
+    {
+        info!("Collecting moved references...");
+
+        for object_id in new_object_id_range_start {
+            // TODO: Only add zouz that were not gen 2 ?
+            let info = self.profiler_info();
+            let gen = info.get_object_generation(*object_id).unwrap();
+
+            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_1 {
                 *self.surviving_references.entry(*object_id).or_insert(0) += 1;
             }
         }
