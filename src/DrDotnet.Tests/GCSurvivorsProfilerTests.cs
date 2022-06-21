@@ -53,8 +53,8 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
 public class MyService : IDisposable
 {
-    public readonly int _allocatedObjectsPerSecond = 10_000;
-    public readonly int _maxAliveObjects = 200_000;
+    public readonly int _allocatedObjectsPerSecond = 10_0;
+    public readonly int _maxAliveObjects = 2_000;
 
     private readonly Queue<string> _queue = new Queue<string>();
 

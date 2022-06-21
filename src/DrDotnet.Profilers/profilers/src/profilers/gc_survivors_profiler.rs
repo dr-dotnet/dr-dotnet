@@ -12,7 +12,7 @@ use itertools::Itertools;
 use crate::report::*;
 use crate::profilers::*;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GCSurvivorsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
@@ -26,8 +26,10 @@ impl Profiler for GCSurvivorsProfiler {
         return ProfilerData {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E86").unwrap(),
             name: "GC Survivors".to_owned(),
-            description: "Lists objects that survived a garbage collection".to_owned(),
-            isReleased: true,
+            description: "After a garbage collection, iterate over GC roots and browse through references recursively until an ephemeral object is found (gen 0 or 1). \
+                Then, list such retained objects with the chain of references, along with the count of such occurence. \
+                Timeouts after 320s if no garbage collection happened or if did not succeed to catch any callback.".to_owned(),
+            is_released: true,
         }
     }
 
@@ -35,31 +37,6 @@ impl Profiler for GCSurvivorsProfiler {
         self.profiler_info.as_ref().unwrap()
     }
 }
-
-impl Clone for GCSurvivorsProfiler {
-    fn clone(&self) -> Self { 
-        GCSurvivorsProfiler {
-            profiler_info: self.profiler_info.clone(),
-            session_id: self.session_id.clone(),
-            object_to_references: HashMap::new(),
-            serialized_survivor_branches: HashMap::new(),
-            ..Default::default()
-        }
-    }
-}
-
-impl ClrProfiler for GCSurvivorsProfiler {
-    fn new() -> GCSurvivorsProfiler {
-        GCSurvivorsProfiler {
-            profiler_info: None,
-            session_id: Uuid::default(),
-            object_to_references: HashMap::new(),
-            serialized_survivor_branches: HashMap::new(),
-            ..Default::default()
-        }
-    }
-}
-
 
 impl GCSurvivorsProfiler
 {
@@ -75,21 +52,18 @@ impl GCSurvivorsProfiler
     // Recursively drill through references until we find a gen 2 object.
     fn append_referencers_recursive(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
     {
-        let gen_m = info.get_object_generation(object_id);
-        if gen_m.is_err() {
-            warn!("weird ref!");
-            return;
-        }
-
-        let gen = gen_m.unwrap();
+        let gen = match info.get_object_generation(object_id) {
+            Ok(gen) => gen.generation,
+            Err(_) => ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 // Hack to ignore such failure, in case object does not lie in any heap
+        };
 
         let refname = GCSurvivorsProfiler::get_object_class_name(info, object_id);
         branch.push_str(refname.as_str());
         //branch.push_str(format!("{} (Gen {:?})", refname, gen.generation).as_str());
 
         let mut add_branch = || {
-            // Only add branches that are rooted to gen 2
-            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_0 || gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_1 {
+            // Only add branches that include ephemeral objects (gen 0 or 1)
+            if gen == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_0 || gen == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_1 {
                 branches.push(branch.clone());
             }
         };
@@ -242,8 +216,9 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     {
         info!("Root references ({})", root_ids.len());
 
-        for root_ref_id in root_ref_ids {
-            let id = *root_ref_id;
+        for i in 0..root_ref_ids.len() {
+            let id = root_ref_ids[i];
+            info!("Root '{}' of kind: {:?}", GCSurvivorsProfiler::get_object_class_name(self.profiler_info(), id), root_kinds[i]);
             if id != 0 {
                 self.root_references.push(id);
             }

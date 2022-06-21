@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 #[repr(C)]
 pub struct ClassFactoryVtbl<T>
 where
-    T: CorProfilerCallback9 + Clone,
+    T: CorProfilerCallback9,
 {
     pub IUnknown: IUnknown<ClassFactory<T>>,
     pub IClassFactory: IClassFactory<ClassFactory<T>>,
@@ -22,7 +22,7 @@ where
 #[repr(C)]
 pub struct ClassFactory<T>
 where
-    T: CorProfilerCallback9 + Clone,
+    T: CorProfilerCallback9,
 {
     pub lpVtbl: *const ClassFactoryVtbl<T>,
     ref_count: AtomicU32,
@@ -31,7 +31,7 @@ where
 
 impl<T> ClassFactory<T>
 where
-    T: CorProfilerCallback9 + Clone,
+    T: CorProfilerCallback9,
 {
     pub fn new<'b>(profiler: T) -> &'b mut ClassFactory<T> {
         let class_factory = ClassFactory {
@@ -97,7 +97,7 @@ where
         _riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
-        *ppvObject = CorProfilerCallback::new(self.profiler.clone()) as *mut CorProfilerCallback<T>
+        *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T>
             as LPVOID;
         S_OK
     }

@@ -41,9 +41,9 @@ impl Session {
         let json = serde_json::to_string_pretty(&report).unwrap();
 
         // Write session report
-        let jsonPath = format!("{}/session.json", Session::get_directory(session_id));
-        if !Path::exists(Path::new(&jsonPath)) {
-            let mut session_stream = File::create(jsonPath).expect("Unable to create file");
+        let json_path = format!("{}/session.json", Session::get_directory(session_id));
+        if !Path::exists(Path::new(&json_path)) {
+            let mut session_stream = File::create(json_path).expect("Unable to create file");
             session_stream.write_all(json.as_bytes()).expect("Unable to write data");    
         }
 

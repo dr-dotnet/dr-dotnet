@@ -6,11 +6,12 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use crate::report::*;
 use crate::profilers::*;
 
+#[derive(Default)]
 pub struct AllocationByClassProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
     allocations_by_class: DashMap<String, AtomicIsize>,
-    collections: AtomicIsize,
+    collections: usize,
 }
 
 impl Profiler for AllocationByClassProfiler {
@@ -19,34 +20,12 @@ impl Profiler for AllocationByClassProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E84").unwrap(),
             name: "Allocations by Class".to_owned(),
             description: "For now, just allocations by class".to_owned(),
-            isReleased: false,
+            is_released: false,
         }
     }
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
-    }
-}
-
-impl Clone for AllocationByClassProfiler {
-    fn clone(&self) -> Self { 
-        AllocationByClassProfiler {
-            profiler_info: self.profiler_info.clone(),
-            session_id: self.session_id.clone(),
-            allocations_by_class: DashMap::new(),
-            collections: AtomicIsize::new(0)
-        }
-    }
-}
-
-impl ClrProfiler for AllocationByClassProfiler {
-    fn new() -> AllocationByClassProfiler {
-        AllocationByClassProfiler {
-            profiler_info: None,
-            session_id: Uuid::default(),
-            allocations_by_class: DashMap::new(),
-            collections: AtomicIsize::new(0)
-        }
     }
 }
 
@@ -80,7 +59,7 @@ impl CorProfilerCallback2 for AllocationByClassProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
-        self.collections.fetch_add(1, Ordering::Relaxed);
+        self.collections += 1;
 
         Ok(())
     }
@@ -120,7 +99,7 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
 
         report.write_line(format!("# Allocations Report"));
         report.write_line(format!("## Total Collections"));
-        report.write_line(format!("**Total Collections**: {}", self.collections.load(Ordering::Relaxed)));
+        report.write_line(format!("**Total Collections**: {}", self.collections));
         report.write_line(format!("## Allocations by Class"));
 
         use itertools::Itertools;

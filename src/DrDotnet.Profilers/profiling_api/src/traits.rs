@@ -1,4 +1,3 @@
-mod clr_profiler;
 mod cor_profiler_callback_1;
 mod cor_profiler_callback_2;
 mod cor_profiler_callback_3;
@@ -20,7 +19,6 @@ mod cor_profiler_info_8;
 mod cor_profiler_info_9;
 mod metadata_import_trait;
 
-pub use self::clr_profiler::ClrProfiler;
 pub use self::cor_profiler_callback_1::CorProfilerCallback;
 pub use self::cor_profiler_callback_2::CorProfilerCallback2;
 pub use self::cor_profiler_callback_3::CorProfilerCallback3;

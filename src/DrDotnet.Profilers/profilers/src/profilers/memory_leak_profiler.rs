@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::report::*;
 use crate::profilers::*;
 
+#[derive(Default, Clone)]
 pub struct MemoryLeakProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
@@ -18,34 +19,12 @@ impl Profiler for MemoryLeakProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E83").unwrap(),
             name: "Memory Leak Finder".to_owned(),
             description: "Look for managed memory leaks".to_owned(),
-            isReleased: false,
+            is_released: false,
         }
     }
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
-    }
-}
-
-impl Clone for MemoryLeakProfiler {
-    fn clone(&self) -> Self { 
-        MemoryLeakProfiler {
-            profiler_info: self.profiler_info.clone(),
-            session_id: self.session_id.clone(),
-            surviving_references: HashMap::new(),
-            collections: 0
-        }
-    }
-}
-
-impl ClrProfiler for MemoryLeakProfiler {
-    fn new() -> MemoryLeakProfiler {
-        MemoryLeakProfiler {
-            profiler_info: None,
-            session_id: Uuid::default(),
-            surviving_references: HashMap::new(),
-            collections: 0
-        }
     }
 }
 

@@ -38,7 +38,7 @@ pub extern "C" fn Alloc_FFI(length :int32) -> *mut libc::c_void
 } 
 
 #[no_mangle]
-pub extern "C" fn Free_FFI(ptr: *mut libc::c_void, length :int32)
+pub extern "C" fn Free_FFI(ptr: *mut libc::c_void, length: int32)
 { 
     unsafe
     { 
@@ -51,7 +51,7 @@ pub struct Profiler
     name: string,
     description: string,
     guid: string,
-    isReleased: bool,
+    is_released: bool,
 } 
 
 #[repr(C)]
@@ -93,7 +93,7 @@ pub extern "C" fn GetAvailableProfilers() -> Profilers
             (*p).name = get_string(profiler_infos[n].name.to_owned());
             (*p).description = get_string(profiler_infos[n].description.to_owned());
             (*p).guid = get_string(profiler_infos[n].profiler_id.to_string());
-            (*p).isReleased = profiler_infos[n].isReleased;
+            (*p).is_released = profiler_infos[n].is_released;
         }
 
         return Profilers {
