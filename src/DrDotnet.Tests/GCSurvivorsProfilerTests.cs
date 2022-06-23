@@ -41,7 +41,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
         Console.WriteLine("Session Directory: " + session.Path);
 
-        var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
+        var summary = session.EnumerateFiles().FirstOrDefault(x => x.Name == "summary.md");
         
         Assert.NotNull(summary, "No summary have been created!");
         

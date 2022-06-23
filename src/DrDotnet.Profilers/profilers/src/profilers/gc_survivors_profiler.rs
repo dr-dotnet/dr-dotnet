@@ -3,9 +3,8 @@
 // Append surviving objects  https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
 // On GC end, if there are surviving objects in map (not empty), 
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use profiling_api::*;
-use profiling_api::ffi::ObjectID;
 use uuid::Uuid;
 use itertools::Itertools;
 
@@ -18,7 +17,7 @@ pub struct GCSurvivorsProfiler {
     session_id: Uuid,
     object_to_references: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
     serialized_survivor_branches: HashMap<String, u64>,
-    root_references: Vec<ObjectID>
+    root_references: HashSet<ffi::ObjectID>
 }
 
 impl Profiler for GCSurvivorsProfiler {
@@ -212,15 +211,16 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     }
 
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback2-rootreferences2-method
-    fn root_references_2(&mut self, root_ref_ids: &[ObjectID], root_kinds: &[ffi::COR_PRF_GC_ROOT_KIND], root_flags: &[ffi::COR_PRF_GC_ROOT_FLAGS], root_ids: &[ffi::UINT_PTR]) -> Result<(), ffi::HRESULT>
+    fn root_references_2(&mut self, root_ref_ids: &[ffi::ObjectID], root_kinds: &[ffi::COR_PRF_GC_ROOT_KIND], root_flags: &[ffi::COR_PRF_GC_ROOT_FLAGS], root_ids: &[ffi::UINT_PTR]) -> Result<(), ffi::HRESULT>
     {
         info!("Root references ({})", root_ids.len());
 
         for i in 0..root_ref_ids.len() {
             let id = root_ref_ids[i];
-            info!("Root '{}' of kind: {:?}", GCSurvivorsProfiler::get_object_class_name(self.profiler_info(), id), root_kinds[i]);
+            //info!("Root '{}' of kind: {:?}", GCSurvivorsProfiler::get_object_class_name(self.profiler_info(), id), root_kinds[i]);
             if id != 0 {
-                self.root_references.push(id);
+                // For some reasons, this callback may return several times the same object references, so we use a duplication free collection
+                self.root_references.insert(id);
             }
         }
 
