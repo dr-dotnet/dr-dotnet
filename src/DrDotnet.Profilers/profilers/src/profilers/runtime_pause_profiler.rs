@@ -5,6 +5,7 @@ use std::time::{Instant, Duration};
 use crate::report::*;
 use crate::profilers::*;
 
+#[derive(Clone)]
 pub struct RuntimePause {
     start: Instant,
     end: Instant,
@@ -23,13 +24,25 @@ pub struct RuntimePauseProfiler {
     profiling_end: Instant,
 }
 
+impl Default for RuntimePauseProfiler {
+    fn default() -> RuntimePauseProfiler {
+        RuntimePauseProfiler {
+            last_start: Instant::now(),
+            profiling_start: Instant::now(),
+            profiling_end: Instant::now(),
+            ..Default::default()
+        }
+    }
+}
+
 impl Profiler for RuntimePauseProfiler {
+
     fn get_info() -> ProfilerData {
         return ProfilerData {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E85").unwrap(),
             name: "GC Pause Profiler".to_owned(),
             description: "Measures the impact of GC pauses on response time".to_owned(),
-            isReleased: false,
+            is_released: false,
         }
     }
 
@@ -39,6 +52,7 @@ impl Profiler for RuntimePauseProfiler {
 }
 
 impl RuntimePauseProfiler {
+
     fn get_durations(&self, interval: Duration) -> Vec<Duration> {
         let mut current = self.profiling_start;
         let mut last_start = self.gc_pauses[0].start;
@@ -68,36 +82,6 @@ impl RuntimePauseProfiler {
         durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         return durations;
-    }
-}
-
-impl Clone for RuntimePauseProfiler {
-    fn clone(&self) -> Self { 
-        RuntimePauseProfiler {
-            profiler_info: self.profiler_info.clone(),
-            session_id: self.session_id.clone(),
-            gc_pauses: Vec::new(),
-            last_start: Instant::now(),
-            last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON::COR_PRF_SUSPEND_OTHER,
-            last_gc_reason: ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED,
-            profiling_start: Instant::now(),
-            profiling_end: Instant::now(),
-        }
-    }
-}
-
-impl ClrProfiler for RuntimePauseProfiler {
-    fn new() -> RuntimePauseProfiler {
-        RuntimePauseProfiler {
-            profiler_info: None,
-            session_id: Uuid::default(),
-            gc_pauses: Vec::new(),
-            last_start: Instant::now(),
-            last_suspend_reason: ffi::COR_PRF_SUSPEND_REASON::COR_PRF_SUSPEND_OTHER,
-            last_gc_reason: ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED,
-            profiling_start: Instant::now(),
-            profiling_end: Instant::now(),
-        }
     }
 }
 

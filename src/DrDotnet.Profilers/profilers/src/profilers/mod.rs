@@ -28,10 +28,10 @@ pub struct ProfilerData {
     pub profiler_id: Uuid,
     pub name: String,
     pub description: String,
-    pub isReleased: bool,
+    pub is_released: bool,
 }
 
-pub trait Profiler: CorProfilerCallback9 {
+pub trait Profiler : CorProfilerCallback9 {
     fn get_info() -> ProfilerData;
     fn profiler_info(&self) -> &ProfilerInfo;
 }

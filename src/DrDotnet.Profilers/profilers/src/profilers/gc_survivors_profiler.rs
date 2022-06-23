@@ -3,22 +3,21 @@
 // Append surviving objects  https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
 // On GC end, if there are surviving objects in map (not empty), 
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use profiling_api::*;
-use profiling_api::ffi::ObjectID;
 use uuid::Uuid;
 use itertools::Itertools;
 
 use crate::report::*;
 use crate::profilers::*;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GCSurvivorsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    surviving_references: HashMap<ObjectID, u64>,
-    object_to_referencers: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
-    serialized_survivor_branches: HashMap<String, u64>
+    object_to_references: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
+    serialized_survivor_branches: HashMap<String, u64>,
+    root_references: HashSet<ffi::ObjectID>
 }
 
 impl Profiler for GCSurvivorsProfiler {
@@ -26,66 +25,15 @@ impl Profiler for GCSurvivorsProfiler {
         return ProfilerData {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E86").unwrap(),
             name: "GC Survivors".to_owned(),
-            description: "Lists objects that survived a garbage collection".to_owned(),
-            isReleased: true,
+            description: "After a garbage collection, iterate over GC roots and browse through references recursively until an ephemeral object is found (gen 0 or 1). \
+                Then, list such retained objects with the chain of references, along with the count of such occurence. \
+                Timeouts after 320s if no garbage collection happened or if did not succeed to catch any callback.".to_owned(),
+            is_released: true,
         }
     }
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
-    }
-}
-
-impl Clone for GCSurvivorsProfiler {
-    fn clone(&self) -> Self { 
-        GCSurvivorsProfiler {
-            profiler_info: self.profiler_info.clone(),
-            session_id: self.session_id.clone(),
-            surviving_references: HashMap::new(),
-            object_to_referencers: HashMap::new(),
-            serialized_survivor_branches: HashMap::new(),
-            ..Default::default()
-        }
-    }
-}
-
-impl ClrProfiler for GCSurvivorsProfiler {
-    fn new() -> GCSurvivorsProfiler {
-        GCSurvivorsProfiler {
-            profiler_info: None,
-            session_id: Uuid::default(),
-            surviving_references: HashMap::new(),
-            object_to_referencers: HashMap::new(),
-            serialized_survivor_branches: HashMap::new(),
-            ..Default::default()
-        }
-    }
-}
-
-impl CorProfilerCallback for GCSurvivorsProfiler
-{
-    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
-    {
-        if self.surviving_references.len() == 0 {
-            return Ok(())
-        }
-
-        //info!("Collecting references...");
-
-        // Create dependency tree, but from object to referencers, instead of object to its references.
-        // This is usefull for being able to browse from any object back to its roots.
-        for object_ref_id in object_ref_ids {
-            match self.object_to_referencers.get_mut(&object_ref_id) {
-                Some(referencers) => {
-                    referencers.push(object_id);
-                },
-                None => {
-                    self.object_to_referencers.insert(*object_ref_id, vec![object_id]);
-                }
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -103,17 +51,18 @@ impl GCSurvivorsProfiler
     // Recursively drill through references until we find a gen 2 object.
     fn append_referencers_recursive(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
     {
-        let gen = info.get_object_generation(object_id).unwrap();
+        let gen = match info.get_object_generation(object_id) {
+            Ok(gen) => gen.generation,
+            Err(_) => ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 // Hack to ignore such failure, in case object does not lie in any heap
+        };
 
         let refname = GCSurvivorsProfiler::get_object_class_name(info, object_id);
         branch.push_str(refname.as_str());
-        if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-            branch.push_str(" (Gen 2)");
-        }
+        //branch.push_str(format!("{} (Gen {:?})", refname, gen.generation).as_str());
 
         let mut add_branch = || {
-            // Only add branches that are rooted to gen 2
-            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+            // Only add branches that include ephemeral objects (gen 0 or 1)
+            if gen == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_0 || gen == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_1 {
                 branches.push(branch.clone());
             }
         };
@@ -124,20 +73,20 @@ impl GCSurvivorsProfiler
             return;
         }
 
-        match self.object_to_referencers.get(&object_id) {
+        match self.object_to_references.get(&object_id) {
             Some(referencers) => {
                 let branch_current_len = branch.len();
 
                 for i in 0..referencers.len() {
                     if i == 0 {
                         // Same branch, we keep on this same branch
-                        branch.push_str(" < ");
+                        branch.push_str(" > ");
                         self.append_referencers_recursive(info, referencers[0], branch, depth + 1, branches);
                     }
                     else {
                         // New branch. We clone the current branch to append next holders
                         let mut branch_copy = branch[..branch_current_len].to_string();
-                        branch_copy.push_str(" < ");
+                        branch_copy.push_str(" > ");
                         self.append_referencers_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
                     }
                 }
@@ -191,14 +140,30 @@ impl GCSurvivorsProfiler
     }
 }
 
+impl CorProfilerCallback for GCSurvivorsProfiler
+{
+    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
+    {
+        if self.root_references.len() == 0 {
+            return Ok(())
+        }
+
+        info!("Collecting references...");
+
+        self.object_to_references.insert(object_id, object_ref_ids.to_vec());
+
+        Ok(())
+    }
+}
+
 impl CorProfilerCallback2 for GCSurvivorsProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
         // Data from previous garbage collections are no longer valid, so we clear it when a new garbage collection starts.
-        self.surviving_references.clear();
-        self.object_to_referencers.clear();
+        self.object_to_references.clear();
         self.serialized_survivor_branches.clear();
+        self.root_references.clear();
 
         let mut c = -1;
         for gen in generation_collected {
@@ -216,7 +181,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     {
         info!("GC finished");
 
-        if self.surviving_references.len() == 0 {
+        if self.root_references.len() == 0 {
             return Ok(())
         }
 
@@ -226,20 +191,38 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
 
-        info!("Surviving references to process: {}", self.surviving_references.len());
+        info!("Roots to process: {}", self.root_references.len());
 
-        for (object_id, number) in self.surviving_references.iter() {
+        for object_id in self.root_references.iter() {
             let info = self.profiler_info();
-            for branch in self.append_referencers(info, *object_id, 3) {
+            info!("Root id: {}", *object_id);
+            for branch in self.append_referencers(info, *object_id, 6) {
                 *self.serialized_survivor_branches.entry(branch).or_insert(0u64) += 1;
             }
         }
 
-        info!("Successfully processed surviving references :)");
+        info!("Successfully processed surviving roots :)");
 
         // We're done, we can detach :)
         let profiler_info = self.profiler_info().clone();
         profiler_info.request_profiler_detach(3000).ok();
+
+        Ok(())
+    }
+
+    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback2-rootreferences2-method
+    fn root_references_2(&mut self, root_ref_ids: &[ffi::ObjectID], root_kinds: &[ffi::COR_PRF_GC_ROOT_KIND], root_flags: &[ffi::COR_PRF_GC_ROOT_FLAGS], root_ids: &[ffi::UINT_PTR]) -> Result<(), ffi::HRESULT>
+    {
+        info!("Root references ({})", root_ids.len());
+
+        for i in 0..root_ref_ids.len() {
+            let id = root_ref_ids[i];
+            //info!("Root '{}' of kind: {:?}", GCSurvivorsProfiler::get_object_class_name(self.profiler_info(), id), root_kinds[i]);
+            if id != 0 {
+                // For some reasons, this callback may return several times the same object references, so we use a duplication free collection
+                self.root_references.insert(id);
+            }
+        }
 
         Ok(())
     }
@@ -268,7 +251,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
         // Security timeout
-        detach_after_duration::<GCSurvivorsProfiler>(&self, 120);
+        detach_after_duration::<GCSurvivorsProfiler>(&self, 320);
 
         Ok(())
     }
@@ -297,44 +280,6 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback4 for GCSurvivorsProfiler
-{
-    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-    fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
-    {
-        info!("Collecting surviving references...");
-
-        for object_id in object_id_range_start {
-            // TODO: Only add zouz that were not gen 2 ?
-            let info = self.profiler_info();
-            let gen = info.get_object_generation(*object_id).unwrap();
-
-            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_0 {
-                *self.surviving_references.entry(*object_id).or_insert(0) += 1;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn moved_references_2(&mut self, old_object_id_range_start: &[ObjectID], new_object_id_range_start: &[ObjectID], object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
-    {
-        info!("Collecting moved references...");
-
-        for object_id in new_object_id_range_start {
-            // TODO: Only add zouz that were not gen 2 ?
-            let info = self.profiler_info();
-            let gen = info.get_object_generation(*object_id).unwrap();
-
-            if gen.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_1 {
-                *self.surviving_references.entry(*object_id).or_insert(0) += 1;
-            }
-        }
-
-        Ok(())
-    }
-}
-
 /* // Does this callback even works?
 impl CorProfilerCallback5 for GCSurvivorsProfiler
 {
@@ -352,6 +297,7 @@ impl CorProfilerCallback5 for GCSurvivorsProfiler
 }
 */
 
+impl CorProfilerCallback4 for GCSurvivorsProfiler {}
 impl CorProfilerCallback5 for GCSurvivorsProfiler {}
 impl CorProfilerCallback6 for GCSurvivorsProfiler {}
 impl CorProfilerCallback7 for GCSurvivorsProfiler {}
