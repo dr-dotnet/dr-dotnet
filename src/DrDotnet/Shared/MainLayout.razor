@@ -5,8 +5,10 @@
 <div class="page">
     <div class="main">
         <div class="top-row px-4">
-            Dr.Dotnet
-            <a href="https://github.com/ogxd/dr-dotnet" target="_blank">See on Github</a>
+            <b style="flex-grow: 1;">Dr.Dotnet</b>
+            <MatButton OnClick="@OpenDialog" Icon="receipt" Style="">Logs</MatButton>
+            <MatButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MatButton>
+            
         </div>
 
         <div class="content px-4">
@@ -16,7 +18,6 @@
     </div>
 </div>
 
-<MatButton OnClick="@OpenDialog" Icon="receipt" Style="position: absolute; right: 0; bottom: 0;">See Logs</MatButton>
 <MatDialog @bind-IsOpen="@dialogIsOpen">
     <MatDialogTitle>Logs</MatDialogTitle>
     <MatDialogContent>

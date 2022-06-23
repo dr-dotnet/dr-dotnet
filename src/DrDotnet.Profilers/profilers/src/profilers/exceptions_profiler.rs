@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use crate::report::*;
 use crate::profilers::*;
 
+#[derive(Default)]
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
@@ -18,32 +19,12 @@ impl Profiler for ExceptionsProfiler {
             profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap(),
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
-            isReleased: true,
+            is_released: true,
         }
     }
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
-    }
-}
-
-impl Clone for ExceptionsProfiler {
-    fn clone(&self) -> Self { 
-        ExceptionsProfiler {
-            profiler_info: self.profiler_info.clone(),
-            session_id: self.session_id.clone(),
-            exceptions: DashMap::new()
-        }
-    }
-}
-
-impl ClrProfiler for ExceptionsProfiler {
-    fn new() -> ExceptionsProfiler {
-        ExceptionsProfiler {
-            profiler_info: None,
-            session_id: Uuid::default(),
-            exceptions: DashMap::new()
-        }
     }
 }
 

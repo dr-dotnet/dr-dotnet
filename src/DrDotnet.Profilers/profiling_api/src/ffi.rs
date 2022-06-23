@@ -269,7 +269,7 @@ pub enum COR_PRF_STATIC_TYPE {
     COR_PRF_FIELD_RVA_STATIC = 8,
 }
 #[repr(C)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum COR_PRF_GC_GENERATION {
     COR_PRF_GC_GEN_0 = 0,
     COR_PRF_GC_GEN_1 = 1,

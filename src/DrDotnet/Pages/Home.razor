@@ -3,9 +3,11 @@
 @inject ISessionDiscovery _sessionDiscovery;
 @inject NavigationManager _navigationManager
 
+<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"></MatButton>
+
 <h3 class="mat-h3">Recent Sessions</h3>
 
-<MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+<MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" PageSize="20" ShowPaging="true" SelectionChanged="@OnSelectionChanged">
     <MatTableHeader>
         <th>Process</th>
         <th style="min-width:300px;">Date</th>
@@ -18,8 +20,6 @@
     </MatTableRow>
 </MatTable>
 
-<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"></MatButton>
- 
 @code
 {
     IEnumerable<Session> _sessions;
