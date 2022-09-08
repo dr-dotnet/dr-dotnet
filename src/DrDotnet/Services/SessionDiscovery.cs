@@ -16,7 +16,7 @@ public class SessionDiscovery : ISessionDiscovery
 
     public string RootDir {
         get {
-            var dir = Path.Combine(/*_env.ContentRootPath*/ "C:\\", "dr-dotnet");
+            var dir = Path.Combine(Path.GetTempPath(), "dr-dotnet");
             Directory.CreateDirectory(dir);
             return dir;
         }
