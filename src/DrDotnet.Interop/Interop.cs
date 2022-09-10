@@ -23,7 +23,7 @@ namespace DrDotnet.Interop
 { 
     public static class NativeProfilersInterface
     { 
-        public const string LIBRARY_NAME = "profilers.dll";
+        public const string LIBRARY_NAME = "profilers";
 
         private readonly struct Arr<T>
         { 

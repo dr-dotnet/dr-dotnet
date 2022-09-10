@@ -13,11 +13,23 @@ public class Profiler
 
     public string Description { get; set; }
 
+    private string ProfilerLibraryName => Environment.OSVersion.Platform switch
+    {
+        PlatformID.Win32NT or
+        PlatformID.Win32S or
+        PlatformID.Win32Windows or
+        PlatformID.WinCE => "profilers.dll",
+        PlatformID.Unix => "libprofilers.so",
+        PlatformID.MacOSX => "libprofilers.so",
+        PlatformID.Other => throw new NotImplementedException(),
+        PlatformID.Xbox => throw new NotImplementedException(),
+    };
+
     public Guid StartProfilingSession(int processId, ILogger logger)
     {
         string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
         string strWorkPath = Path.GetDirectoryName(strExeFilePath);
-        string profilerDll = Path.Combine(strWorkPath, "profilers.dll");
+        string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
 
         var sessionId = Guid.NewGuid();
 
