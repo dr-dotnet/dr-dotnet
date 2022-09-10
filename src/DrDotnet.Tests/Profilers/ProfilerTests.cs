@@ -2,7 +2,7 @@
 using System;
 using System.Linq;
 
-namespace DrDotnet.Tests;
+namespace DrDotnet.Tests.Profilers;
 
 public abstract class ProfilerTests
 {
