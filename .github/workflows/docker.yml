@@ -1,0 +1,35 @@
+name: docker
+
+jobs:
+  check:
+    name: Docker
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['6.0']
+        
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+
+      - name: Install Dotnet SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+          
+      - name: Install dependencies
+        run: dotnet restore ./src/DrDotnet.sln
+
+      - name: Publish
+        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
+
+      - name: List
+        run: ls -R
+
+      - name: Docker Build
+        working-directory: pub
+        run: docker build -t drdotnet-web .
