@@ -48,12 +48,12 @@
   </ItemGroup>
 
   <!--Build native profilers as a Pre Build event-->
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)DrDotnet.Profilers/Cargo.toml" --target-dir="$(SolutionDir)../bin"</PreBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <PreBuildEvent>cargo build --release --manifest-path="$(SolutionDir)DrDotnet.Profilers/Cargo.toml" --target-dir="$(SolutionDir)../bin"</PreBuildEvent>
-  </PropertyGroup>
+  <Target Condition="'$(Configuration)'=='Debug'" Name="PostBuild" AfterTargets="PreBuildEvent">
+    <Exec Command="cargo build --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+  </Target>
+  <Target Condition="'$(Configuration)'=='Release'" Name="PostBuild" AfterTargets="PreBuildEvent">
+    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+  </Target>
 
   <!--Make sure native profilers gets copied to publish directory-->
   <ItemGroup>
