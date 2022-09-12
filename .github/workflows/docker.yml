@@ -32,8 +32,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Publish
-        working-directory: src
-        run: dotnet publish DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
+        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
 
       - name: List
         run: ls -R
