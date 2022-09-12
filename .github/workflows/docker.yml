@@ -1,3 +1,5 @@
+on: []
+
 name: docker
 
 jobs:
