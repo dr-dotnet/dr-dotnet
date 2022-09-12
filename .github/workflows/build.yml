@@ -23,8 +23,9 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
           
-      - name: Install dependencies
-        run: dotnet restore ./src/DrDotnet.sln
+      - name: Install Dependencies
+        working-directory: src
+        run: dotnet restore
 
       - name: Build
         working-directory: src

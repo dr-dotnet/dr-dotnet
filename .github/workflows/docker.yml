@@ -23,11 +23,17 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
           
-      - name: Install dependencies
-        run: dotnet restore ./src/DrDotnet.sln
+      - name: Install Dependencies
+        working-directory: src
+        run: dotnet restore
+
+      - name: Build
+        working-directory: src
+        run: dotnet build --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
+        working-directory: src
+        run: dotnet publish DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
 
       - name: List
         run: ls -R
