@@ -49,8 +49,13 @@ public class ProcessDiscovery : IProcessDiscovery
                         }
                     }
                 }
-                catch { }
+                catch(Exception e)
+                {
+                    _logger.Log("Error listing dotnet processes: " + e.ToString());
+                }
             }
+            
+            _logger.Log("Finished listing dotnet processes.");
         });
 
         return _processes = dotnetProcesses;
