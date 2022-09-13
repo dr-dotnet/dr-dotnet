@@ -44,4 +44,4 @@ jobs:
         run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
 
       - name: Docker Push
-        run: docker push -t ghcr.io/ogxd/drdotnet-web:latest
+        run: docker push ghcr.io/ogxd/drdotnet-web:latest
