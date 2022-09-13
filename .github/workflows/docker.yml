@@ -37,8 +37,11 @@ jobs:
       - name: Copy Native Profilers
         run: cp bin/release/libprofilers.so pub/
 
-      - name: List
-        run: ls -R
-
       - name: Docker Build
-        run: docker build -t drdotnet-web .
+        run: docker build -t ghcr.io/ogxd/drdotnet-web:latest .
+
+      - name: Docker Login
+        run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+
+      - name: Docker Push
+        run: docker push -t ghcr.io/ogxd/drdotnet-web:latest
