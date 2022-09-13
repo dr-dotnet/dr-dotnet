@@ -1,4 +1,4 @@
   FROM mcr.microsoft.com/dotnet/aspnet:6.0
-  COPY . App/
+  COPY pub App/
   WORKDIR /App
   ENTRYPOINT ["dotnet", "DrDotnet.Web.dll"]
