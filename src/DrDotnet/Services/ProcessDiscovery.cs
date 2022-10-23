@@ -34,6 +34,8 @@ public class ProcessDiscovery : IProcessDiscovery
             {
                 progressCallback(1f * i / processes.Length);
 
+                _logger.Log($"Process {processes[i].Id} with name {processes[i].ProcessName}");
+                
                 if (processes[i].ProcessName.StartsWith("DrDotnet"))
                     continue;
                 
