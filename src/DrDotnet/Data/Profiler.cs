@@ -1,6 +1,7 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DrDotnet;
@@ -15,14 +16,11 @@ public class Profiler
 
     private string ProfilerLibraryName => Environment.OSVersion.Platform switch
     {
-        PlatformID.Win32NT or
-        PlatformID.Win32S or
-        PlatformID.Win32Windows or
-        PlatformID.WinCE => "profilers.dll",
-        PlatformID.Unix => "libprofilers.so",
-        PlatformID.MacOSX => "libprofilers.so",
-        PlatformID.Other => throw new NotImplementedException(),
-        PlatformID.Xbox => throw new NotImplementedException(),
+        PlatformID.Win32NT => "profilers.dll",
+        // https://github.com/dotnet/runtime/issues/21660
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => "libprofilers.dylib",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => "libprofilers.so",
+        _ => throw new NotImplementedException()
     };
 
     public Guid StartProfilingSession(int processId, ILogger logger)
@@ -30,7 +28,6 @@ public class Profiler
         string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
         string strWorkPath = Path.GetDirectoryName(strExeFilePath);
         string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
-
         var sessionId = Guid.NewGuid();
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
