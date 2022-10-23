@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-    <PlatformTarget>x64</PlatformTarget>
     <UseRazorSourceGenerator>false</UseRazorSourceGenerator>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -48,12 +47,15 @@
   </ItemGroup>
 
   <!--Build native profilers as a Pre Build event-->
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <PreBuildEvent>cargo build --manifest-path="$(SolutionDir)DrDotnet.Profilers/Cargo.toml" --target-dir="$(SolutionDir)../bin"</PreBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <PreBuildEvent>cargo build --release --manifest-path="$(SolutionDir)DrDotnet.Profilers/Cargo.toml" --target-dir="$(SolutionDir)../bin"</PreBuildEvent>
-  </PropertyGroup>
+  <Target Name="PreBuildPrintVars" AfterTargets="PreBuildEvent">
+    <Exec Command="echo Configuration: $(Configuration)&#xD;&#xA;echo SolutionDir: $(SolutionDir)&#xD;&#xA;echo ProjectDir: $(ProjectDir)" />
+  </Target>
+  <Target Condition="'$(Configuration)'=='Debug'" Name="BuildProfilersDebug" AfterTargets="PreBuildPrintVars">
+    <Exec Command="cargo build --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+  </Target>
+  <Target Condition="'$(Configuration)'=='Release'" Name="BuildProfilersRelease" AfterTargets="BuildProfilersDebug">
+    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+  </Target>
 
   <!--Make sure native profilers gets copied to publish directory-->
   <ItemGroup>

@@ -22,7 +22,15 @@ public class ProfilersDiscoveryTests
     public void Profilers_Libary_Is_Present_Linux()
     {
         Console.WriteLine(Directory.GetCurrentDirectory());
-        FileAssert.Exists("libprofilers.so");
+        FileAssert.Exists("libprofilers.so", Directory.GetCurrentDirectory());
+    }
+    
+    [Test]
+    [Platform("MacOsX")]
+    public void Profilers_Libary_Is_Present_MacOS()
+    {
+        Console.WriteLine(Directory.GetCurrentDirectory());
+        FileAssert.Exists("libprofilers.dylib", Directory.GetCurrentDirectory());
     }
 
     [Test]
@@ -42,9 +50,7 @@ public class ProfilersDiscoveryTests
     public void Profilers_Are_Discovered()
     {
         ProfilersDiscovery profilersDiscovery = new (Mock.Of<ILogger>());
-
         List<Profiler> profilers = profilersDiscovery.GetProfilers(true);
-
         Assert.IsNotEmpty(profilers);
     }
 }
