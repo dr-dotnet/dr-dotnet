@@ -45,7 +45,8 @@ public class ProcessDiscovery : IProcessDiscovery
                     {
                         _logger.Log($"  - [Module] Name: {pm.ModuleName}, File: {pm.FileName}");
                         
-                        if (pm.ModuleName.StartsWith("coreclr", StringComparison.InvariantCultureIgnoreCase))
+                        if (pm.ModuleName.StartsWith("coreclr", StringComparison.InvariantCultureIgnoreCase)
+                         || pm.ModuleName.StartsWith("libcoreclr", StringComparison.InvariantCultureIgnoreCase))
                         {
                             _logger.Log($"Dotnet process found: {processes[i].ProcessName}");
                             dotnetProcesses.Add(processes[i]);
