@@ -29,6 +29,7 @@ public class ProcessDiscovery : IProcessDiscovery
         {
             await Task.Yield();
 
+            var currentProcess = Process.GetCurrentProcess();
             var processes = Process.GetProcesses();
             for (int i = 0; i < processes.Length; i++)
             {
@@ -36,7 +37,7 @@ public class ProcessDiscovery : IProcessDiscovery
 
                 _logger.Log($"- [Process] Id: {processes[i].Id}, Name: {processes[i].ProcessName}");
                 
-                if (processes[i].ProcessName.StartsWith("DrDotnet"))
+                if (processes[i].Id == currentProcess.Id)
                     continue;
                 
                 try
