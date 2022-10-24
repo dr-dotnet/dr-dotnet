@@ -34,7 +34,7 @@ public class ProcessDiscovery : IProcessDiscovery
             {
                 progressCallback(1f * i / processes.Length);
 
-                _logger.Log($"Process {processes[i].Id} with name {processes[i].ProcessName}");
+                _logger.Log($"- [Process] Id: {processes[i].Id}, Name: {processes[i].ProcessName}");
                 
                 if (processes[i].ProcessName.StartsWith("DrDotnet"))
                     continue;
@@ -43,6 +43,8 @@ public class ProcessDiscovery : IProcessDiscovery
                 {
                     foreach (ProcessModule pm in processes[i].Modules)
                     {
+                        _logger.Log($"  - [Module] Name: {pm.ModuleName}, File: {pm.FileName}");
+                        
                         if (pm.ModuleName.StartsWith("coreclr", StringComparison.InvariantCultureIgnoreCase))
                         {
                             _logger.Log($"Dotnet process found: {processes[i].ProcessName}");
