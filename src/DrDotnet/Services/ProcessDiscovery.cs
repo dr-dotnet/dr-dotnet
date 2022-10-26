@@ -16,13 +16,8 @@ public class ProcessDiscovery : IProcessDiscovery
         _logger = logger;
     }
 
-    private List<Process> _processes;
-
     public async ValueTask<List<Process>> GetDotnetProcessesAsync(Action<float> progressCallback)
     {
-        if (_processes != null)
-            return _processes;
-
         _logger.Log("Listing dotnet processes...");
 
         var dotnetProcesses = new List<Process>();
@@ -58,6 +53,6 @@ public class ProcessDiscovery : IProcessDiscovery
             _logger.Log("Finished listing dotnet processes.");
         });
 
-        return _processes = dotnetProcesses;
+        return dotnetProcesses;
     }
 }
