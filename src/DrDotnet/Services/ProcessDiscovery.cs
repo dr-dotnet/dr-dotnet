@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.Diagnostics.NETCore.Client;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DrDotnet;
@@ -30,30 +32,22 @@ public class ProcessDiscovery : IProcessDiscovery
             await Task.Yield();
 
             var currentProcess = Process.GetCurrentProcess();
-            var processes = Process.GetProcesses();
+            var processes = DiagnosticsClient.GetPublishedProcesses().ToArray();
+
             for (int i = 0; i < processes.Length; i++)
             {
                 progressCallback(1f * i / processes.Length);
-
-                _logger.Log($"- [Process] Id: {processes[i].Id}, Name: {processes[i].ProcessName}");
-                
-                if (processes[i].Id == currentProcess.Id)
-                    continue;
                 
                 try
                 {
-                    foreach (ProcessModule pm in processes[i].Modules)
-                    {
-                        _logger.Log($"  - [Module] Name: {pm.ModuleName}, File: {pm.FileName}");
-                        
-                        if (pm.ModuleName.StartsWith("coreclr", StringComparison.InvariantCultureIgnoreCase)
-                         || pm.ModuleName.StartsWith("libcoreclr", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            _logger.Log($"Dotnet process found: {processes[i].ProcessName}");
-                            dotnetProcesses.Add(processes[i]);
-                            break;
-                        }
-                    }
+                    Process process = Process.GetProcessById(processes[i]);
+
+                    _logger.Log($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
+
+                    if (processes[i] == currentProcess.Id)
+                        continue;
+
+                    dotnetProcesses.Add(process);
                 }
                 catch(Exception e)
                 {
