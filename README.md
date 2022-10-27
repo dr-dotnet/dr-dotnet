@@ -1,109 +1,78 @@
 # Dr-Dotnet 🩺
 
-🚧 Very WIP 😉
+![build](https://github.com/ogxd/dr-dotnet/actions/workflows/build.yml/badge.svg)
+![docker](https://github.com/ogxd/dr-dotnet/actions/workflows/docker.yml/badge.svg)
 
-The goal is to create a profiler that would ease the tracking of common issues in .NET applications such as deadlocks, cpu hotpaths, zombie threads, async hotpaths (stuck tasks), memory leaks.  
-It is possible to identify some of these issues using today's existing tools, but with some drawbacks:
+| WARNING: This project is still very WIP and may not *yet* fulfil general profiling needs! |
+| --- |
 
-- Often you have to explicitely look for such issue.
-- Such tools rarely have a good user experience. Appart from dotMemory, I find UX considerations to be often left appart.
-- In many cases the tracing/profiling has a noticable impact on the runtime and add bias to the profiling results.
+## What is it
 
-The .NET Profiling API is accessible via COM interop (cross-platform thanks to the Platform Adaptation Layer) and allows little overheap profiling compared to other methods while giving a wide range of possibilities for profiling purpose. Perfview uses this API (on top of ETW) however it does it from managed code calling mocked COM objects written in C#. For the project, the idea would be to do it in C++ or even better in Rust (ideally Rust + including CoreCLR headers in kind of a hybrid fashion, if that is possible). Then the offline tooling (UI) can be in C# or any other "productive" language.
+Dr-Dotnet is a set profiling tool that can be used locally or remotely to track common issues in .NET applications such as deadlocks, cpu hotpaths, zombie threads, async hotpaths (stuck tasks), memory leaks...
 
-## What is it?
+## Features
 
-You can view DrDotnet like a "framework for creating and using simple but problem-focused dotnet profilers". It consists in two parts:
-- A set of specific profilers based on the native dotnet CLR profiling interfaces (written in Rustlang)
-- A profiling session system and a user interface that can be used remotely or locally (written in Dotnet Blazor)
-DrDotnet can be installed or shipped in a sidecar container on a remote host (Windows or Linux) and used remotely.
+- **Cross platform**<br/>Dr-Dotnet can be used to profile dotnet programs running Windows, Linux or MacOS, on X86 or ARM cpus.
+- **Evolutive**<br/>Dr-Dotnet isn't really "a profiler" but rather a framework for profiling. It is shipped with a suite of builtin profilers that will grow and improve hopefully thanks to the community contributions.
+- **Problem focused**<br/>The spirit of the profilers shipped with Dr-Dotnet is to target a specific issue. In other words, it won't take a full dump or a deeply nested trace and let you browse it in an attempt to find a problem among the gigabytes of data generated. Despite being the way to go in theory, in real world scenarios where applications can do a lot more than hello world or give the weather, doing so is like searching for a needle in a haystack.     Instead, the approach is to propose a few profilers whose each individual function is to look for a specific problem, such as a memory leak, a deadlock, an anormal number of exceptions, a CPU hotpath, a zombie thread, ... The output of each of these analyses can in general be summarize in a couple of line or in a table, which is perfect for an human.
 
-## What it is mean to be in the future?
+## How to use
 
-- Cover most dotnet performance issues, especially those that are difficult to investigate at the moment because of a lack of (compatible) tooling or user-friendliness
-- It shall remain a relatively simple tool to use, as opposed to walking or a multi-gigabytes memory dump in WinDBG or trace in PerfView for instance, because it's not meant to be a replacement.
+There are currently 2 recommended ways to use Dr-Dotnet, depending on your usecase:
 
-## Motivations
+### Dr-Dotnet Desktop
 
-> Unfortunately very few perf tools highlight the generational effect even though that's a cornerstone of the .NET GC.
+This is what you want to go for if you want to profile a dotnet program locally.    
+⚠ At the moment, Dr-Dotnet Desktop is based on WPF and thus it is Windows only, however, as it is just running a browser to display the web app version, it shouldn't be too hard to do this in a cross-platform way with something like Avalonia in a near future.
 
-## How to build
+### Dr-Dotnet as a Docker Sidecar
 
-### Prerequisites
+There is currently a CI step to build a docker image available at `ghcr.io/ogxd/drdotnet:latest`.    
+This image can run on a host as a docker container, next to the container you want to profile.    
+The container you want to profile must be running a dotnet program (of course) and be ran with a few flags to allow Dr-Dotnet to attach/detach later, if needs be.    
+<pre>docker run --rm -it --name **YOUR_APP_NAME** -v /tmp:/tmp --ipc="shareable" **YOUR_IMAGE**</pre>
+Then, you are ready to start Dr-Dotnet:
+<pre>docker run --rm -it --name drdotnet -v /tmp:/tmp --ipc="container:**YOUR_APP_NAME**" --pid="container:myapp" -p 8000:92 ghcr.io/ogxd/drdotnet:latest</pre>
+You can run Dr-Dotnet anytime you want, or leave it running all the time, it won't do anything if you don't use it. Make sure the port is private to your network however for security reasons, you don't want your profiler to be open to the public ;)
+
+## How to contribute
+
+At the moment, the project is still fairly new. Hence, there is *yet* no proper versionning, roadmap nor strict contribution guidelines. Any contribution is welcome, as long as it remains in the spirit of the project. In short, the idea is to:
+- Cover the most common issues (find deadlocks, detect memoryleaks, list CPU hotpaths, ...)
+- Be relatively easy to use (the output should be as concise as possible, this is not easy)
+- And have as little overhead as possible (if the program is altered too much, you may have a biaised analysis)
+
+### How it works
+
+The .NET Profiling API is accessible via COM interop (cross-platform thanks to the Platform Adaptation Layer) and allows little overheap profiling compared to other methods while giving a wide range of possibilities for profiling purpose. Perfview uses this API (on top of ETW) however it does it from managed code calling mocked COM objects written in C#.     
+In this project, we're using Rust for coding the profilers for the safety and the modernity of the language. The CLR profiling API rust binding are originally taken from [this project from Camden Reslink](https://github.com/camdenreslink/clr-profiler) who did a really great job.    
+The UI and profilers management are coded in C#, for the productivity the language offers and because it is convenient for interperability with Rust. Bindings between C# and Rust are autogenerated using [FFIDJI](https://github.com/ogxd/ffidji) (but they are fairly trivial for now, to be honest this is probably overkill).
+
+### How to build
+
+#### Prerequisites
+
 - .NET SDK 6.0
 - Rust toolchain
 - I guess that's it :)
 
-### Building
-- Compile either DrDotnet.Web or DrDotnet.Desktop, depending on how you plan to use DrDotnet.
-The DrDotnet.csproj has a prebuild step that will try to build the Rust profilers. If it fails, you'll find the Rust compiler output in the Output window for instance if you are using Visual Studio.
+#### Building
 
-## First Iterations
+Build either `DrDotnet.Web.csproj`, `DrDotnet.Desktop.csproj`, or the solution `DrDotnet.sln`, depending on how you plan to use Dr-Dotnet.
+The `DrDotnet.csproj` project has a prebuild step that will try to build the Rust profilers. If it fails, you'll find the Rust compiler output in the Output window for instance if you are using Visual Studio. You usually don't need to use cargo commands yourself directly at this first stage.
 
-### Todo
+#### Creating new profilers
 
-- [x] Manage to initialize at start
-- [x] Manage to initialize on attach
-- [x] Write profiler POC in rust
-- [x] Add a functional build flow (profiler + attacher)
-- [x] Figure out what I really want feature-wise
-  - Should I even consider attach mode? (because of its limitations)
-  - ~~Should I even consider start mode? (because it is too invasive and implies process restart, which is bad is issue is live)~~
-- [ ] ~~Implement IPC through Event Pipe~~
-- [x] Add simple UI client for attaching
-- [ ] ~~Add simple UI client for setting up on-start profiler~~
-- [x] Create web app profiler UI that can work in headless scenarios (eg. linux servers)
-- [ ] Have web app profiler work when used as a sidecar docker container
-- [x] Use **ffidji** to have an interface to share profiler specifications between profilers lib and UI
-  - For each profiler: Name, Guid, Description, Duration, Parameters (blob?)
-- [x] Find out analysis format
-  - What kind of data should it hold? Summary of analysis or should it allow some kind of browsing?
-  - json? yaml? custom?
-- [x] Implement wrapper around CLR types API
-- [ ] Add utilitary function to get stack traces (possible to get line n° ?)
-- [ ] Finish the exception profiler (add stack traces, ordering by importance, duration, ...)
-- [ ] Choose next profiler
-  - Memory leak detector with suriviving references?
-  - High allocations (ObjectsAllocatedByClass)?
+The `DrDotnet.csproj` links to the Rust part, however, if you really get into writing Rust for this project, it's probably better to edit the Rust part from another IDE than Visual Studio or Rider (I use VS Code with Rust extensions).   
+The Rust code base is divider in two projects:
+- `profilers` is where all profilers are
+- `profiling_api` is where is CLR profiling API bindings are (it wraps the bizarre C syntax and brings some safety and convenience to it)
 
-### Possibilities
+To create a new profiler, checkout `src/DrDotnet.Profilers/profilers/src/profilers/` and checkout any profiler. You can basically duplicate one and change its UUID (make it unique). Then, head to `src/DrDotnet.Profilers/profilers/src/lib.rs/` and add the new profiler in the `register!` macro. Then you're good to go, you can now start using the CLR Profiling API. Checkout [the official documentation to get started](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/profiling-interfaces). I also recommend checking our [Christophe Nasarre blog posts](https://chnasarre.medium.com/start-a-journey-into-the-net-profiling-apis-40c76e2e36cc) for a more "friendly" introduction to this API ;)    
+Note: You'll need to set `is_released` in your profiler to true if you want to be able to view your profiler in the C# UI when built in release mode.    
+Another note: DrDotnet attaches to an already running process, meaning that not all callbacks are usable, only those who can be enable after attaching. See the flags [here](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration) and [here](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-high-monitor-enumeration).
 
-- On object allocated with [ObjectAllocated](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectallocated-method) `COR_PRF_MONITOR_OBJECT_ALLOCATED` ⚠️
-- Object reference is moved during garbage collection with [MovedReferences](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-movedreferences-method) `COR_PRF_MONITOR_GC`
-- Build reference tree after a GC run with [ObjectReferences](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectreferences-method) `COR_PRF_MONITOR_GC`
-- Object instance allocation per class with [ObjectsAllocatedByClass](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-objectsallocatedbyclass-method) `COR_PRF_MONITOR_GC`
-- Unmanaged code called from managed code `COR_PRF_MONITOR_CODE_TRANSITIONS` ⚠️
-- Get surviving references after garbage collection `COR_PRF_MONITOR_GC` [SurvivingReferences2](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method)
-- On runtime suspended / resumed `COR_PRF_MONITOR_SUSPENDS` [RuntimeSuspendStarted](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback-runtimesuspendstarted-method)
-- On garbage collection started / finished `COR_PRF_MONITOR_GC`
-- On thread created `COR_PRF_MONITOR_THREADS`
-- On exception thrown `COR_PRF_MONITOR_EXCEPTIONS`
-- On method enter / leave with [SetEnterLeaveFunctionHooks3WithInfo](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-setenterleavefunctionhooks3withinfo-method?WT.mc_id=DT-MVP-5003325) `COR_PRF_MONITOR_ENTERLEAVE` ⚠️
-- Write to event pipe
-- Request stacktrace (per thread) `COR_PRF_ENABLE_STACK_SNAPSHOT`
-- Annnnd a lot more :p... `COR_PRF_MONITOR_GC`
-
-#### Profiler is initialized on application start
-
-Any flag from [COR_PRF_MONITOR enumeration](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration).
-
-#### Profiler is initialized on attach
-
-Only possible on a subset of [COR_PRF_MONITOR enumeration](https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration):
-
-- `COR_PRF_MONITOR_THREADS`
-- `COR_PRF_MONITOR_MODULE_LOADS`
-- `COR_PRF_MONITOR_ASSEMBLY_LOADS`
-- `COR_PRF_MONITOR_APPDOMAIN_LOADS`
-- `COR_PRF_ENABLE_STACK_SNAPSHOT`
-- `COR_PRF_MONITOR_GC`
-- `COR_PRF_MONITOR_SUSPENDS`
-- `COR_PRF_MONITOR_CLASS_LOADS`
-- `COR_PRF_MONITOR_EXCEPTIONS`
-- `COR_PRF_MONITOR_JIT_COMPILATION`
-- `COR_PRF_ENABLE_REJIT`
-
-## Useful Links
+### Useful Links
 
 - [Pavel Yosifovich — Writing a .NET Core cross platform profiler in an hour](https://www.youtube.com/watch?v=TqS4OEWn6hQ)
 - [Pavel Yosifovich — DotNext Moscou 2019 Source Code](https://github.com/zodiacon/DotNextMoscow2019)
