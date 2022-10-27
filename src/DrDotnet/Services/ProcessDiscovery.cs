@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.Diagnostics.NETCore.Client;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DrDotnet;
@@ -14,13 +16,8 @@ public class ProcessDiscovery : IProcessDiscovery
         _logger = logger;
     }
 
-    private List<Process> _processes;
-
     public async ValueTask<List<Process>> GetDotnetProcessesAsync(Action<float> progressCallback)
     {
-        if (_processes != null)
-            return _processes;
-
         _logger.Log("Listing dotnet processes...");
 
         var dotnetProcesses = new List<Process>();
@@ -29,25 +26,23 @@ public class ProcessDiscovery : IProcessDiscovery
         {
             await Task.Yield();
 
-            var processes = Process.GetProcesses();
+            var currentProcess = Process.GetCurrentProcess();
+            var processes = DiagnosticsClient.GetPublishedProcesses().ToArray();
+
             for (int i = 0; i < processes.Length; i++)
             {
                 progressCallback(1f * i / processes.Length);
-
-                if (processes[i].ProcessName.StartsWith("DrDotnet"))
-                    continue;
                 
                 try
                 {
-                    foreach (ProcessModule pm in processes[i].Modules)
-                    {
-                        if (pm.ModuleName.StartsWith("coreclr", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            _logger.Log($"Dotnet process found: {processes[i].ProcessName}");
-                            dotnetProcesses.Add(processes[i]);
-                            break;
-                        }
-                    }
+                    Process process = Process.GetProcessById(processes[i]);
+
+                    _logger.Log($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
+
+                    if (processes[i] == currentProcess.Id)
+                        continue;
+
+                    dotnetProcesses.Add(process);
                 }
                 catch(Exception e)
                 {
@@ -58,6 +53,6 @@ public class ProcessDiscovery : IProcessDiscovery
             _logger.Log("Finished listing dotnet processes.");
         });
 
-        return _processes = dotnetProcesses;
+        return dotnetProcesses;
     }
 }
