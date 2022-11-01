@@ -13,7 +13,7 @@ pub struct RuntimePause {
     end: Instant,
     reason: ffi::COR_PRF_SUSPEND_REASON,
     gc_reason: Option<ffi::COR_PRF_GC_REASON>,
-    gc_gen: Option<u8>
+    gc_gen: Option<i8>
 }
 
 pub struct RuntimePauseProfiler {
@@ -116,19 +116,10 @@ impl CorProfilerCallback2 for RuntimePauseProfiler {
         
         if self.current_pause.is_some() {
 
-            let mut max_gen = 0;
-            let mut gen_index: u8 = 0;
-            for gen in generation_collected {
-                if *gen == 1 {
-                    max_gen = gen_index;
-                }
-                gen_index += 1;
-            }
-
             let mut current_pause = self.current_pause.clone().unwrap();
 
             current_pause.gc_reason = Some(reason);
-            current_pause.gc_gen = Some(max_gen);
+            current_pause.gc_gen = Some(extensions::get_gc_gen(&generation_collected));
 
             self.current_pause = Some(current_pause);
         }

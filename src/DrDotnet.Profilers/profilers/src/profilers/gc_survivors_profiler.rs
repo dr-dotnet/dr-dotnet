@@ -1,7 +1,8 @@
 // Workflow:
-// On GC start, clear surviving objects
-// Append surviving objects  https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-// On GC end, if there are surviving objects in map (not empty), 
+// - On GC start, clear everything
+// - Collect all GC roots
+// - On GC end, for each GC root collected, iterate over objects it references (recursively). That gives use a tree of survivors gor the last GC
+// - Stop profiling and make a report
 
 use std::collections::{HashMap, HashSet};
 use profiling_api::*;
@@ -165,14 +166,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         self.serialized_survivor_branches.clear();
         self.root_references.clear();
 
-        let mut c = -1;
-        for gen in generation_collected {
-            if *gen == 1 {
-                c += 1;
-            }
-        }
-
-        info!("GC started on gen {} for reason {:?}", c, reason);
+        info!("GC started on gen {} for reason {:?}", extensions::get_gc_gen(&generation_collected), reason);
 
         Ok(())
     }

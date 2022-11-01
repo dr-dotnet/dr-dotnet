@@ -35,3 +35,13 @@ pub unsafe fn get_method_name(info: &ProfilerInfo, method_id: usize) -> String {
         }
     }
 }
+
+pub fn get_gc_gen(generation_collected: &[ffi::BOOL]) -> i8 {
+    let mut max_gen: i8 = -1;
+    for gen in generation_collected {
+        if *gen == 1 {
+            max_gen += 1;
+        }
+    }
+    return max_gen;
+}
