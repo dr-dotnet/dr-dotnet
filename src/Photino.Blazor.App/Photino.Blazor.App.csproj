@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,9 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
+
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>..\..\bin\$(Configuration.toLower())\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DrDotnet\DrDotnet.csproj" />
     <ProjectReference Include="..\Photino.Blazor.Sample\Photino.Blazor.Sample.csproj" />
   </ItemGroup>
 

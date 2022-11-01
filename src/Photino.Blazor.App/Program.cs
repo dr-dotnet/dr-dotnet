@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Net.Http;
+using DrDotnet;
+using MatBlazor;
 using Microsoft.Extensions.DependencyInjection;
 using Photino.Blazor;
 
@@ -11,11 +13,20 @@ namespace Photino.Blazor.Sample
         static void Main(string[] args) {
             var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
-            appBuilder.Services
-                .AddLogging();
+            appBuilder.Services.AddLogging();
+
+            //appBuilder.Services.AddRazorPages();
+            //appBuilder.Services.AddServerSideBlazor();
+            appBuilder.Services.AddMatBlazor();
+
+            appBuilder.Services.AddSingleton<HttpClient>();
+            appBuilder.Services.AddSingleton<ILogger, Logger>();
+            appBuilder.Services.AddSingleton<ISessionDiscovery, SessionDiscovery>();
+            appBuilder.Services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
+            appBuilder.Services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
 
             // register root component and selector
-            appBuilder.RootComponents.Add<App>("app");
+            appBuilder.RootComponents.Add<DrDotnet.App>("app");
 
             var app = appBuilder.Build();
 

@@ -5,7 +5,7 @@
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <UseRazorSourceGenerator>false</UseRazorSourceGenerator>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>disable</Nullable>
     <!--Simplify output folder to be common with native profilers output folder-->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
