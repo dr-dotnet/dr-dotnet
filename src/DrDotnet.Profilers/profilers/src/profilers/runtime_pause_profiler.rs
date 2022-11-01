@@ -1,6 +1,6 @@
 use profiling_api::*;
 use uuid::Uuid;
-use std::borrow::BorrowMut;
+use chrono::{DateTime, Utc};
 use std::time::{Instant, Duration};
 
 use crate::report::*;
@@ -8,6 +8,7 @@ use crate::profilers::*;
 
 #[derive(Clone)]
 pub struct RuntimePause {
+    time: DateTime<Utc>,
     start: Instant,
     end: Instant,
     reason: ffi::COR_PRF_SUSPEND_REASON,
@@ -88,6 +89,7 @@ impl RuntimePauseProfiler {
 impl CorProfilerCallback for RuntimePauseProfiler {
     fn runtime_suspend_started(&mut self, suspend_reason: ffi::COR_PRF_SUSPEND_REASON) -> Result<(), ffi::HRESULT> {
         self.current_pause = Some(RuntimePause {
+            time: Utc::now(),
             start: Instant::now(),
             end: Instant::now(),
             reason: suspend_reason.clone(),
@@ -232,12 +234,16 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
         
         report.write_line(format!("## All Pauses"));
         report.new_line();
-        report.write_line(format!("Iteration | Reason | Duration (ms)"));
-        report.write_line(format!("-: | -: | -:"));
+        report.write_line(format!("Iteration | Time (UTC) | Pause Reason | Duration (ms)"));
+        report.write_line(format!("-: | -: | -: | -:"));
         
         let mut i = 1;
         for pause in self.gc_pauses.iter() {
-            report.write_line(format!("{} | {:?} | {:?} | {:?} | {}", i, pause.reason, pause.gc_reason, pause.gc_gen, (pause.end - pause.start).as_millis()));
+            let reason: String = match &pause.gc_reason {
+                Some(gc_reason) => format!("{:?} ({:?} Gen {})", pause.reason, gc_reason, pause.gc_gen.unwrap()),
+                None => format!("{:?}", pause.reason)
+            };
+            report.write_line(format!("{} | {} | {} | {}", i, pause.time, reason, (pause.end - pause.start).as_millis()));
             i += 1;
         }
         
