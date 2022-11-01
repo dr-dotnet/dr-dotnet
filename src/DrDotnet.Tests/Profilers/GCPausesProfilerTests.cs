@@ -36,6 +36,7 @@ public class GCPausesProfilerTests : ProfilerTests
 
         // Intentionally allocates memory
         int i = 0;
+        int collections = 0;
         Node node = new Node();
         ThreadPool.QueueUserWorkItem(async _ =>
         {
@@ -49,6 +50,7 @@ public class GCPausesProfilerTests : ProfilerTests
                 if (i % 1000 == 0)
                 {
                     GC.Collect();
+                    Interlocked.Increment(ref collections);
                 }
             }
         });
