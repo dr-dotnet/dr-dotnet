@@ -8,8 +8,7 @@ namespace Photino.Blazor.Sample
     class Program
     {
         [STAThread]
-        static void Main(string[] args)
-        {
+        static void Main(string[] args) {
             var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
             appBuilder.Services
@@ -25,8 +24,7 @@ namespace Photino.Blazor.Sample
                 .SetIconFile("favicon.ico")
                 .SetTitle("Photino Blazor Sample");
 
-            AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
-            {
+            AppDomain.CurrentDomain.UnhandledException += (sender, error) => {
                 app.MainWindow.OpenAlertWindow("Fatal exception", error.ExceptionObject.ToString());
             };
 

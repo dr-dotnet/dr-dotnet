@@ -16,11 +16,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "DrDotne
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.DesktopMaui", "DrDotnet.DesktopMaui\DrDotnet.DesktopMaui.csproj", "{6591EA18-CA85-41D2-A349-31BE4D977B6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MauiApp1", "MauiApp1\MauiApp1.csproj", "{B5775281-4F5A-4C3E-A502-A9597BF816AE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MauiApp1", "MauiApp1\MauiApp1.csproj", "{B5775281-4F5A-4C3E-A502-A9597BF816AE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MauiLib1", "MauiLib1\MauiLib1.csproj", "{C93D2A88-B6A6-4878-8F2C-2558123A3E22}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MauiLib1", "MauiLib1\MauiLib1.csproj", "{C93D2A88-B6A6-4878-8F2C-2558123A3E22}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Photino.Blazor.Sample", "Photino.Blazor.Sample\Photino.Blazor.Sample.csproj", "{0F42042C-93A9-4267-8154-1DA79603D674}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photino.Blazor.App", "Photino.Blazor.App\Photino.Blazor.App.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -140,6 +142,18 @@ Global
 		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x64.Build.0 = Release|Any CPU
 		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x86.ActiveCfg = Release|Any CPU
 		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x86.Build.0 = Release|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|x64.Build.0 = Debug|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|x86.Build.0 = Debug|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Release|x64.ActiveCfg = Release|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Release|x64.Build.0 = Release|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Release|x86.ActiveCfg = Release|Any CPU
+		{5291DB37-405F-44C6-862F-7898D9D96903}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
