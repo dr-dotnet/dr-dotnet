@@ -13,13 +13,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DrDotnet\DrDotnet.csproj" />
-    <ProjectReference Include="..\Photino.Blazor.Sample\Photino.Blazor.Sample.csproj" />
     <PackageReference Include="Photino.Blazor" Version="2.4.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="wwwroot\index.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="favicon.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

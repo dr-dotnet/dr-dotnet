@@ -20,9 +20,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MauiApp1", "MauiApp1\MauiAp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MauiLib1", "MauiLib1\MauiLib1.csproj", "{C93D2A88-B6A6-4878-8F2C-2558123A3E22}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Photino.Blazor.Sample", "Photino.Blazor.Sample\Photino.Blazor.Sample.csproj", "{0F42042C-93A9-4267-8154-1DA79603D674}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Photino.Blazor.App", "Photino.Blazor.App\Photino.Blazor.App.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photino.Blazor.App", "Photino.Blazor.App\Photino.Blazor.App.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\build.yml = ..\.github\workflows\build.yml
+		..\.github\workflows\docker.yml = ..\.github\workflows\docker.yml
+		..\Dockerfile = ..\Dockerfile
+		..\README.md = ..\README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -130,18 +136,6 @@ Global
 		{C93D2A88-B6A6-4878-8F2C-2558123A3E22}.Release|x64.Build.0 = Release|Any CPU
 		{C93D2A88-B6A6-4878-8F2C-2558123A3E22}.Release|x86.ActiveCfg = Release|Any CPU
 		{C93D2A88-B6A6-4878-8F2C-2558123A3E22}.Release|x86.Build.0 = Release|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Debug|x64.Build.0 = Debug|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Debug|x86.Build.0 = Debug|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x64.ActiveCfg = Release|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x64.Build.0 = Release|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x86.ActiveCfg = Release|Any CPU
-		{0F42042C-93A9-4267-8154-1DA79603D674}.Release|x86.Build.0 = Release|Any CPU
 		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5291DB37-405F-44C6-862F-7898D9D96903}.Debug|x64.ActiveCfg = Debug|Any CPU

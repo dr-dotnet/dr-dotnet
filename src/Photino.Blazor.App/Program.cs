@@ -1,9 +1,6 @@
-﻿using System;
-using System.Net.Http;
-using DrDotnet;
+﻿using DrDotnet;
 using MatBlazor;
 using Microsoft.Extensions.DependencyInjection;
-using Photino.Blazor;
 
 namespace Photino.Blazor.Sample
 {
@@ -26,14 +23,14 @@ namespace Photino.Blazor.Sample
             appBuilder.Services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
 
             // register root component and selector
-            appBuilder.RootComponents.Add<DrDotnet.App>("app");
+            appBuilder.RootComponents.Add<App>("app");
 
             var app = appBuilder.Build();
 
             // customize window
             app.MainWindow
                 .SetIconFile("favicon.ico")
-                .SetTitle("Photino Blazor Sample");
+                .SetTitle("Dr-Dotnet");
 
             AppDomain.CurrentDomain.UnhandledException += (sender, error) => {
                 app.MainWindow.OpenAlertWindow("Fatal exception", error.ExceptionObject.ToString());
