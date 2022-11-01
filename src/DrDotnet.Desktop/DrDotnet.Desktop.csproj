@@ -1,32 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net6.0-windows10.0.19041</TargetFramework>
-    <OutputType>WinExe</OutputType>
-    <UseWPF>true</UseWPF>
-    <IsShippingPackage>false</IsShippingPackage>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>..\..\bin\$(Configuration)\</OutputPath>
-    <Nullable>disable</Nullable>
+    <OutputPath>..\..\bin\$(Configuration.toLower())\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="6.0.100-rc.1.1608" />
+    <ProjectReference Include="..\DrDotnet\DrDotnet.csproj" />
+    <PackageReference Include="Photino.Blazor" Version="2.4.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="wwwroot\**">
+    <Content Update="wwwroot\index.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\DrDotnet\DrDotnet.csproj" />
+    <None Update="favicon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
