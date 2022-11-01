@@ -12,15 +12,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Web", "DrDotnet.We
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Tests", "DrDotnet.Tests\DrDotnet.Tests.csproj", "{7CABBABF-0595-4EC2-892F-36986B4AB43D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{65790166-93D8-4BE3-BD14-655DC5B750A3}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.DesktopMaui", "DrDotnet.DesktopMaui\DrDotnet.DesktopMaui.csproj", "{6591EA18-CA85-41D2-A349-31BE4D977B6A}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MauiApp1", "MauiApp1\MauiApp1.csproj", "{B5775281-4F5A-4C3E-A502-A9597BF816AE}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MauiLib1", "MauiLib1\MauiLib1.csproj", "{C93D2A88-B6A6-4878-8F2C-2558123A3E22}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Photino.Blazor.App", "Photino.Blazor.App\Photino.Blazor.App.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
 	ProjectSection(SolutionItems) = preProject

@@ -22,8 +22,7 @@ There are currently 2 recommended ways to use Dr-Dotnet, depending on your useca
 
 ### Dr-Dotnet Desktop
 
-This is what you want to go for if you want to profile a dotnet program locally.    
-⚠ At the moment, Dr-Dotnet Desktop is based on WPF and thus it is Windows only, however, as it is just running a browser to display the web app version, it shouldn't be too hard to do this in a cross-platform way with something like Avalonia in a near future.
+This is what you want to go for if you want to profile a dotnet program locally.
 
 ### Dr-Dotnet as a Docker Sidecar
 
