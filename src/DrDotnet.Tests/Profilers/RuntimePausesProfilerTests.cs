@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace DrDotnet.Tests.Profilers;
 
-public class GCPausesProfilerTests : ProfilerTests
+public class RuntimePausesProfilerTests : ProfilerTests
 {
     public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E85}");
 
@@ -36,6 +36,7 @@ public class GCPausesProfilerTests : ProfilerTests
 
         // Intentionally allocates memory
         int i = 0;
+        int collections = 0;
         Node node = new Node();
         ThreadPool.QueueUserWorkItem(async _ =>
         {
@@ -49,6 +50,7 @@ public class GCPausesProfilerTests : ProfilerTests
                 if (i % 1000 == 0)
                 {
                     GC.Collect();
+                    Interlocked.Increment(ref collections);
                 }
             }
         });

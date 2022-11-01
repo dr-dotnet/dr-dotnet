@@ -57,8 +57,8 @@ public class ExceptionsProfilerTests : ProfilerTests
 
         Console.WriteLine(content);
 
-        Assert.IsTrue(content.Contains("DrDotnet.Tests.TestException:"));
-        Assert.IsFalse(content.Contains("DrDotnet.Tests.TestException: 0"));
+        Assert.IsTrue(content.Contains("DrDotnet.Tests.Profilers.TestException:"));
+        Assert.IsFalse(content.Contains("DrDotnet.Tests.Profilers.TestException: 0"));
     }
 }
 
