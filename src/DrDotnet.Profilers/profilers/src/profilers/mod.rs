@@ -13,6 +13,9 @@ pub use runtime_pause_profiler::RuntimePauseProfiler as RuntimePauseProfiler;
 pub mod gc_survivors_profiler;
 pub use gc_survivors_profiler::GCSurvivorsProfiler as GCSurvivorsProfiler;
 
+pub mod cpu_hotpath_profiler;
+pub use cpu_hotpath_profiler::CpuHotpathProfiler as CpuHotpathProfiler;
+
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use profiling_api::*;

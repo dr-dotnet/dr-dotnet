@@ -2,12 +2,19 @@ mod profilers;
 mod report;
 mod interop;
 mod macros;
+mod utils;
 
 #[macro_use]
 extern crate log;
 
 // Create function to list and attach profilers
-register!(GCSurvivorsProfiler, ExceptionsProfiler, AllocationByClassProfiler, MemoryLeakProfiler, RuntimePauseProfiler);
+register!(
+    GCSurvivorsProfiler,
+    ExceptionsProfiler,
+    AllocationByClassProfiler,
+    MemoryLeakProfiler,
+    RuntimePauseProfiler,
+    CpuHotpathProfiler);
 
 // Actual COM entry point
 #[no_mangle]
