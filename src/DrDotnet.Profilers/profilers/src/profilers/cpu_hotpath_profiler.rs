@@ -36,41 +36,19 @@ impl CorProfilerCallback for CpuHotpathProfiler
         
         let pinfo = self.profiler_info();
         
-        unsafe {
-
-            for managed_thread_id in pinfo.enum_threads().unwrap() {
-                
-                let mut v = Vec::<usize>::new();
-                
-                // let vbox = Box::new(v);
-                // let vboxptr = Box::into_raw(vbox);
-                // let vboxptr_c = vboxptr as *mut std::ffi::c_void;
-                // let mut vbox1 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
-                // vbox1.push(12);
-                // let mut vbox2 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
-                // error!("prout: {}", vbox2.len());
-
-                let vecptr_c = &v as *const Vec<usize> as *mut std::ffi::c_void;
-                //let vecptr = vecptr_c as *mut Vec<usize>;
-                let vec = &mut *vecptr_c.cast::<Vec<usize>>();
-                vec.push(12);
-
-                error!("prout1: {:?}", vec.len());
-                error!("prout2: {:?}", v.len());
-
-                
-                //let res = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback2, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, state_ptr, std::ptr::null(), 0);    
+        for managed_thread_id in pinfo.enum_threads().unwrap() {
             
-                //error!("Caca: {:?}", res);
-                
-                //warn!("--- Thread ID: {} --- {}", managed_thread_id, dd.len());
-                
-                //let t = *dd;
-                
-                // for method_id in t {
-                //     let name = unsafe { extensions::get_method_name(pinfo, method_id) };
-                //     warn!("Thread ID: {}, Stacktrace: {}", managed_thread_id, name);
-                // }
+            let mut v = Vec::<usize>::new();
+            
+            let vecptr_c = &v as *const Vec<usize> as *mut std::ffi::c_void;
+
+            let res = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, vecptr_c, std::ptr::null(), 0);    
+        
+            warn!("--- Thread ID: {} ---", managed_thread_id);
+
+            for method_id in v {
+                let name = unsafe { extensions::get_method_name(pinfo, method_id) };
+                warn!("- {}", name);
             }
         }
 

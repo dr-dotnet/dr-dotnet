@@ -178,7 +178,7 @@ pub type StackSnapshotCallback = unsafe extern "system" fn(
     frameInfo: COR_PRF_FRAME_INFO,
     contextSize: ULONG32,
     context: *const BYTE,
-    clientData: *const c_void,
+    clientData: *mut c_void,
 ) -> HRESULT;
 pub type ObjectReferenceCallback = unsafe extern "system" fn(
     root: ObjectID,
