@@ -36,36 +36,43 @@ impl CorProfilerCallback for CpuHotpathProfiler
         
         let pinfo = self.profiler_info();
         
-        for managed_thread_id in pinfo.enum_threads().unwrap() {
-               
-            let mut v = Vec::<usize>::new();
-            let dd = Box::new(v);
+        unsafe {
 
-            unsafe {
+            for managed_thread_id in pinfo.enum_threads().unwrap() {
                 
-                let pp = Box::into_raw(dd.clone());
+                let mut v = Vec::<usize>::new();
+                
+                let vbox = Box::new(v);
 
-                let state_ptr = pp as *mut std::ffi::c_void;
+                let vboxptr = Box::into_raw(vbox);
 
-                //let cccc = Box::from_raw(state_ptr as *mut Vec<usize>);
+                let vboxptr_c = vboxptr as *mut std::ffi::c_void;
 
-                //error!("prout: {}", cccc.len());
+                let mut vbox1 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
+
+                vbox1.push(12);
+
+                //let t = *dd;
+
+                let mut vbox2 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
+
+                error!("prout: {}", vbox2.len());
 
                 //let state_ptr = v.as_ptr() as *mut std::ffi::c_void;
                 
-                let res = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback2, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, state_ptr, std::ptr::null(), 0);    
+                //let res = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback2, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, state_ptr, std::ptr::null(), 0);    
             
                 //error!("Caca: {:?}", res);
+                
+                //warn!("--- Thread ID: {} --- {}", managed_thread_id, dd.len());
+                
+                //let t = *dd;
+                
+                // for method_id in t {
+                //     let name = unsafe { extensions::get_method_name(pinfo, method_id) };
+                //     warn!("Thread ID: {}, Stacktrace: {}", managed_thread_id, name);
+                // }
             }
-
-            warn!("--- Thread ID: {} --- {}", managed_thread_id, dd.len());
-            
-            //let t = *dd;
-            
-            // for method_id in t {
-            //     let name = unsafe { extensions::get_method_name(pinfo, method_id) };
-            //     warn!("Thread ID: {}, Stacktrace: {}", managed_thread_id, name);
-            // }
         }
 
         Ok(())
