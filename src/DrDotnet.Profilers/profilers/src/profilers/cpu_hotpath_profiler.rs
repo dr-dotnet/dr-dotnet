@@ -41,27 +41,31 @@ impl CorProfilerCallback for CpuHotpathProfiler
             let mut v = Vec::<usize>::new();
             let dd = Box::new(v);
 
-            {
+            unsafe {
                 
                 let pp = Box::into_raw(dd.clone());
 
                 let state_ptr = pp as *mut std::ffi::c_void;
 
+                //let cccc = Box::from_raw(state_ptr as *mut Vec<usize>);
+
+                //error!("prout: {}", cccc.len());
+
                 //let state_ptr = v.as_ptr() as *mut std::ffi::c_void;
                 
                 let res = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback2, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, state_ptr, std::ptr::null(), 0);    
             
-                error!("Caca: {:?}", res)
+                //error!("Caca: {:?}", res);
             }
 
             warn!("--- Thread ID: {} --- {}", managed_thread_id, dd.len());
             
-            let t = *dd;
+            //let t = *dd;
             
-            for method_id in t {
-                let name = unsafe { extensions::get_method_name(pinfo, method_id) };
-                warn!("Thread ID: {}, Stacktrace: {}", managed_thread_id, name);
-            }
+            // for method_id in t {
+            //     let name = unsafe { extensions::get_method_name(pinfo, method_id) };
+            //     warn!("Thread ID: {}, Stacktrace: {}", managed_thread_id, name);
+            // }
         }
 
         Ok(())
