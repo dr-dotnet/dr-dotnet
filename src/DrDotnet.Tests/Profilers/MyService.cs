@@ -31,7 +31,7 @@ public class MyService : IDisposable
             {
                 if (sw.Elapsed.TotalSeconds < i * 1d / _allocatedObjectsPerSecond)
                 {
-                    Thread.Sleep(10);
+                    DoWork();
                 }
 
                 for (int j = 0; j < strspan.Length; j++)
@@ -49,6 +49,11 @@ public class MyService : IDisposable
                 i++;
             }
         });
+    }
+
+    public void DoWork()
+    {
+        Thread.SpinWait(1000);
     }
 
     public void Dispose()

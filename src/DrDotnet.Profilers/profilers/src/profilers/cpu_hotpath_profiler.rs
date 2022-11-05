@@ -10,7 +10,7 @@ use crate::profilers::*;
 pub struct CpuHotpathProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    exceptions: DashMap<String, AtomicIsize>,
+    timer_guard: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl Profiler for CpuHotpathProfiler {
@@ -28,13 +28,11 @@ impl Profiler for CpuHotpathProfiler {
     }
 }
 
-impl CorProfilerCallback for CpuHotpathProfiler
-{
-    fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
+impl CpuHotpathProfiler {
+
+    fn print_callstack(profiler_info: ProfilerInfo)
     {
-        info!("exception thrown");
-        
-        let pinfo = self.profiler_info();
+        let pinfo = profiler_info.clone();
         
         for managed_thread_id in pinfo.enum_threads().unwrap() {
             
@@ -47,10 +45,20 @@ impl CorProfilerCallback for CpuHotpathProfiler
             warn!("--- Thread ID: {} ---", managed_thread_id);
 
             for method_id in v {
-                let name = unsafe { extensions::get_method_name(pinfo, method_id) };
+                let name = unsafe { extensions::get_method_name(&pinfo, method_id) };
                 warn!("- {}", name);
             }
         }
+    }
+}
+
+impl CorProfilerCallback for CpuHotpathProfiler
+{
+    fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
+    {
+        info!("exception thrown");
+        
+        CpuHotpathProfiler::print_callstack(self.profiler_info().clone());
 
         Ok(())
     }
@@ -80,9 +88,16 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let pinfo = self.profiler_info();
+        let profiler_info = self.profiler_info().clone();
 
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(400));
+                info!("loop!");
 
+                CpuHotpathProfiler::print_callstack(profiler_info.clone());
+            }
+        });
 
         detach_after_duration::<CpuHotpathProfiler>(&self, 10);
         Ok(())
@@ -94,14 +109,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
 
         let mut report = session.create_report("summary.md".to_owned());
 
-        report.write_line(format!("# Exceptions Report"));
-        report.write_line(format!("## Exceptions by Occurrences"));
-
-        use itertools::Itertools;
-
-        for exception in self.exceptions.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
-            report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
-        }
+        report.write_line(format!("# Hello"));
 
         info!("Report written");
 
