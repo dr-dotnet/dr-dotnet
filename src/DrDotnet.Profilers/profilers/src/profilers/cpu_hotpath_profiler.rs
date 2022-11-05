@@ -42,23 +42,22 @@ impl CorProfilerCallback for CpuHotpathProfiler
                 
                 let mut v = Vec::<usize>::new();
                 
-                let vbox = Box::new(v);
+                // let vbox = Box::new(v);
+                // let vboxptr = Box::into_raw(vbox);
+                // let vboxptr_c = vboxptr as *mut std::ffi::c_void;
+                // let mut vbox1 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
+                // vbox1.push(12);
+                // let mut vbox2 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
+                // error!("prout: {}", vbox2.len());
 
-                let vboxptr = Box::into_raw(vbox);
+                let vecptr_c = &v as *const Vec<usize> as *mut std::ffi::c_void;
+                //let vecptr = vecptr_c as *mut Vec<usize>;
+                let vec = &mut *vecptr_c.cast::<Vec<usize>>();
+                vec.push(12);
 
-                let vboxptr_c = vboxptr as *mut std::ffi::c_void;
+                error!("prout1: {:?}", vec.len());
+                error!("prout2: {:?}", v.len());
 
-                let mut vbox1 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
-
-                vbox1.push(12);
-
-                //let t = *dd;
-
-                let mut vbox2 = Box::from_raw(vboxptr_c as *mut Vec<usize>);
-
-                error!("prout: {}", vbox2.len());
-
-                //let state_ptr = v.as_ptr() as *mut std::ffi::c_void;
                 
                 //let res = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback2, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, state_ptr, std::ptr::null(), 0);    
             
