@@ -77,7 +77,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        detach_after_duration::<ExceptionsProfiler>(&self, 10);
+        detach_after_duration::<ExceptionsProfiler>(&self, 10, None);
         Ok(())
     }
 

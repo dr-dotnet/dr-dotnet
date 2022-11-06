@@ -1,7 +1,7 @@
-use dashmap::DashMap;
 use profiling_api::*;
 use uuid::Uuid;
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{ Ordering, AtomicBool };
 
 use crate::report::*;
 use crate::profilers::*;
@@ -10,7 +10,7 @@ use crate::profilers::*;
 pub struct CpuHotpathProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    timer_guard: Option<tokio::task::JoinHandle<()>>,
+    detached: Arc<AtomicBool>,
 }
 
 impl Profiler for CpuHotpathProfiler {
@@ -90,21 +90,49 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
     {
         let profiler_info = self.profiler_info().clone();
 
+        self.detached.store(false, std::sync::atomic::Ordering::Relaxed);
+
+        let detached = self.detached.clone();
+
         std::thread::spawn(move || {
             loop {
                 std::thread::sleep(std::time::Duration::from_millis(400));
-                info!("loop!");
 
-                CpuHotpathProfiler::print_callstack(profiler_info.clone());
+                if detached.load(Ordering::Relaxed) {
+                    warn!("detached");
+                    break;
+                }
+
+                // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
+                if profiler_info.suspend_runtime().is_ok()
+                {
+                    CpuHotpathProfiler::print_callstack(profiler_info.clone());
+                    if profiler_info.resume_runtime().is_err()
+                    {
+                        error!("Can't resume runtime!");
+                    }
+                }
+                else
+                {
+                    error!("Can't suspend runtime!");
+                }
             }
         });
 
-        detach_after_duration::<CpuHotpathProfiler>(&self, 10);
+        let detached = self.detached.clone();
+
+        let callback = Box::new(move || {
+            detached.store(true, std::sync::atomic::Ordering::Relaxed);
+        });
+
+        detach_after_duration::<CpuHotpathProfiler>(&self, 10, Some(callback));
         Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
+        // todo: Do this in detach timer? Seems to be too late here
+
         let session = Session::get_session(self.session_id, ExceptionsProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());

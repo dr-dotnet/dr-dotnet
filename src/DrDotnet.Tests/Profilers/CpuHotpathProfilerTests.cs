@@ -33,24 +33,9 @@ public class CpuHotpathProfilerTests : ProfilerTests
 
         using var service = new MyService(1_000_000, 100_000);
         await Task.Delay(3000);
-
-        
-        
+  
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
-        ThreadPool.QueueUserWorkItem(async _ =>
-        {
-            while (true)
-            {
-                try
-                {
-                    throw new TestException();
-                }
-                catch { }
-                await Task.Delay(300);
-            }
-        });
-        
         var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
 
         Console.WriteLine("Session Directory: " + session.Path);
