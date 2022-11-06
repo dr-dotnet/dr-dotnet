@@ -228,10 +228,8 @@ impl CorProfilerInfo for ProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_token_and_metadata_from_function(
-        &self,
-        function_id: FunctionID,
-    ) -> Result<FunctionTokenAndMetadata, HRESULT> {
+
+    fn get_token_and_metadata_from_function(&self, function_id: FunctionID) -> Result<FunctionTokenAndMetadata, HRESULT> {
         let mut metadata_import = MaybeUninit::uninit();
         let mut token = MaybeUninit::uninit();
         let riid = GUID::from(Uuid::parse_str("7DAC8207-D3AE-4C75-9B67-92801A497D44").unwrap()); // TODO: This needs to come from an IMetaDataImport implementation
@@ -257,6 +255,7 @@ impl CorProfilerInfo for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_module_info(&self, module_id: ModuleID) -> Result<ModuleInfo, HRESULT> {
         let mut name_buffer_length = MaybeUninit::uninit();
         unsafe {

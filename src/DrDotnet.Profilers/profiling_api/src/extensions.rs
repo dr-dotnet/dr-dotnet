@@ -2,7 +2,7 @@
 use crate::ffi::*;
 use crate::*;
 
-pub fn get_type_name(info: &ProfilerInfo, module_id: usize, td: mdTypeDef) -> String {
+pub fn get_type_name(info: &ProfilerInfo, module_id: ModuleID, td: mdTypeDef) -> String {
     match info.get_module_metadata(module_id, CorOpenFlags::ofRead) {
         Ok(metadata) =>
         match metadata.get_type_def_props(td) {
@@ -19,7 +19,7 @@ pub fn get_type_name(info: &ProfilerInfo, module_id: usize, td: mdTypeDef) -> St
     }
 }
 
-pub unsafe fn get_method_name(info: &ProfilerInfo, method_id: usize) -> String {
+pub unsafe fn get_method_name(info: &ProfilerInfo, method_id: FunctionID) -> String {
     match info.get_token_and_metadata_from_function(method_id) {
         Ok(f) =>
         match f.metadata_import.get_method_props(f.token) {
@@ -32,6 +32,31 @@ pub unsafe fn get_method_name(info: &ProfilerInfo, method_id: usize) -> String {
         Err(hresult) => {
             warn!("info.get_token_and_metadata_from_function({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
             "unknown_0003".to_owned()
+        }
+    }
+}
+
+pub unsafe fn get_full_method_name(info: &ProfilerInfo, method_id: FunctionID) -> String {
+
+    match info.get_function_info(method_id) {
+        Ok(function_info) =>
+        match info.get_token_and_metadata_from_function(method_id) {
+            Ok(f) =>
+            match f.metadata_import.get_method_props(f.token) {
+                Ok(method_props) => format!("{}.{}", get_type_name(info, function_info.module_id, method_props.class_token), method_props.name),
+                Err(hresult) => {
+                    warn!("metadata_import.get_method_props({}) failed (0x{})", f.token, format!("{:01$x}", hresult, 8));
+                    "unknown_0004".to_owned()
+                }
+            },
+            Err(hresult) => {
+                warn!("info.get_token_and_metadata_from_function({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                "unknown_0003".to_owned()
+            }
+        },
+        Err(hresult) => {
+            warn!("info.get_function_info({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+            "unknown_0002".to_owned()
         }
     }
 }
