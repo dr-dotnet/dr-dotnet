@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
-namespace DrDotnet.Tests.Profilers;
+namespace DrDotnet.Tests.Simulations;
 
-public class MyService : IDisposable
+public class AllocationSimulation : IDisposable
 {
     public readonly int _allocatedObjectsPerSecond = 1_000_000;
     public readonly int _maxAliveObjects = 100_000;
@@ -14,12 +16,12 @@ public class MyService : IDisposable
 
     private volatile bool _disposed = false;
 
-    public MyService(int allocatedObjectsPerSecond, int maxAliveObjects)
+    public AllocationSimulation(int allocatedObjectsPerSecond, int maxAliveObjects)
     {
         _allocatedObjectsPerSecond = allocatedObjectsPerSecond;
         _maxAliveObjects = maxAliveObjects;
 
-        ThreadPool.QueueUserWorkItem((_) =>
+        var task = Task.Run(() =>
         {
             Span<char> strspan = stackalloc char[50];
 
@@ -31,7 +33,7 @@ public class MyService : IDisposable
             {
                 if (sw.Elapsed.TotalSeconds < i * 1d / _allocatedObjectsPerSecond)
                 {
-                    DoWork();
+                    Thread.Sleep(100);
                 }
 
                 for (int j = 0; j < strspan.Length; j++)
@@ -49,11 +51,6 @@ public class MyService : IDisposable
                 i++;
             }
         });
-    }
-
-    public void DoWork()
-    {
-        Thread.SpinWait(1000);
     }
 
     public void Dispose()
