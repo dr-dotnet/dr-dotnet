@@ -66,7 +66,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
             error!("Force GC failed");
         }
         
-        detach_after_duration::<MemoryLeakProfiler>(&self, 60);
+        detach_after_duration::<MemoryLeakProfiler>(&self, 60, None);
         Ok(())
     }
 

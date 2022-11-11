@@ -9,9 +9,9 @@ using DrDotnet.Tests.Simulations;
 
 namespace DrDotnet.Tests.Profilers;
 
-public class GCSurvivorsProfilerTests : ProfilerTests
+public class CpuHotpathProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E86}");
+    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-A485B2056E71}");
 
     [Test]
     [Order(0)]
@@ -26,15 +26,19 @@ public class GCSurvivorsProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(160_000)]
     [NonParallelizable]
-    public async Task Profiler_Detects_GC_Survivors_Referenced_From_Gen2()
+    public async Task Profiler_Lists_Cpu_Hotpaths()
     {
         ILogger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
         Profiler profiler = GetProfiler();
 
-        using var service = new AllocationSimulation(1_000_000, 100_000);
+        using var service1 = new FibonacciSimulation();
+        using var service2 = new FibonacciSimulation();
+        using var service3 = new FibonacciSimulation();
+        using var service4 = new FibonacciSimulation();
+        
         await Task.Delay(3000);
-
+  
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
         var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);

@@ -13,6 +13,9 @@ pub use runtime_pause_profiler::RuntimePauseProfiler as RuntimePauseProfiler;
 pub mod gc_survivors_profiler;
 pub use gc_survivors_profiler::GCSurvivorsProfiler as GCSurvivorsProfiler;
 
+pub mod cpu_hotpath_profiler;
+pub use cpu_hotpath_profiler::CpuHotpathProfiler as CpuHotpathProfiler;
+
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use profiling_api::*;
@@ -36,11 +39,20 @@ pub trait Profiler : CorProfilerCallback9 {
     fn profiler_info(&self) -> &ProfilerInfo;
 }
 
-pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64)
+pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
 {
     let profiler_info = profiler.profiler_info().clone();
+
     std::thread::spawn(move || {
+        if (thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max).is_err()) {
+            error!("Could not increase thread priority for detach operation");
+        }
         std::thread::sleep(std::time::Duration::from_secs(duration_seconds));
+
+        if let Some(ref func) = callback {
+            (func)();
+        }
+
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-requestprofilerdetach-method
         // https://github.com/Potapy4/dotnet-coreclr/blob/master/Documentation/Profiling/davbr-blog-archive/Profiler%20Detach.md#requestprofilerdetach
         profiler_info.request_profiler_detach(3000).ok();

@@ -61,19 +61,23 @@ pub struct ArrayObjectInfo {
     pub dimension_lower_bounds: Vec<i32>,
     pub data: *mut BYTE, // TODO: This should be the raw buffer for the array, which is laid out according to the C++ convention.
 }
+
 pub struct StringLayout {
     pub string_length_offset: u32,
     pub buffer_offset: u32,
 }
+
 pub struct FunctionEnter3Info {
     pub frame_info: COR_PRF_FRAME_INFO,
     pub argument_info_length: u32,
     pub argument_info: COR_PRF_FUNCTION_ARGUMENT_INFO,
 }
+
 pub struct FunctionLeave3Info {
     pub frame_info: COR_PRF_FRAME_INFO,
     pub retval_range: COR_PRF_FUNCTION_ARGUMENT_RANGE,
 }
+
 pub struct RuntimeInfo {
     pub clr_instance_id: ClrInstanceID,
     pub runtime_type: COR_PRF_RUNTIME_TYPE,
@@ -83,30 +87,36 @@ pub struct RuntimeInfo {
     pub qfe_version: u16,
     pub version_string: String,
 }
+
 pub struct ModuleInfo2 {
     pub base_load_address: LPCBYTE,
     pub file_name: String,
     pub assembly_id: AssemblyID,
     pub module_flags: COR_PRF_MODULE_FLAGS,
 }
+
 pub struct FunctionAndRejit {
     pub function_id: FunctionID,
     pub rejit_id: ReJITID,
 }
+
 pub struct EventMask2 {
     pub events_low: COR_PRF_MONITOR,
     pub events_high: COR_PRF_HIGH_MONITOR,
 }
+
 pub struct EnumNgenModuleMethodsInliningThisMethod<'a> {
     pub incomplete_data: bool,
     pub method_enum: &'a mut CorProfilerMethodEnum,
 }
+
 pub struct DynamicFunctionInfo {
     pub module_id: ModuleID,
     pub sig: PCCOR_SIGNATURE,
     pub sig_length: u32,
     pub name: String,
 }
+
 pub struct MethodProps {
     pub class_token: mdTypeDef,
     pub name: String,
@@ -117,10 +127,8 @@ pub struct MethodProps {
     pub impl_flags: CorMethodImpl,
 }
 
-
 pub struct TypeProps {
     pub name: String,
     pub type_def_flags: CorTypeAttr,
     pub base_type: mdTypeDef,
 }
-

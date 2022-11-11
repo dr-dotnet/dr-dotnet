@@ -228,10 +228,8 @@ impl CorProfilerInfo for ProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_token_and_metadata_from_function(
-        &self,
-        function_id: FunctionID,
-    ) -> Result<FunctionTokenAndMetadata, HRESULT> {
+
+    fn get_token_and_metadata_from_function(&self, function_id: FunctionID) -> Result<FunctionTokenAndMetadata, HRESULT> {
         let mut metadata_import = MaybeUninit::uninit();
         let mut token = MaybeUninit::uninit();
         let riid = GUID::from(Uuid::parse_str("7DAC8207-D3AE-4C75-9B67-92801A497D44").unwrap()); // TODO: This needs to come from an IMetaDataImport implementation
@@ -257,6 +255,7 @@ impl CorProfilerInfo for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_module_info(&self, module_id: ModuleID) -> Result<ModuleInfo, HRESULT> {
         let mut name_buffer_length = MaybeUninit::uninit();
         unsafe {
@@ -575,6 +574,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn set_enter_leave_function_hooks_2(
         &self,
         func_enter: FunctionEnter2,
@@ -593,6 +593,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_function_info_2(
         &self,
         func_id: FunctionID,
@@ -649,6 +650,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_class_layout(&self, class_id: ClassID) -> Result<ClassLayout, HRESULT> {
         // get field offset length, with zero-length buffer call
         let mut field_offset_buffer_length = MaybeUninit::uninit();
@@ -690,6 +692,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_class_id_info_2(&self, class_id: ClassID) -> Result<ClassInfo2, HRESULT> {
         // get type args length, with zero-length buffer call
         let mut type_args_buffer_length = MaybeUninit::uninit();
@@ -743,6 +746,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             },
         }
     }
+
     fn get_code_info_2(&self, function_id: FunctionID) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {
         let mut code_info_buffer_length = MaybeUninit::uninit();
         unsafe {
@@ -774,6 +778,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_class_from_token_and_type_args(
         &self,
         module_id: ModuleID,
@@ -803,6 +808,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_function_from_token_and_type_args(
         &self,
         module_id: ModuleID,
@@ -834,6 +840,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_array_object_info(
         &self,
         object_id: ObjectID,
@@ -867,6 +874,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_box_class_layout(&self, class_id: ClassID) -> Result<u32, HRESULT> {
         let mut buffer_offset = MaybeUninit::uninit();
         let hr = unsafe {
@@ -882,6 +890,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_thread_app_domain(&self, thread_id: ThreadID) -> Result<AppDomainID, HRESULT> {
         let mut app_domain_id = MaybeUninit::uninit();
         let hr = unsafe {
@@ -897,6 +906,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_rva_static_address(
         &self,
         class_id: ClassID,
@@ -916,6 +926,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_app_domain_static_address(
         &self,
         class_id: ClassID,
@@ -940,6 +951,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_thread_static_address(
         &self,
         class_id: ClassID,
@@ -964,6 +976,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+
     fn get_context_static_address(
         &self,
         class_id: ClassID,
@@ -988,6 +1001,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
             _ => Err(hr),
         }
     }
+    
     fn get_static_field_info(
         &self,
         class_id: ClassID,
