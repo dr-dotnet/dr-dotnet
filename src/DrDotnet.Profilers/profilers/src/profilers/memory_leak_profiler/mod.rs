@@ -264,9 +264,16 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         // Post-process tracked persisting references
         info!("Building dependency tree... {} objects to process", self.surviving_references.len());
         for (object_id, ref_info) in self.surviving_references.iter() {
-            // if !ref_info.allocated_while_profiling {
-            //     continue;
-            // }
+
+            // Was already there when profiling started, so not interesting for us
+            if !ref_info.first_gc_survived == 1 {
+                continue;
+            }
+
+            // Todo: Somehow estimate the "leaky profile" from first and last gc
+            // One option is to store for each branch a Map<gc_number, count> and do curve fitting on this
+            // Aso it could be interesting to track size increase difference
+
             //info!("Persisting object id: {}", *object_id);
 
             let info = self.profiler_info();

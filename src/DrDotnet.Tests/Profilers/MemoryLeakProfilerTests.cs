@@ -54,6 +54,9 @@ public class MemoryLeakProfilerTests : ProfilerTests
             }
         });
 
+        // Warmup
+        await Task.Delay(1000);
+
         var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
 
         Console.WriteLine("Session Directory: " + session.Path);
