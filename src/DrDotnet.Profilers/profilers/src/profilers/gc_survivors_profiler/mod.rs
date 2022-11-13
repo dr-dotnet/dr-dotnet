@@ -18,7 +18,8 @@ pub struct GCSurvivorsProfiler {
     session_id: Uuid,
     object_to_references: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
     serialized_survivor_branches: HashMap<String, u64>,
-    root_references: HashSet<ffi::ObjectID>
+    root_references: HashSet<ffi::ObjectID>,
+    // todo: add state
 }
 
 impl Profiler for GCSurvivorsProfiler {
@@ -40,17 +41,17 @@ impl Profiler for GCSurvivorsProfiler {
 
 impl GCSurvivorsProfiler
 {
-    pub fn append_referencers(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String>
+    pub fn append_references(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String>
     {
         let mut branches = Vec::new();
 
-        self.append_referencers_recursive(info, object_id, &mut String::new(), -max_depth, &mut branches);
+        self.append_references_recursive(info, object_id, &mut String::new(), -max_depth, &mut branches);
 
         return branches;
     }
 
     // Recursively drill through references until we find a gen 2 object.
-    fn append_referencers_recursive(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
+    fn append_references_recursive(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
     {
         let gen = match info.get_object_generation(object_id) {
             Ok(gen) => gen.generation,
@@ -82,13 +83,13 @@ impl GCSurvivorsProfiler
                     if i == 0 {
                         // Same branch, we keep on this same branch
                         branch.push_str(" > ");
-                        self.append_referencers_recursive(info, referencers[0], branch, depth + 1, branches);
+                        self.append_references_recursive(info, referencers[0], branch, depth + 1, branches);
                     }
                     else {
                         // New branch. We clone the current branch to append next holders
                         let mut branch_copy = branch[..branch_current_len].to_string();
                         branch_copy.push_str(" > ");
-                        self.append_referencers_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
+                        self.append_references_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
                     }
                 }
             },
@@ -190,7 +191,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         for object_id in self.root_references.iter() {
             let info = self.profiler_info();
             info!("Root id: {}", *object_id);
-            for branch in self.append_referencers(info, *object_id, 6) {
+            for branch in self.append_references(info, *object_id, 6) {
                 *self.serialized_survivor_branches.entry(branch).or_insert(0u64) += 1;
             }
         }
@@ -207,6 +208,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback2-rootreferences2-method
     fn root_references_2(&mut self, root_ref_ids: &[ffi::ObjectID], root_kinds: &[ffi::COR_PRF_GC_ROOT_KIND], root_flags: &[ffi::COR_PRF_GC_ROOT_FLAGS], root_ids: &[ffi::UINT_PTR]) -> Result<(), ffi::HRESULT>
     {
+        // Only track in case of gen 2!
+
         info!("Root references ({})", root_ids.len());
 
         for i in 0..root_ref_ids.len() {
