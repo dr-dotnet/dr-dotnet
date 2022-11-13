@@ -37,6 +37,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
         // Intentionally allocates memory
         int i = 0;
         Node node = new Node();
+        var baseNode = node;
         ThreadPool.QueueUserWorkItem(async _ =>
         {
             while (true)
@@ -46,9 +47,9 @@ public class MemoryLeakProfilerTests : ProfilerTests
                 {
                     await Task.Delay(10);
                 }
-                if (i % 1000 == 0)
+                if (i % 5000 == 0)
                 {
-                    GC.Collect();
+                    GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: false);
                 }
             }
         });
@@ -65,6 +66,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
 
         Console.WriteLine(content);
         Console.WriteLine(node.Name);
+        Console.WriteLine(baseNode.Name);
 
         // TODO
     }

@@ -24,7 +24,9 @@ use crate::profilers::*;
 #[derive(Default, Clone)]
 struct ReferenceInfo {
     initial_size: usize,
-    allocated_while_profiling: bool
+    allocated_while_profiling: bool,
+    first_gc_survived: u16,
+    last_gc_survived: u16,
 }
 
 #[derive(Default, Clone)]
@@ -103,13 +105,13 @@ impl MemoryLeakProfiler
                 for i in 0..referencers.len() {
                     if i == 0 {
                         // Same branch, we keep on this same branch
-                        branch.push_str(" > ");
+                        branch.push_str(" < ");
                         self.append_referencers_recursive(info, referencers[0], branch, depth + 1, branches);
                     }
                     else {
                         // New branch. We clone the current branch to append next holders
                         let mut branch_copy = branch[..branch_current_len].to_string();
-                        branch_copy.push_str(" > ");
+                        branch_copy.push_str(" < ");
                         self.append_referencers_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
                     }
                 }
@@ -148,7 +150,7 @@ impl MemoryLeakProfiler
                     _ => "unknown2".to_owned()
                 }
             }
-            _ => "unknown1".to_owned()
+            Err(error) => format!("error:{}", error)
         };
 
         if array_dimension > 0 {
@@ -177,12 +179,14 @@ impl CorProfilerCallback for MemoryLeakProfiler
             return Ok(());
         }
 
-        info!("Collecting references...");
+        //info!("Collecting references...");
 
-        for x in object_ref_ids {
-            match self.object_to_referencers.get_mut(x) {
+        // Create dependency tree, but from object to referencers, instead of object to its references.
+        // This is usefull for being able to browse from any object back to its roots.
+        for object_ref_id in object_ref_ids {
+            match self.object_to_referencers.get_mut(object_ref_id) {
                 Some(referencers) => referencers.push(object_id),
-                None => { self.object_to_referencers.insert(*x, vec![object_id]); },
+                None => { self.object_to_referencers.insert(*object_ref_id, vec![object_id]); },
             };
         }
         
@@ -214,8 +218,8 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         self.current_gc_info.is_last_gc = self.elegible_gcs_count > 5;
 
         // Data from previous garbage collections are no longer valid, so we clear it when a new garbage collection starts.
-        self.object_to_referencers.clear();
-        self.serialized_survivor_branches.clear();      
+        //self.object_to_referencers.clear();
+        //self.serialized_survivor_branches.clear();      
 
         //let pinfo = self.profiler_info();
         //pinfo.force_gc(); // Compacting or not? Which Gen?
@@ -245,16 +249,19 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
 
-        // Request detach
-        let profiler_info = self.profiler_info().clone();
-        profiler_info.request_profiler_detach(3000).ok();
-
         // Post-process tracked persisting references
+        info!("Building dependency tree... {} objects to process", self.surviving_references.len());
         for (object_id, ref_info) in self.surviving_references.iter() {
-            if !ref_info.allocated_while_profiling {
-                continue;
+            // if !ref_info.allocated_while_profiling {
+            //     continue;
+            // }
+            //info!("Persisting object id: {}", *object_id);
+
+            let info = self.profiler_info();
+            let gen = info.get_object_generation(*object_id).unwrap();
+            if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                error!("Object is supposed to be in gen 2 but is {:?}", gen.generation);
             }
-            info!("Persisting object id: {}", *object_id);
 
             let info = self.profiler_info();
             for branch in self.append_referencers(info, *object_id, 6) {
@@ -263,6 +270,10 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         }
 
         info!("Successfully processed persisting objects");
+
+        // Request detach
+        let profiler_info = self.profiler_info().clone();
+        profiler_info.request_profiler_detach(3000).ok();
 
         // We can free some memory
         self.object_to_referencers.clear();
@@ -336,7 +347,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
         }
 
         // SurvivingReferences2 happens on non-compacting garbage collections
-        self.current_gc_info.compacting = false;
+        self.current_gc_info.compacting = false; // bullshit ?
         self.current_gc_info.had_survivors_callback = true;
 
         // Only process gen 2
@@ -344,14 +355,23 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             return Ok(());
         }
 
+        // PROBLEM: There are several callbacks per GC so it does not work!!
+
         if self.surviving_references.len() == 0
         {
             // First time collecting surviving references
             for i in 0..object_id_range_start.len() {
                 let id = object_id_range_start[i];
-                if id != 0 {
-                    self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: false });
+                if id == 0 {
+                    continue;
                 }
+                let info = self.profiler_info();
+                let gen = info.get_object_generation(id).unwrap();
+                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                    continue;
+                }
+
+                self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: false });
             }
         }
         else
@@ -361,17 +381,22 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
 
             for i in 0..object_id_range_start.len() {
                 let id = object_id_range_start[i];
-                if id != 0 {
-                    match surviving_references_copy.remove(&id) {
-                        Some(removed_entry) => {
-                            // Todo: record number of GCs it survived ?
-                        },
-                        None => {
-                            // Object was not present, so we add it as "allocated while profiling"
-                            self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: true });
-                        },
-                    }
-                    self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: true });
+                if id == 0 {
+                    continue;
+                }
+                let info = self.profiler_info();
+                let gen = info.get_object_generation(id).unwrap();
+                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                    continue;
+                }
+                match surviving_references_copy.remove(&id) {
+                    Some(removed_entry) => {
+                        // Todo: record number of GCs it survived ?
+                    },
+                    None => {
+                        // Object was not present, so we add it as "allocated while profiling"
+                        self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: true });
+                    },
                 }
             }
 
@@ -379,7 +404,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             for (id, reference_info) in surviving_references_copy {
                 match self.surviving_references.remove(&id) {
                     Some(removed_entry) => (),
-                    None => error!("Should not happen! [surviving_references_2]")
+                    None => error!("Should not happen!")
                 }
             }
         }
@@ -398,7 +423,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
         }
 
         // MovedReferences happens on compacting garbage collections
-        self.current_gc_info.compacting = true;
+        self.current_gc_info.compacting = true; // bullshit ?
         self.current_gc_info.had_survivors_callback = true;
 
         // Only process gen 2
@@ -406,14 +431,24 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             return Ok(());
         }
 
+        let mut new_tracked_refs = 0;
+        let mut moved_tracked_refs = 0;
+
         if self.surviving_references.len() == 0
         {
             // First time collecting surviving+moved references
             for i in 0..new_object_id_range_start.len() {
                 let id = new_object_id_range_start[i];
-                if id != 0 {
-                    self.surviving_references.insert(id, ReferenceInfo { initial_size: new_object_id_range_start[i], allocated_while_profiling: false });
+                if id == 0 {
+                    continue;
                 }
+                let info = self.profiler_info();
+                let gen = info.get_object_generation(id).unwrap();
+                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                    continue;
+                }
+                //info!("before: {}, after: {} ({:?})", old_object_id_range_start[i], new_object_id_range_start[i], gen);
+                self.surviving_references.insert(id, ReferenceInfo { initial_size: object_id_range_length[i], allocated_while_profiling: false });
             }
         }
         else
@@ -422,26 +457,45 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             let mut surviving_references_copy = self.surviving_references.clone();
 
             for i in 0..old_object_id_range_start.len() {
-                let id = old_object_id_range_start[i];
-                if id != 0 {
-                    match surviving_references_copy.remove(&id) {
-                        Some(removed_entry) => {
-                            // Todo: record number of GCs it survived ?
-                        },
-                        None => {
-                            // Object was not present, so we add it (its new id, not the old one) as "allocated while profiling".
-                            self.surviving_references.insert(id, ReferenceInfo { initial_size: new_object_id_range_start[i], allocated_while_profiling: true });
-                        },
-                    }
-                    self.surviving_references.insert(id, ReferenceInfo { initial_size: new_object_id_range_start[i], allocated_while_profiling: true });
+                let old_id = old_object_id_range_start[i];
+                let new_id = new_object_id_range_start[i];
+                if old_id == 0 {
+                    continue;
+                }
+                let info = self.profiler_info();
+                let gen = info.get_object_generation(old_id).unwrap();
+                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                    continue;
+                }
+                match surviving_references_copy.remove(&old_id) {
+                    Some(removed_entry) => {
+                        // Object was already tracked but moved
+                        match self.surviving_references.remove(&old_id) {
+                            Some(moved_ref_info) => {
+                                moved_tracked_refs += 1;
+                                self.surviving_references.insert(new_id, moved_ref_info);
+                            },
+                            None => { error!("Should not happen!"); },
+                        };
+                        // Todo: record number of GCs it survived ?
+                    },
+                    None => {
+                        // Object was not tracked, so we add it (its new id, not the old one) as "allocated while profiling".
+                        new_tracked_refs +=1;
+                        self.surviving_references.insert(new_id, ReferenceInfo { initial_size: new_object_id_range_start[i], allocated_while_profiling: true });
+                    },
                 }
             }
+
+            info!("Untracking {} dead refs", surviving_references_copy.len());
+            info!("Tracking {} new refs", new_tracked_refs);
+            info!("Updated {} moved refs", moved_tracked_refs);
 
             // Everything that remains in our copy is a dead reference, so we remove it from original map
             for (id, reference_info) in surviving_references_copy {
                 match self.surviving_references.remove(&id) {
                     Some(removed_entry) => (),
-                    None => error!("Should not happen! [surviving_references_2]")
+                    None => error!("Should not happen!")
                 }
             }
         }
