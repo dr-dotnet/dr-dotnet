@@ -24,7 +24,6 @@ use crate::profilers::*;
 #[derive(Default, Clone)]
 struct ReferenceInfo {
     initial_size: usize,
-    allocated_while_profiling: bool,
     first_gc_survived: u16,
     last_gc_survived: u16,
 }
@@ -45,7 +44,7 @@ pub struct MemoryLeakProfiler {
     surviving_references: HashMap<ffi::ObjectID, ReferenceInfo>,
     serialized_survivor_branches: HashMap<String, u64>,
     current_gc_info: GCInfo,
-    elegible_gcs_count: u32,
+    elegible_gcs_count: u16,
     finished: bool
 }
 
@@ -236,6 +235,19 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
             return Ok(())
         }
 
+        if self.current_gc_info.had_survivors_callback {
+            let mut dead_refs = Vec::new();
+            for (id, ref_info) in self.surviving_references.iter() {
+                if ref_info.last_gc_survived != self.elegible_gcs_count {
+                    dead_refs.push(*id);
+                }
+            }
+            info!("Untracking {} dead refs", dead_refs.len());
+            for dead_ref in dead_refs {
+                self.surviving_references.remove(&dead_ref);
+            }
+        }
+
         if !self.current_gc_info.is_last_gc {
             return Ok(());
         }
@@ -338,9 +350,9 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 impl CorProfilerCallback4 for MemoryLeakProfiler
 {
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-    fn surviving_references_2(&mut self, object_id_range_start: &[ffi::ObjectID], c_object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
+    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
     {
-        info!("Surviving references 2 ({} objects survived)", object_id_range_start.len());
+        info!("Surviving references 2 ({} objects survived)", object_ids.len());
 
         if self.finished {
             return Ok(());
@@ -355,68 +367,36 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             return Ok(());
         }
 
-        // PROBLEM: There are several callbacks per GC so it does not work!!
-
-        if self.surviving_references.len() == 0
-        {
-            // First time collecting surviving references
-            for i in 0..object_id_range_start.len() {
-                let id = object_id_range_start[i];
-                if id == 0 {
-                    continue;
-                }
-                let info = self.profiler_info();
-                let gen = info.get_object_generation(id).unwrap();
-                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                    continue;
-                }
-
-                self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: false });
+        for i in 0..object_ids.len() {
+            let id = object_ids[i];
+            if id == 0 {
+                continue;
             }
-        }
-        else
-        {
-            // Create a copy to know which objects are new and which ones are dead
-            let mut surviving_references_copy = self.surviving_references.clone();
-
-            for i in 0..object_id_range_start.len() {
-                let id = object_id_range_start[i];
-                if id == 0 {
-                    continue;
-                }
-                let info = self.profiler_info();
-                let gen = info.get_object_generation(id).unwrap();
-                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                    continue;
-                }
-                match surviving_references_copy.remove(&id) {
-                    Some(removed_entry) => {
-                        // Todo: record number of GCs it survived ?
-                    },
-                    None => {
-                        // Object was not present, so we add it as "allocated while profiling"
-                        self.surviving_references.insert(id, ReferenceInfo { initial_size: c_object_id_range_length[i], allocated_while_profiling: true });
-                    },
-                }
+            let info = self.profiler_info();
+            let gen = info.get_object_generation(id).unwrap();
+            if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                continue;
             }
 
-            // Everything that remains in our copy is a dead reference, so we remove it from original map
-            for (id, reference_info) in surviving_references_copy {
-                match self.surviving_references.remove(&id) {
-                    Some(removed_entry) => (),
-                    None => error!("Should not happen!")
-                }
-            }
+            match self.surviving_references.get_mut(&id) {
+                // Reference was already tracked: we update the last gc info
+                Some(ref_info) => ref_info.last_gc_survived = self.elegible_gcs_count,
+                // Reference wasn't tracked: we start tracking it
+                None => { self.surviving_references.insert(id, ReferenceInfo {
+                    initial_size: object_lengths[i],
+                    first_gc_survived: self.elegible_gcs_count,
+                    last_gc_survived: self.elegible_gcs_count }); },
+            };
         }
 
-        // Todo: Return HRESULT ?
-        Ok(())
+        // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
+        Err(ffi::HRESULT::MAX)
     }
 
     // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-movedreferences2-method
-    fn moved_references_2(&mut self, old_object_id_range_start: &[ffi::ObjectID], new_object_id_range_start: &[ffi::ObjectID], object_id_range_length: &[usize]) -> Result<(), ffi::HRESULT>
+    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
     {
-        info!("Moved references 2 ({} objects moved)", old_object_id_range_start.len());
+        info!("Moved references 2 ({} objects moved)", old_object_ids.len());
 
         if self.finished {
             return Ok(());
@@ -434,74 +414,39 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
         let mut new_tracked_refs = 0;
         let mut moved_tracked_refs = 0;
 
-        if self.surviving_references.len() == 0
-        {
-            // First time collecting surviving+moved references
-            for i in 0..new_object_id_range_start.len() {
-                let id = new_object_id_range_start[i];
-                if id == 0 {
-                    continue;
-                }
-                let info = self.profiler_info();
-                let gen = info.get_object_generation(id).unwrap();
-                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                    continue;
-                }
-                //info!("before: {}, after: {} ({:?})", old_object_id_range_start[i], new_object_id_range_start[i], gen);
-                self.surviving_references.insert(id, ReferenceInfo { initial_size: object_id_range_length[i], allocated_while_profiling: false });
+        for i in 0..old_object_ids.len() {
+            let old_id = old_object_ids[i];
+            let new_id = new_object_ids[i];
+            if old_id == 0 {
+                continue;
             }
-        }
-        else
-        {
-            // Create a copy to know which objects are new and which ones are dead
-            let mut surviving_references_copy = self.surviving_references.clone();
-
-            for i in 0..old_object_id_range_start.len() {
-                let old_id = old_object_id_range_start[i];
-                let new_id = new_object_id_range_start[i];
-                if old_id == 0 {
-                    continue;
-                }
-                let info = self.profiler_info();
-                let gen = info.get_object_generation(old_id).unwrap();
-                if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                    continue;
-                }
-                match surviving_references_copy.remove(&old_id) {
-                    Some(removed_entry) => {
-                        // Object was already tracked but moved
-                        match self.surviving_references.remove(&old_id) {
-                            Some(moved_ref_info) => {
-                                moved_tracked_refs += 1;
-                                self.surviving_references.insert(new_id, moved_ref_info);
-                            },
-                            None => { error!("Should not happen!"); },
-                        };
-                        // Todo: record number of GCs it survived ?
-                    },
-                    None => {
-                        // Object was not tracked, so we add it (its new id, not the old one) as "allocated while profiling".
-                        new_tracked_refs +=1;
-                        self.surviving_references.insert(new_id, ReferenceInfo { initial_size: new_object_id_range_start[i], allocated_while_profiling: true });
-                    },
-                }
+            let info = self.profiler_info();
+            let gen = info.get_object_generation(old_id).unwrap();
+            if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                continue;
             }
 
-            info!("Untracking {} dead refs", surviving_references_copy.len());
-            info!("Tracking {} new refs", new_tracked_refs);
-            info!("Updated {} moved refs", moved_tracked_refs);
-
-            // Everything that remains in our copy is a dead reference, so we remove it from original map
-            for (id, reference_info) in surviving_references_copy {
-                match self.surviving_references.remove(&id) {
-                    Some(removed_entry) => (),
-                    None => error!("Should not happen!")
-                }
-            }
+            match self.surviving_references.remove(&old_id) {
+                // Reference was already tracked: we update its ID and the last gc info
+                Some(ref_info) => {
+                    let mut ref_info = ref_info.clone();
+                    ref_info.last_gc_survived = self.elegible_gcs_count;
+                    self.surviving_references.insert(new_id, ref_info);
+                    moved_tracked_refs += 1;
+                },
+                // Reference wasn't tracked: we start tracking it
+                None => { self.surviving_references.insert(new_id, ReferenceInfo {
+                    initial_size: object_lengths[i],
+                    first_gc_survived: self.elegible_gcs_count,
+                    last_gc_survived: self.elegible_gcs_count }); },
+            };
         }
 
-        // Todo: Return HRESULT ? "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
-        Ok(())
+        info!("Tracking {} new refs", new_tracked_refs);
+        info!("Updated {} moved refs", moved_tracked_refs);
+
+        // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
+        Err(ffi::HRESULT::MAX)
     }
 }
 
