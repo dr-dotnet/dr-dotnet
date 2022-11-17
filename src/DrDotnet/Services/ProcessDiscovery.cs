@@ -42,11 +42,11 @@ public class ProcessDiscovery : IProcessDiscovery
 
                     _logger.Log($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
 
-                    _logger.Log($"  - Main module name: {process.MainModule.ModuleName}, File: {process.MainModule.FileName}");
-
+                    _logger.Log($"  - Main module name: {process.MainModule.ModuleName}, File: {process.MainModule.FileName}, Main window title: {process.MainWindowTitle}, Site name: {process.Site?.Name}");
+                    
                     foreach (ProcessModule module in process.Modules)
                     {
-                        _logger.Log($"  - Module name: {module.ModuleName}, File: {module.FileName}");
+                        _logger.Log($"  - Module name: {module.ModuleName}, File: {module.FileName}, Site: {module.Site?.Name}");
                     }
 
                     dotnetProcesses.Add(process);
