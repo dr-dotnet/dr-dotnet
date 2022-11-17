@@ -30,6 +30,8 @@ public class Profiler
         string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
         var sessionId = Guid.NewGuid();
 
+        logger.Log($"Profiler DLL path is '{profilerDll}'. Exists: {File.Exists(profilerDll)}");
+
         DiagnosticsClient client = new DiagnosticsClient(processId);
         client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 

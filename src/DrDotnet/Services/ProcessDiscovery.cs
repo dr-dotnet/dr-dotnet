@@ -37,10 +37,17 @@ public class ProcessDiscovery : IProcessDiscovery
                 {
                     Process process = Process.GetProcessById(processes[i]);
 
-                    _logger.Log($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
-
                     if (processes[i] == currentProcess.Id)
                         continue;
+
+                    _logger.Log($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
+
+                    _logger.Log($"  - Main module name: {process.MainModule.ModuleName}, File: {process.MainModule.FileName}");
+
+                    foreach (ProcessModule module in process.Modules)
+                    {
+                        _logger.Log($"  - Module name: {module.ModuleName}, File: {module.FileName}");
+                    }
 
                     dotnetProcesses.Add(process);
                 }
