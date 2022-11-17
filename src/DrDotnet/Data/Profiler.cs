@@ -38,42 +38,6 @@ public class Profiler
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
 
-        try {
-            var env = client.GetProcessEnvironment();
-            foreach (var pair in env) {
-                logger.Log($"- Env name: {pair.Key}, value: {pair.Value}");
-            }
-        } catch(Exception e) {
-            logger.Log($"[ERROR] Error while retreiving env variables: {e}");
-        }
-
-        try {
-            var providers = new List<EventPipeProvider>()
-            {
-                new EventPipeProvider("Microsoft-Windows-DotNETRuntime",
-                    EventLevel.Informational, (long)ClrTraceEventParser.Keywords.GC)
-            };
-            using (var session = client.StartEventPipeSession(providers, false)) {
-                var source = new EventPipeEventSource(session.EventStream);
-
-                source.Clr.All += (TraceEvent obj) => {
-                    logger.Log("ETW EVENT: " + obj.EventName);
-                };
-
-                try {
-                    source.Process();
-                }
-                // NOTE: This exception does not currently exist. It is something that needs to be added to TraceEvent.
-                catch (Exception e) {
-                    logger.Log("Error encountered while processing events");
-                    logger.Log(e.ToString());
-                }
-            }
-        }
-        catch (Exception e) {
-            logger.Log($"[ERROR] Error while retreiving etw runtime events: {e}");
-        }
-
         client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
         logger.Log($"Attached profiler {ProfilerId} with session {sessionId} to process {processId}");
