@@ -25,6 +25,7 @@
     <!--<PackageReference Include="Microsoft.AspNetCore.Components" Version="6.0.0" />-->
     <!--<PackageReference Include="Microsoft.AspNetCore.Components.WebView" Version="6.0.0" />-->
     <PackageReference Include="Microsoft.Diagnostics.NETCore.Client" Version="0.2.257301" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.0.6" />
   </ItemGroup>
 
   <ItemGroup>
