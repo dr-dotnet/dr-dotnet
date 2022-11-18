@@ -13,7 +13,7 @@
 }
 else
 {
-    <MatTable Items="@_profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+    <MatTable Items="@_profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Name</th>
         <th style="min-width:300px;">Id</th>

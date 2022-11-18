@@ -6,11 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
 
-public class SessionDiscovery : ISessionDiscovery
+public class SessionsDiscovery : ISessionDiscovery
 {
     private ILogger _logger;
 
-    public SessionDiscovery(ILogger logger)
+    public SessionsDiscovery(ILogger logger)
     {
         _logger = logger;
     }

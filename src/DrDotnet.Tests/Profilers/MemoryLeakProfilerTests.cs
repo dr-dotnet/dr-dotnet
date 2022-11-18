@@ -29,7 +29,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
     public async Task Profiler_Detects_Memory_Leaks()
     {
         Logger logger = new Logger();
-        SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
+        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
         Profiler profiler = GetProfiler();
 
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
@@ -57,7 +57,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
         // Warmup
         await Task.Delay(1000);
 
-        var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
 
         Console.WriteLine("Session Directory: " + session.Path);
 

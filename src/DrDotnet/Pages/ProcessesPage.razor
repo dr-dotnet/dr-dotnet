@@ -16,7 +16,7 @@
 }
 else
 {
-    <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+    <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Name</th>
         <th>Id</th>

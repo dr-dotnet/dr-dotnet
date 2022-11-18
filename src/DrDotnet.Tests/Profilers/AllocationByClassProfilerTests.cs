@@ -36,7 +36,7 @@ public class AllocationByClassProfilerTests : ProfilerTests
     public async Task Profiler_Counts_Allocations_By_Class()
     {
         Logger logger = new Logger();
-        SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
+        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
         Profiler profiler = GetProfiler();
 
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
@@ -60,7 +60,7 @@ public class AllocationByClassProfilerTests : ProfilerTests
             }
         });
 
-        var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
 

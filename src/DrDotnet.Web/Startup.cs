@@ -29,7 +29,7 @@ public class Startup
         services.AddSingleton<HttpClient>();
         // Todo: use microsoft logging providers and friends
         services.AddSingleton<ILogger, Logger>();
-        services.AddSingleton<ISessionDiscovery, SessionDiscovery>();
+        services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
     }

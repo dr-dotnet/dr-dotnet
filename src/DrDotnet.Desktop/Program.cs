@@ -21,7 +21,7 @@ class Program
         appBuilder.Services.AddSingleton<HttpClient>();
         // Todo: use microsoft logging providers and friends
         appBuilder.Services.AddSingleton<ILogger, Logger>();
-        appBuilder.Services.AddSingleton<ISessionDiscovery, SessionDiscovery>();
+        appBuilder.Services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         appBuilder.Services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         appBuilder.Services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
 
