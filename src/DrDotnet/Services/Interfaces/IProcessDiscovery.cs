@@ -7,6 +7,6 @@ namespace DrDotnet
 {
     public interface IProcessDiscovery
     {
-        ValueTask<List<Process>> GetDotnetProcessesAsync(Action<float> progressCallback);
+        ValueTask<List<ProcessInfo>> GetDotnetProcessesAsync(Action<float> progressCallback);
     }
 }

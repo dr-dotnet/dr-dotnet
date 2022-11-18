@@ -21,19 +21,21 @@ else
         <th>Name</th>
         <th>Id</th>
         <th style="min-width:300px;">Start Time</th>
-        <th>Main Module</th>
+        <th>Managed Assembly</th>
+        <th>Runtime Version</th>
     </MatTableHeader>
     <MatTableRow>
-        <td>@context.ProcessName</td>
-        <td>@context.Id</td>
+        <td>@context.Name</td>
+        <td>@context.Pid</td>
         <td>@context.StartTime</td>
-        <td>@context.MainModule.ModuleName</td>
+        <td>@context.ManagedAssemblyName</td>
+        <td>@context.Version</td>
     </MatTableRow>
     </MatTable>
 }
 
 @code {
-    private List<System.Diagnostics.Process> _processes;
+    private List<ProcessInfo> _processes;
 
     protected override async Task OnInitializedAsync()
     {

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -17,11 +18,37 @@ public class ProcessDiscovery : IProcessDiscovery
         _logger = logger;
     }
 
-    public async ValueTask<List<Process>> GetDotnetProcessesAsync(Action<float> progressCallback)
+    private bool TryGetManagedAssemblyNameFromPid(int pid, out string assemblyName, out string version)
+    {
+        assemblyName = null;
+        version = null;
+        
+        try
+        {
+            // Todo: Fill a PR on dotnet/diagnostics to open up this API and avoid relying on internal members
+            var client = new DiagnosticsClient(pid);
+            var methodInfo = typeof(DiagnosticsClient).GetMethod("GetProcessInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+            var processInfo = methodInfo.Invoke(client, null);
+            var assemblyNameProperty = processInfo.GetType().GetProperty("ManagedEntrypointAssemblyName", BindingFlags.Instance | BindingFlags.Public);
+            var clrProductVersionProperty = processInfo.GetType().GetProperty("ClrProductVersionString", BindingFlags.Instance | BindingFlags.Public);
+            
+            assemblyName = assemblyNameProperty.GetGetMethod().Invoke(processInfo, null) as string;
+            version = clrProductVersionProperty.GetGetMethod().Invoke(processInfo, null) as string;
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Can't retreive managed assembly name from PID through IPC");
+            return false;
+        }
+    }
+
+    public async ValueTask<List<ProcessInfo>> GetDotnetProcessesAsync(Action<float> progressCallback)
     {
         _logger.LogInformation("Listing dotnet processes...");
 
-        var dotnetProcesses = new List<Process>();
+        var dotnetProcesses = new List<ProcessInfo>();
 
         // Todo: Use IAsyncEnumerable
         
@@ -43,14 +70,9 @@ public class ProcessDiscovery : IProcessDiscovery
 
                     _logger.LogInformation($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
 
-                    _logger.LogDebug($"  - Main module name: {process.MainModule.ModuleName}, File: {process.MainModule.FileName}, Main window title: {process.MainWindowTitle}, Site name: {process.Site?.Name}");
-                
-                    foreach (ProcessModule module in process.Modules)
-                    {
-                        _logger.LogDebug($"  - Module name: {module.ModuleName}, File: {module.FileName}, Site: {module.Site?.Name}");
-                    }
+                    TryGetManagedAssemblyNameFromPid(process.Id, out string assemblyName, out string version);
 
-                    dotnetProcesses.Add(process);
+                    dotnetProcesses.Add(new ProcessInfo { Pid = process.Id, Name = process.ProcessName, StartTime = process.StartTime, ManagedAssemblyName = assemblyName, Version = version });
                 }
                 catch (Exception e)
                 {
