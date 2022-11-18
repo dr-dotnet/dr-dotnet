@@ -1,7 +1,7 @@
 on: [workflow_dispatch, release]
 
 name: docker
-run-name: ref ${{GITHUB_REF##*/}} - ${{GITHUB_REF_NAME}}
+run-name: ref ${{GITHUB_REF_NAME}}
 
 jobs:
   check:
