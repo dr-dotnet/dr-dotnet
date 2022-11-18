@@ -41,7 +41,10 @@ public class Profiler
             try
             {
                 string tmpProfilerDll = Path.Combine("/tmp", ProfilerLibraryName);
-                File.Copy(profilerDll, tmpProfilerDll);
+                if (!File.Exists(tmpProfilerDll))
+                {
+                    File.Copy(profilerDll, tmpProfilerDll);
+                }
                 profilerDll = tmpProfilerDll;
                 logger.Log($"Profiler lib copied to {profilerDll}");
             }
