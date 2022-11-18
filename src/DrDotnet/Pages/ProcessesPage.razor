@@ -61,7 +61,7 @@ else
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/profilers/{(data as System.Diagnostics.Process).Id}", true);
+        _navigationManager.NavigateTo($"/profilers/{(data as ProcessInfo).Pid}", true);
     }
 
     public void OnBackClick(object data)
