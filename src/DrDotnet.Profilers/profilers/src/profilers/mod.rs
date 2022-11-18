@@ -59,26 +59,26 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
     });
 }
 
-#[cfg(debug_assertions)]
+// #[cfg(debug_assertions)]
 fn init_logging(uuid: Uuid) {
     CombinedLogger::init(
         vec![
-            TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
+            // TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
             WriteLogger::new(LevelFilter::Info, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_directory(uuid))).unwrap()),
         ]
     ).unwrap();
 }
 
-#[cfg(not(debug_assertions))]
-fn init_logging(uuid: Uuid) {
-    let config = ConfigBuilder::new().set_max_level(LevelFilter::Error).build();
-    CombinedLogger::init(
-        vec![
-            TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Warn, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
-        ]
-    ).unwrap();
-}
+// #[cfg(not(debug_assertions))]
+// fn init_logging(uuid: Uuid) {
+//     let config = ConfigBuilder::new().set_max_level(LevelFilter::Error).build();
+//     CombinedLogger::init(
+//         vec![
+//             TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
+//             WriteLogger::new(LevelFilter::Warn, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
+//         ]
+//     ).unwrap();
+// }
 
 pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Result<Uuid, ffi::HRESULT> {
     unsafe {
