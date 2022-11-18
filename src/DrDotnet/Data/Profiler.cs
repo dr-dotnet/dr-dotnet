@@ -34,7 +34,22 @@ public class Profiler
         string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
         var sessionId = Guid.NewGuid();
 
-        logger.Log($"Profiler DLL path is '{profilerDll}'. Exists: {File.Exists(profilerDll)}");
+        // Copy DLL for sidecar profiling through shared volume /tmp
+        // Could be improved
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            try
+            {
+                string tmpProfilerDll = Path.Combine("/tmp", ProfilerLibraryName);
+                File.Copy(profilerDll, tmpProfilerDll);
+                profilerDll = tmpProfilerDll;
+                logger.Log($"Profiler lib copied to {profilerDll}");
+            }
+            catch (Exception e)
+            {
+                logger.Log($"Error while copying profilers library: {e}");
+            }
+        }
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
 

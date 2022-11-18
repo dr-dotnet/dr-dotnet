@@ -12,7 +12,7 @@ public class AllocationSimulation : IDisposable
     public readonly int _allocatedObjectsPerSecond = 1_000_000;
     public readonly int _maxAliveObjects = 100_000;
 
-    private readonly Queue<string> _queue = new Queue<string>();
+    private readonly Queue<string> _queue = new();
 
     private volatile bool _disposed = false;
 
