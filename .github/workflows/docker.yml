@@ -1,12 +1,11 @@
 on: [workflow_dispatch, release]
 
 name: docker
-run-name: dockertest
+run-name: ref ${GITHUB_REF##*/}
 
 jobs:
   check:
     name: Docker
-    run-name: dockertest2
     runs-on: ubuntu-latest
     strategy:
       matrix:
