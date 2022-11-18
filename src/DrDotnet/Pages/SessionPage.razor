@@ -2,13 +2,18 @@
 
 @inject ILogger _logger;
 @inject ISessionDiscovery _sessionDiscovery;
-@inject NavigationManager _navigationManager
+@inject NavigationManager _navigationManager;
+@inject IJSRuntime _jsRuntime;
 
 @using Markdig;
 @using System.IO;
+@using System.IO.Compression
+@using Microsoft.AspNetCore.Mvc
 @using Microsoft.Extensions.Logging
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Download" OnClick="DownloadFileFromStream" Style="float: right;"></MatButton>
 
 <h3 class="mat-h3">Session</h3>
 
@@ -69,5 +74,23 @@
     public void OnBackClick(object data)
     {
         _navigationManager.NavigateTo("/", true);
+    }
+    
+    private async Task DownloadFileFromStream()
+    {
+        var memoryStream = new MemoryStream();
+
+        using var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true);
+      
+        foreach (var file in Session.EnumerateFiles())
+        {
+            archive.CreateEntryFromFile(file.FullName, file.Name);
+        }
+            
+        memoryStream.Seek(0, SeekOrigin.Begin);
+        
+        using var streamRef = new DotNetStreamReference(stream: memoryStream, leaveOpen: true);
+
+        await _jsRuntime.InvokeVoidAsync("downloadFileFromStream", $"session-{Session.SessionId}.zip", streamRef);
     }
 }
