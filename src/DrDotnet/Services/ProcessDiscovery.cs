@@ -70,7 +70,10 @@ public class ProcessDiscovery : IProcessDiscovery
 
                     _logger.LogInformation($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
 
-                    TryGetManagedAssemblyNameFromPid(process.Id, out string assemblyName, out string version);
+                    if (!TryGetManagedAssemblyNameFromPid(process.Id, out string assemblyName, out string version))
+                    {
+                        continue;
+                    }
 
                     dotnetProcesses.Add(new ProcessInfo { Pid = process.Id, Name = process.ProcessName, StartTime = process.StartTime, ManagedAssemblyName = assemblyName, Version = version });
                 }
