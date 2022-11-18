@@ -22,7 +22,7 @@ static mut INVOKATIONS: u32 = 0;
 #[no_mangle]
 unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::REFIID, ppv: *mut ffi::LPVOID) -> ffi::HRESULT
 {
-    invokations += 1;
+    INVOKATIONS += 1;
     
     info!("[profiler] Entered DllGetClassObject. Invokations: {}", INVOKATIONS);
 
