@@ -59,8 +59,20 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
     });
 }
 
+static mut LOGGING_INITIALIZED: bool = false;
+
 // #[cfg(debug_assertions)]
 fn init_logging(uuid: Uuid) {
+    
+    // Init once.
+    // Todo: Make it thread safe
+    unsafe {
+        if LOGGING_INITIALIZED {
+            return;
+        }
+        LOGGING_INITIALIZED = true;
+    }
+
     CombinedLogger::init(
         vec![
             // TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
