@@ -1,11 +1,12 @@
 on: [workflow_dispatch, release]
 
 name: docker
-run-name: ${{ github.event.head_commit.message }}
+run-name: dockertest
 
 jobs:
   check:
     name: Docker
+    run-name: dockertest2
     runs-on: ubuntu-latest
     strategy:
       matrix:
