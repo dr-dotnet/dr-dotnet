@@ -28,7 +28,7 @@ public class CpuHotpathProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Lists_Cpu_Hotpaths()
     {
-        ILogger logger = new Logger();
+        Logger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
         Profiler profiler = GetProfiler();
 

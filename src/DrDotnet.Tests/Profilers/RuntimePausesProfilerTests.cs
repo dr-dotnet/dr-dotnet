@@ -28,7 +28,7 @@ public class RuntimePausesProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Counts_Runtime_Pauses()
     {
-        ILogger logger = new Logger();
+        Logger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
         Profiler profiler = GetProfiler();
 

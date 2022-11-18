@@ -28,7 +28,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Detects_GC_Survivors_Referenced_From_Gen2()
     {
-        ILogger logger = new Logger();
+        Logger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
         Profiler profiler = GetProfiler();
 

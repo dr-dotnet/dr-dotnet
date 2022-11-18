@@ -6,7 +6,7 @@
 
 @using Markdig;
 @using System.IO;
-@using System.Text;
+@using Microsoft.Extensions.Logging
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
 
@@ -64,11 +64,6 @@
         string markdownContent = File.ReadAllText(markdownFile.FullName);
         string htmlContent = Markdown.ToHtml(markdownContent, pipeline);
         return new MarkupString(htmlContent);
-    }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
     }
 
     public void OnBackClick(object data)

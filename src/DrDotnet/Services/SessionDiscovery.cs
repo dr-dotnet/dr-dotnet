@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
 
@@ -34,9 +35,9 @@ public class SessionDiscovery : ISessionDiscovery
             {
                 sessions.Add(Session.FromPath(sessionFilePath));
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _logger.Log(ex.ToString());
+                _logger.LogError(e, "Error while retreiving session at path '{SessionPath}'", sessionFilePath);
             }
         }
 

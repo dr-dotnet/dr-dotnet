@@ -1,12 +1,9 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
-using Microsoft.Diagnostics.Tracing;
-using Microsoft.Diagnostics.Tracing.Parsers;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
 
@@ -46,11 +43,11 @@ public class Profiler
                     File.Copy(profilerDll, tmpProfilerDll);
                 }
                 profilerDll = tmpProfilerDll;
-                logger.Log($"Profiler lib copied to {profilerDll}");
+                logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);
             }
             catch (Exception e)
             {
-                logger.Log($"Error while copying profilers library: {e}");
+                logger.LogError(e, "Error while copying profilers library");
             }
         }
 
@@ -58,7 +55,7 @@ public class Profiler
 
         client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
-        logger.Log($"Attached profiler {ProfilerId} with session {sessionId} to process {processId}");
+        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", ProfilerId, sessionId, processId);
 
         return sessionId;
     }

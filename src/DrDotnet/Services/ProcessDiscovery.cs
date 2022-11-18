@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
 
@@ -18,21 +19,21 @@ public class ProcessDiscovery : IProcessDiscovery
 
     public async ValueTask<List<Process>> GetDotnetProcessesAsync(Action<float> progressCallback)
     {
-        _logger.Log("Listing dotnet processes...");
+        _logger.LogInformation("Listing dotnet processes...");
 
         var dotnetProcesses = new List<Process>();
 
-        await Task.Run(async () =>
+        // Todo: Use IAsyncEnumerable
+        
+        try
         {
-            await Task.Yield();
-
             var currentProcess = Process.GetCurrentProcess();
             var processes = DiagnosticsClient.GetPublishedProcesses().ToArray();
-
+            
             for (int i = 0; i < processes.Length; i++)
             {
                 progressCallback(1f * i / processes.Length);
-                
+            
                 try
                 {
                     Process process = Process.GetProcessById(processes[i]);
@@ -40,25 +41,29 @@ public class ProcessDiscovery : IProcessDiscovery
                     if (processes[i] == currentProcess.Id)
                         continue;
 
-                    _logger.Log($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
+                    _logger.LogInformation($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
 
-                    _logger.Log($"  - Main module name: {process.MainModule.ModuleName}, File: {process.MainModule.FileName}, Main window title: {process.MainWindowTitle}, Site name: {process.Site?.Name}");
-                    
+                    _logger.LogDebug($"  - Main module name: {process.MainModule.ModuleName}, File: {process.MainModule.FileName}, Main window title: {process.MainWindowTitle}, Site name: {process.Site?.Name}");
+                
                     foreach (ProcessModule module in process.Modules)
                     {
-                        _logger.Log($"  - Module name: {module.ModuleName}, File: {module.FileName}, Site: {module.Site?.Name}");
+                        _logger.LogDebug($"  - Module name: {module.ModuleName}, File: {module.FileName}, Site: {module.Site?.Name}");
                     }
 
                     dotnetProcesses.Add(process);
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
-                    _logger.Log("Error listing dotnet processes: " + e.ToString());
+                    _logger.LogError(e, "Can't read process {ProcessId} information.", processes[i]);
                 }
             }
-            
-            _logger.Log("Finished listing dotnet processes.");
-        });
+        
+            _logger.LogInformation("Finished listing dotnet processes.");
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed listing dotnet processes.");
+        }
 
         return dotnetProcesses;
     }

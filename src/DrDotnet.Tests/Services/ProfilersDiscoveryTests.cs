@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 
 namespace DrDotnet.Tests.Services;
 

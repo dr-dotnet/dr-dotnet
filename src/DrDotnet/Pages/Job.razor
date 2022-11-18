@@ -1,4 +1,5 @@
 ﻿@page "/job/{ProcessId}/{ProfilerId}"
+@using Microsoft.Extensions.Logging
 
 @inject NavigationManager _navigationManager
 @inject IProfilerDiscovery _profilerDiscovery
@@ -69,14 +70,14 @@
 
         try
         {
-            _logger.Log($"Start profiling!");
+            _logger.LogInformation("Start profiling!");
             var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
-            _logger.Log($"Successfully attached to process!");
+            _logger.LogInformation("Successfully attached to process!");
             Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            _logger.Log("ERROR: " + ex);
+            _logger.LogError(e, "Could not attach to process {ProcessId}", ProcessId);
         }
 
         Started = false;

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MatBlazor;
 using System.Net.Http;
+using Microsoft.Extensions.Logging;
 
 namespace DrDotnet.Web;
 
@@ -26,6 +27,7 @@ public class Startup
         services.AddMatBlazor();
 
         services.AddSingleton<HttpClient>();
+        // Todo: use microsoft logging providers and friends
         services.AddSingleton<ILogger, Logger>();
         services.AddSingleton<ISessionDiscovery, SessionDiscovery>();
         services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();

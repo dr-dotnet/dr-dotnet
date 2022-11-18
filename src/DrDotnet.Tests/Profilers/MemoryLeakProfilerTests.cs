@@ -28,7 +28,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Detects_Memory_Leaks()
     {
-        ILogger logger = new Logger();
+        Logger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
         Profiler profiler = GetProfiler();
 

@@ -35,7 +35,7 @@ public class AllocationByClassProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Counts_Allocations_By_Class()
     {
-        ILogger logger = new Logger();
+        Logger logger = new Logger();
         SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
         Profiler profiler = GetProfiler();
 
