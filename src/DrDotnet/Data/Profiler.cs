@@ -1,5 +1,6 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -46,6 +47,16 @@ public class Profiler
             {
                 logger.LogError(e, "Error while copying profilers library");
             }
+        }
+
+        try
+        {
+            var process = Process.GetProcessById(processId);
+            ArgumentNullException.ThrowIfNull(process);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Process does not seem alive");
         }
 
         DiagnosticsClient client = new DiagnosticsClient(processId);

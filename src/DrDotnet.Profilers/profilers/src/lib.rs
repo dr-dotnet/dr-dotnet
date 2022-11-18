@@ -16,7 +16,7 @@ register!(
     RuntimePauseProfiler,
     CpuHotpathProfiler);
 
-static mut invokations: u32 = 0;
+static mut INVOKATIONS: u32 = 0;
 
 // Actual COM entry point
 #[no_mangle]
@@ -24,7 +24,7 @@ unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::RE
 {
     invokations += 1;
     
-    debug!("[profiler] Entered DllGetClassObject. Invokations: {}", invokations);
+    info!("[profiler] Entered DllGetClassObject. Invokations: {}", INVOKATIONS);
 
     if ppv.is_null() {
         return ffi::E_FAIL;
