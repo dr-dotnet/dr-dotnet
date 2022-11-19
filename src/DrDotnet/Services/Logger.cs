@@ -35,9 +35,14 @@ public class Logger : ILogger
         var message = formatter(state, exception);
         
         var logMessage = $"[{logLevel}][{DateTime.Now}] {message}\n";
+        if (exception != null)
+        {
+            logMessage += exception.ToString() +"\n";
+        }
+        
         MessageLogged?.Invoke(logMessage);
+        
         Console.Write(logMessage);
-
         _allLogs.Append(logMessage);
     }
 }
