@@ -60,7 +60,18 @@ public class Profiler
         }
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
-
+        
+        
+        try
+        {
+            var envs = client.GetProcessEnvironment();
+            logger.LogInformation("Environment variables: " + envs.Count);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Can't get process env (IPC broken?)");
+        }
+        
         client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
         logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", ProfilerId, sessionId, processId);
