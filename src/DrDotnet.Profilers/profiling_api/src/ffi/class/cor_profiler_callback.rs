@@ -177,7 +177,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
-        println!(
+        debug!(
             "CorProfilerCallback hit query_interface! Querying riid: {:?}",
             *riid
         );

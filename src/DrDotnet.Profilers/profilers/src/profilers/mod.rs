@@ -59,24 +59,25 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
     });
 }
 
-static mut LOGGING_INITIALIZED: bool = false;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static mut LOGGING_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 // #[cfg(debug_assertions)]
-fn init_logging(uuid: Uuid) {
+pub fn init_logging() {
     
     // Init once.
-    // Todo: Make it thread safe
     unsafe {
-        if LOGGING_INITIALIZED {
+        if LOGGING_INITIALIZED.swap(true, Ordering::Relaxed) {
+            error!("Logging is already initialized!");
             return;
         }
-        LOGGING_INITIALIZED = true;
     }
 
     CombinedLogger::init(
         vec![
-            // TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_directory(uuid))).unwrap()),
+            TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
+            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_root_directory())).unwrap()),
         ]
     ).unwrap();
 }
@@ -102,8 +103,6 @@ pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Resu
         match Uuid::parse_str(&cstr) {
             Ok(uuid) => {
                 info!("Successfully parsed session ID {}", uuid);
-                init_logging(uuid);
-                info!("Successfully initialized logging");
                 Ok(uuid)
             },
             Err(_) => {
