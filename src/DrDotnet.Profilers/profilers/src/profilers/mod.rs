@@ -74,12 +74,15 @@ pub fn init_logging() {
         }
     }
 
-    CombinedLogger::init(
+    match CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
             WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_root_directory())).unwrap()),
         ]
-    ).unwrap();
+    ) {
+        Ok(_) => info!("Logging initialized!"),
+        Err(error) => println!("Logging initialization failed: {:?}", error)
+    }
 }
 
 // #[cfg(not(debug_assertions))]

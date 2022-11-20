@@ -1,9 +1,16 @@
-﻿@page "/profilers/{ProcessId}"
+﻿@page "/profilers/{ProcessId:int}"
 
-@inject IProfilerDiscovery _profilersDiscovery
-@inject NavigationManager _navigationManager
+@using Microsoft.Diagnostics.NETCore.Client;
+@using System.IO;
+
+@inject IProfilerDiscovery _profilersDiscovery;
+@inject ISessionDiscovery _dessionDiscovery;
+@inject NavigationManager _navigationManager;
+@inject IJSRuntime _jsRuntime;
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Take Dump" OnClick="DownloadFileFromStream" Style="float: right;"></MatButton>
 
 <h3 class="mat-h3">Profilers</h3>
 
@@ -31,7 +38,7 @@ else
     private List<Profiler> _profilers;
 
     [Parameter]
-    public string ProcessId { get; set; }
+    public int ProcessId { get; set; }
 
     protected override void OnInitialized()
     {
@@ -48,5 +55,22 @@ else
     public void OnBackClick(object data)
     {
         _navigationManager.NavigateTo("/processes", true);
+    }
+    
+    private async Task DownloadFileFromStream()
+    {
+        var client = new DiagnosticsClient(ProcessId);
+
+        var fileName = $"coredump_{DateTime.UtcNow}.dmp";
+
+        var dumpFilePath = Path.Combine(_dessionDiscovery.RootDir, fileName);
+        
+        client.WriteDump(DumpType.Normal, dumpFilePath, WriteDumpFlags.None);
+        
+        Stream fileStream = File.OpenRead(dumpFilePath);
+            
+        using var streamRef = new DotNetStreamReference(stream: fileStream, leaveOpen: true);
+
+        await _jsRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
     }
 } 
