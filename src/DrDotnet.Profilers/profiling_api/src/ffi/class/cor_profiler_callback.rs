@@ -44,6 +44,7 @@ pub struct CorProfilerCallback<T: CorProfilerCallback9> {
 
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     pub fn new<'b>(profiler: T) -> &'b mut CorProfilerCallback<T> {
+        println!("Created cor profiler callback instance");
         let cor_profiler_callback = CorProfilerCallback {
             lpVtbl: &CorProfilerCallbackVtbl {
                 IUnknown: IUnknown {
@@ -177,7 +178,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
-        debug!(
+        println!(
             "CorProfilerCallback hit query_interface! Querying riid: {:?}",
             *riid
         );
@@ -218,10 +219,13 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         let prev_ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed);
         let ref_count = prev_ref_count - 1;
 
+        println!("Ref count: {}", ref_count);
+        
         if ref_count == 0 {
+            println!("Profiler released!");
             drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
         }
-
+        
         ref_count
     }
 }

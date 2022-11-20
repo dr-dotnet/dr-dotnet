@@ -34,11 +34,12 @@ public class Profiler
 
         // Copy DLL for sidecar profiling through shared volume /tmp
         // Could be improved
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
+        // if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        // {
             try
             {
-                string tmpProfilerDll = Path.Combine("/tmp", ProfilerLibraryName);
+                SessionsDiscovery x = new SessionsDiscovery(logger);
+                string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName);
                 File.Copy(profilerDll, tmpProfilerDll, true);
                 profilerDll = tmpProfilerDll;
                 logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);
@@ -47,7 +48,7 @@ public class Profiler
             {
                 logger.LogError(e, "Error while copying profilers library");
             }
-        }
+        //}
 
         try
         {

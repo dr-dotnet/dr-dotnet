@@ -18,13 +18,13 @@ macro_rules! register{
                 if *rclsid == clsid {
                     
                     let profiler = <$type>::default();
-                    info!("[profiler] Creating profiler instance");
+                    info!("Creating profiler instance");
                     let class_factory: &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(profiler);
-                    info!("[profiler] Querying interface");
+                    info!("Querying interface");
                     return class_factory.QueryInterface(riid, ppv)
                 }
             )+
-            info!("[profiler] No matched profiler");
+            info!("No matched profiler");
             return ffi::E_FAIL;
         }
 
