@@ -6,7 +6,7 @@ run-name: Docker ${{ github.ref_name }}
 jobs:
   check:
     name: Docker
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04 # had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
     strategy:
       matrix:
         dotnet-version: ['7.0']
