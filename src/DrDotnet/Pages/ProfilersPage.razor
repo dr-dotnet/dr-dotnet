@@ -2,11 +2,14 @@
 
 @using Microsoft.Diagnostics.NETCore.Client;
 @using System.IO;
+@using Microsoft.Extensions.Logging
+@using System.Diagnostics
 
 @inject IProfilerDiscovery _profilersDiscovery;
 @inject ISessionDiscovery _dessionDiscovery;
 @inject NavigationManager _navigationManager;
 @inject IJSRuntime _jsRuntime;
+@inject ILogger _logger;
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
 
@@ -45,6 +48,12 @@ else
         base.OnInitialized();
 
          _profilers = _profilersDiscovery.GetProfilers();
+
+        var process = Process.GetProcessById(ProcessId);
+        foreach (ProcessModule module in process.Modules)
+        {
+            _logger.LogInformation(">> Loaded module '{Name}' file '{File}'", module.ModuleName, module.FileName);
+        }
     }
 
     private void OnSelectionChanged(object data)
