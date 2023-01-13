@@ -64,45 +64,9 @@ void Logger::DoLog(LogLevel level, const char* text) {
 	
 	strftime(time, sizeof(time), "%D %T", plt);
 
-	std::cout << text << std::endl;
-
-	std::stringstream message;
-	message
-		<< "[" << time << "." << std::setw(6) << std::setfill('0') << (ts.tv_nsec / 1000) << "]"
-		<< " [" << LogLevelToString(level) << "]"
-		<< " [" << OS::GetPid() << "," 
-		<< OS::GetTid() << "] "
-		<< text << std::endl;
-
-	auto smessage = message.str();
-
-	{
-		AutoLock locker(_lock);
-		_file << smessage;
-	}
-
-#if defined(_WINDOWS) && defined(_DEBUG)
-	OutputDebugStringA(smessage.c_str());
-#endif
+	std::cout << "[Profiler] " << text << std::endl;
 }
 
 Logger::Logger() {
-	auto logDir = OS::ReadEnvironmentVariable("DOTNEXT_LOGDIR");
-	if (logDir.empty())
-		logDir = OS::GetCurrentDir();
-
-	// build log file path based on current date and time
-	auto now = ::time(nullptr);
-	char time[64];
-#ifdef _WINDOWS
-	tm local;
-	localtime_s(&local, &now);
-	auto tlocal = &local;
-#else
-	auto tlocal = localtime(&now);
-#endif
-	::strftime(time, sizeof(time), "DotNext_%F_%H%M%S.log", tlocal);
-
-	_file.open(logDir + "/" + time, std::ios::out);
 
 }
