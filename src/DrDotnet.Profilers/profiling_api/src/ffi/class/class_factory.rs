@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 use crate::{
-    ffi::{
-        CorProfilerCallback, IClassFactory, IUnknown, BOOL, E_NOINTERFACE, HRESULT, LPVOID, REFIID,
-        S_OK, ULONG,
-    },
+    ffi::*,
     traits::CorProfilerCallback9,
 };
 use std::ffi::c_void;
@@ -57,12 +54,17 @@ where
         riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
+
+        if ppvObject.is_null() {
+            return E_POINTER;
+        }
+
         if *riid == IUnknown::IID || *riid == IClassFactory::IID {
             *ppvObject = self as *mut ClassFactory<T> as LPVOID;
             self.AddRef();
             S_OK
         } else {
-            *ppvObject = ptr::null_mut();
+            //*ppvObject = ptr::null_mut();
             E_NOINTERFACE
         }
     }
@@ -81,7 +83,7 @@ where
         println!("ClassFactory release. Ref count: {}", ref_count);
         
         if ref_count == 0 {
-            //drop(Box::from_raw(self as *mut ClassFactory<T>));
+            drop(Box::from_raw(self as *mut ClassFactory<T>));
         }
 
         ref_count
@@ -93,9 +95,13 @@ where
         _riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
-        *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T>
-            as LPVOID;
-        S_OK
+        let b = CorProfilerCallback::new(T::default());
+        let hr = b.query_interface(_riid, ppvObject);
+        b.release();
+        hr
+        
+        // *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T> as LPVOID;
+        // S_OK
     }
 
     pub extern "system" fn LockServer(&mut self, _fLock: BOOL) -> HRESULT {

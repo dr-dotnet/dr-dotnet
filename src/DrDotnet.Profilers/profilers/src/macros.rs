@@ -25,7 +25,7 @@ macro_rules! register{
                 }
             )+
             info!("No matched profiler");
-            return ffi::E_FAIL;
+            return profiling_api::ffi::CLASS_E_CLASSNOTAVAILABLE;
         }
 
         // Returns the list of profilers that are registered, along with their information.

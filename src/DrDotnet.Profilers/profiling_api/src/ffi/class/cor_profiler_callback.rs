@@ -1,16 +1,7 @@
 #![allow(non_snake_case)]
 use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, CorProfilerInfo};
 use crate::{
-    ffi::{
-        int, mdMethodDef, AppDomainID, AssemblyID, ClassID, FunctionID, GCHandleID,
-        ICorProfilerCallback, ICorProfilerCallback2, ICorProfilerCallback3, ICorProfilerCallback4,
-        ICorProfilerCallback5, ICorProfilerCallback6, ICorProfilerCallback7, ICorProfilerCallback8,
-        ICorProfilerCallback9, IUnknown, ModuleID, ObjectID, ReJITID, ThreadID, BOOL,
-        COR_PRF_FINALIZER_FLAGS, COR_PRF_GC_REASON, COR_PRF_GC_ROOT_FLAGS, COR_PRF_GC_ROOT_KIND,
-        COR_PRF_JIT_CACHE, COR_PRF_SUSPEND_REASON, COR_PRF_TRANSITION_REASON, DWORD, E_FAIL,
-        E_NOINTERFACE, GUID, HRESULT, LPCBYTE, LPVOID, REFGUID, REFIID, SIZE_T, S_OK, UINT,
-        UINT_PTR, ULONG, WCHAR,
-    },
+    ffi::*,
     traits::CorProfilerCallback9,
     ProfilerInfo,
 };
@@ -178,26 +169,27 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
-        println!(
-            "CorProfilerCallback hit query_interface! Querying riid: {:?}",
-            *riid
-        );
+
+        if ppvObject.is_null() {
+            return E_POINTER;
+        }
+
         if *riid == IUnknown::IID
-            || *riid == ICorProfilerCallback::IID
-            || *riid == ICorProfilerCallback2::IID
-            || *riid == ICorProfilerCallback3::IID
-            || *riid == ICorProfilerCallback4::IID
-            || *riid == ICorProfilerCallback5::IID
-            || *riid == ICorProfilerCallback6::IID
-            || *riid == ICorProfilerCallback7::IID
-            || *riid == ICorProfilerCallback8::IID
-            || *riid == ICorProfilerCallback9::IID
+        || *riid == ICorProfilerCallback::IID
+        || *riid == ICorProfilerCallback2::IID
+        || *riid == ICorProfilerCallback3::IID
+        || *riid == ICorProfilerCallback4::IID
+        || *riid == ICorProfilerCallback5::IID
+        || *riid == ICorProfilerCallback6::IID
+        || *riid == ICorProfilerCallback7::IID
+        || *riid == ICorProfilerCallback8::IID
+        || *riid == ICorProfilerCallback9::IID
         {
             *ppvObject = self as *mut CorProfilerCallback<T> as LPVOID;
             self.add_ref();
             S_OK
         } else {
-            *ppvObject = ptr::null_mut();
+            //*ppvObject = ptr::null_mut();
             E_NOINTERFACE
         }
     }
@@ -214,11 +206,11 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 
         let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
-        println!("CorProfilerCallback release. Ref count: {}", ref_count);
+        println!("CorProfilerCallbac release. Ref count: {}", ref_count);
         
         if ref_count == 0 {
             println!("CorProfilerCallback released!");
-            //drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
+            drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
         }
         
         ref_count
