@@ -70,23 +70,25 @@ where
     }
 
     pub unsafe extern "system" fn AddRef(&mut self) -> ULONG {
-        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
-
-        println!("ClassFactory addref. Ref count: {}", ref_count);
-        
-        ref_count
+        // let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
+        // 
+        // println!("ClassFactory addref. Ref count: {}", ref_count);
+        // 
+        // ref_count
+        1
     }
 
     pub unsafe extern "system" fn Release(&mut self) -> ULONG {
-        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
-
-        println!("ClassFactory release. Ref count: {}", ref_count);
-        
-        if ref_count == 0 {
-            drop(Box::from_raw(self as *mut ClassFactory<T>));
-        }
-
-        ref_count
+        // let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
+        // 
+        // println!("ClassFactory release. Ref count: {}", ref_count);
+        // 
+        // if ref_count == 0 {
+        //     drop(Box::from_raw(self as *mut ClassFactory<T>));
+        // }
+        // 
+        // ref_count
+        1
     }
 
     pub unsafe extern "system" fn CreateInstance(

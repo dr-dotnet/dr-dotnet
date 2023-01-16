@@ -195,25 +195,27 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     }
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
-        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
+        // let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
 
-        println!("CorProfilerCallback addref. Ref count: {}", ref_count);
+        // println!("CorProfilerCallback addref. Ref count: {}", ref_count);
         
-        ref_count
+        // ref_count
+        1
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
 
-        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
+        // let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
-        println!("CorProfilerCallbac release. Ref count: {}", ref_count);
+        // println!("CorProfilerCallbac release. Ref count: {}", ref_count);
         
-        if ref_count == 0 {
-            println!("CorProfilerCallback released!");
-            drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
-        }
+        // if ref_count == 0 {
+        //     println!("CorProfilerCallback released!");
+        //     drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
+        // }
         
-        ref_count
+        // ref_count
+        1
     }
 }
 
