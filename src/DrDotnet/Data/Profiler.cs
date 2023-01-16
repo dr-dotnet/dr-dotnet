@@ -16,17 +16,30 @@ public class Profiler
 
     public string Description { get; set; }
 
+    public int PIndex = 0;
+    
     private string ProfilerLibraryName => Environment.OSVersion.Platform switch
     {
-        PlatformID.Win32NT => "profilers.dll",
+        PlatformID.Win32NT => $"profilers.dll",
         // https://github.com/dotnet/runtime/issues/21660
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => "libprofilers.dylib",
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => "libprofilers.so",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => $"libprofilers.dylib",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => $"libprofilers.so",
+        _ => throw new NotImplementedException()
+    };
+    
+    private string ProfilerLibraryName2 => Environment.OSVersion.Platform switch
+    {
+        PlatformID.Win32NT => $"profilers{PIndex}.dll",
+        // https://github.com/dotnet/runtime/issues/21660
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => $"libprofilers{PIndex}.dylib",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => $"libprofilers{PIndex}.so",
         _ => throw new NotImplementedException()
     };
 
     public Guid StartProfilingSession(int processId, ILogger logger)
     {
+        PIndex++;
+        
         string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
         string strWorkPath = Path.GetDirectoryName(strExeFilePath);
         string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
@@ -39,7 +52,7 @@ public class Profiler
             try
             {
                 SessionsDiscovery x = new SessionsDiscovery(logger);
-                string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName);
+                string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName2);
                 File.Copy(profilerDll, tmpProfilerDll, true);
                 profilerDll = tmpProfilerDll;
                 logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);
@@ -61,7 +74,6 @@ public class Profiler
         }
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
-        
         
         try
         {
