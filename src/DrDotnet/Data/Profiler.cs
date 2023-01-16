@@ -27,14 +27,14 @@ public class Profiler
         _ => throw new NotImplementedException()
     };
     
-    private string ProfilerLibraryName2 => Environment.OSVersion.Platform switch
-    {
-        PlatformID.Win32NT => $"profilers{PIndex}.dll",
-        // https://github.com/dotnet/runtime/issues/21660
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => $"libprofilers{PIndex}.dylib",
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => $"libprofilers{PIndex}.so",
-        _ => throw new NotImplementedException()
-    };
+    // private string ProfilerLibraryName2 => Environment.OSVersion.Platform switch
+    // {
+    //     PlatformID.Win32NT => $"profilers{PIndex}.dll",
+    //     // https://github.com/dotnet/runtime/issues/21660
+    //     PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => $"libprofilers{PIndex}.dylib",
+    //     PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => $"libprofilers{PIndex}.so",
+    //     _ => throw new NotImplementedException()
+    // };
 
     public Guid StartProfilingSession(int processId, ILogger logger)
     {
@@ -52,7 +52,7 @@ public class Profiler
             try
             {
                 SessionsDiscovery x = new SessionsDiscovery(logger);
-                string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName2);
+                string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName);
                 File.Copy(profilerDll, tmpProfilerDll, true);
                 profilerDll = tmpProfilerDll;
                 logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);

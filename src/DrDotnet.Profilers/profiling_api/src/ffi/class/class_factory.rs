@@ -68,24 +68,20 @@ where
     }
 
     pub unsafe extern "system" fn AddRef(&mut self) -> ULONG {
-        // TODO: Which ordering is appropriate?
-        let prev_ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed);
-        prev_ref_count + 1
+        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
+
+        println!("ClassFactory addref. Ref count: {}", ref_count);
+        
+        ref_count
     }
 
     pub unsafe extern "system" fn Release(&mut self) -> ULONG {
-        // Ensure we are not trying to release the memory twice if
-        // client calls release despite the ref_count being zero.
-        // TODO: Which ordering is appropriate?
-        if self.ref_count.load(Ordering::Relaxed) == 0 {
-            panic!("Cannot release the COM object, it has already been released.");
-        }
+        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
-        let prev_ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed);
-        let ref_count = prev_ref_count - 1;
-
+        println!("ClassFactory release. Ref count: {}", ref_count);
+        
         if ref_count == 0 {
-            drop(Box::from_raw(self as *mut ClassFactory<T>));
+            //drop(Box::from_raw(self as *mut ClassFactory<T>));
         }
 
         ref_count

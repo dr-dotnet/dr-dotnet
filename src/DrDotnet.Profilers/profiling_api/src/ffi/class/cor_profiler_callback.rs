@@ -203,27 +203,22 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     }
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
-        // TODO: Which ordering is appropriate?
-        let prev_ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed);
-        prev_ref_count + 1
+        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
+
+        println!("CorProfilerCallback addref. Ref count: {}", ref_count);
+        
+        ref_count
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
-        // Ensure we are not trying to release the memory twice if
-        // client calls release despite the ref_count being zero.
-        // TODO: Which ordering is appropriate?
-        if self.ref_count.load(Ordering::Relaxed) == 0 {
-            panic!("Cannot release the COM object, it has already been released.");
-        }
 
-        let prev_ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed);
-        let ref_count = prev_ref_count - 1;
+        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
-        println!("Ref count: {}", ref_count);
+        println!("CorProfilerCallback release. Ref count: {}", ref_count);
         
         if ref_count == 0 {
-            println!("Profiler released!");
-            drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
+            println!("CorProfilerCallback released!");
+            //drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
         }
         
         ref_count
