@@ -110,3 +110,6 @@ where
         S_OK
     }
 }
+
+unsafe impl<T> Sync for ClassFactory<T> where T: Sync, T: CorProfilerCallback9 {}
+unsafe impl<T> Send for ClassFactory<T> where T: Send, T: CorProfilerCallback9 {}
