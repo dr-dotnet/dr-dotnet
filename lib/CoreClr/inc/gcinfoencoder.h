@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 /*****************************************************************
  *
  * GC Information Encoding API
@@ -11,7 +12,7 @@
  ENCODING LAYOUT
 
  1. Header
-
+ 
  Slim Header for simple and common cases:
     - EncodingType[Slim]
     - ReturnKind (Fat: 2 bits)
@@ -20,11 +21,11 @@
 
  Fat Header for other cases:
     - EncodingType[Fat]
-    - Flag:     isVarArg,
-                hasSecurityObject,
+    - Flag:     isVarArg, 
+                hasSecurityObject, 
                 hasGSCookie,
                 hasPSPSymStackSlot,
-                hasGenericsInstContextStackSlot,
+                hasGenericsInstContextStackSlot, 
                 hasStackBaseregister,
                 wantsReportOnlyLeaf (AMD64 use only),
                 hasTailCalls (ARM/ARM64 only)
@@ -52,17 +53,17 @@
  6. GC state at try clauses (#ifdef PARTIALLY_INTERRUPTIBLE_GC_SUPPORTED)
  7. Chunk pointers
  8. Chunk encodings
-
+ 
 
  STANDALONE_BUILD
 
- The STANDALONE_BUILD switch can be used to build the GcInfoEncoder library
+ The STANDALONE_BUILD switch can be used to build the GcInfoEncoder library 
  independently by clients outside the CoreClr tree.
 
  The GcInfo library uses some custom data-structures (ex: ArrayList, SimplerHashTable)
- and includes some utility libraries (ex: UtilCode) which pull in several other
- headers with considerable unrelated content. Rather than porting all the
- utility code to suite other clients, the  STANDALONE_BUILD switch can be used
+ and includes some utility libraries (ex: UtilCode) which pull in several other 
+ headers with considerable unrelated content. Rather than porting all the 
+ utility code to suite other clients, the  STANDALONE_BUILD switch can be used 
  to include only the minimal set of headers specific to GcInfo encodings.
 
  Clients of STANDALONE_BUILD will likely use standard library
@@ -71,9 +72,9 @@
 
  Rather than spew the GcInfoEnoder code with
  #ifdef STANDALONE_BUILD ... #else .. #endif blocks, we include a special
- header GcInfoUtil.h in STANDALONE_BUILD mode.  GcInfoUtil.h is expected to
- supply the interface/implementation for the data-structures and utilities
- used by GcInfoEncoder. This header should be provided by the clients doing
+ header GcInfoUtil.h in STANDALONE_BUILD mode.  GcInfoUtil.h is expected to 
+ supply the interface/implementation for the data-structures and utilities 
+ used by GcInfoEncoder. This header should be provided by the clients doing 
  the standalone build in their source tree.
 
 *****************************************************************/
@@ -85,7 +86,7 @@
 #ifdef STANDALONE_BUILD
 #include <wchar.h>
 #include <stdio.h>
-#include "GcInfoUtil.h"
+#include "GcInfoUtil.h"  
 #include "corjit.h"
 #else
 #include <windows.h>
@@ -100,7 +101,7 @@
 
 #include "gcinfotypes.h"
 
-// As stated in issue #6008, GcInfoSize should be incorporated into debug builds.
+// As stated in issue #6008, GcInfoSize should be incorporated into debug builds. 
 #ifdef _DEBUG
 #define MEASURE_GCINFO
 #endif
@@ -175,11 +176,11 @@ struct GcSlotDesc
     BOOL IsPinned() const
     {
         return (Flags & GC_SLOT_PINNED);
-    }
+    }    
     BOOL IsUntracked() const
     {
         return (Flags & GC_SLOT_UNTRACKED);
-    }
+    }    
     BOOL IsDeleted() const
     {
         return (Flags & GC_SLOT_IS_DELETED);
@@ -358,8 +359,8 @@ public:
 
 #ifdef PARTIALLY_INTERRUPTIBLE_GC_SUPPORTED
     void DefineCallSites(UINT32* pCallSites, BYTE* pCallSiteSizes, UINT32 numCallSites);
-#endif
-
+#endif    
+           
     //------------------------------------------------------------------------
     // Interruptibility
     //------------------------------------------------------------------------
@@ -435,14 +436,14 @@ public:
     // Number of slots preserved during EnC remap
     void SetSizeOfEditAndContinuePreservedArea( UINT32 size );
 
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
     // Used to only report a frame once for the leaf function/funclet
     // instead of once for each live function/funclet on the stack.
     // Called only by RyuJIT (not JIT64)
     void SetWantsReportOnlyLeaf();
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM_) || defined(_TARGET_ARM64_)
     void SetHasTailCalls();
-#endif // TARGET_AMD64
+#endif // _TARGET_AMD64_
 
 #ifdef FIXED_STACK_PARAMETER_SCRATCH_AREA
     void SetSizeOfStackOutgoingAndScratchArea( UINT32 size );
@@ -468,8 +469,8 @@ public:
 
 private:
 
-    friend struct CompareLifetimeTransitionsByOffsetThenSlot;
-    friend struct CompareLifetimeTransitionsByChunk;
+    friend int __cdecl CompareLifetimeTransitionsByOffsetThenSlot(const void*, const void*);
+    friend int CompareLifetimeTransitionsByChunk(const void*, const void*);
 
 
     struct InterruptibleRange
@@ -494,11 +495,11 @@ private:
     GcInfoArrayList<LifetimeTransition, 64> m_LifetimeTransitions;
 
     bool   m_IsVarArg;
-#if defined(TARGET_AMD64)
+#if defined(_TARGET_AMD64_)
     bool   m_WantsReportOnlyLeaf;
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM_) || defined(_TARGET_ARM64_)
     bool   m_HasTailCalls;
-#endif // TARGET_AMD64
+#endif // _TARGET_AMD64_
     INT32  m_SecurityObjectStackSlot;
     INT32  m_GSCookieStackSlot;
     UINT32 m_GSCookieValidRangeStart;
@@ -512,7 +513,7 @@ private:
     UINT32 m_SizeOfEditAndContinuePreservedArea;
     INT32  m_ReversePInvokeFrameSlot;
     InterruptibleRange* m_pLastInterruptibleRange;
-
+    
 #ifdef FIXED_STACK_PARAMETER_SCRATCH_AREA
     UINT32 m_SizeOfStackOutgoingAndScratchArea;
 #endif // FIXED_STACK_PARAMETER_SCRATCH_AREA
@@ -546,12 +547,12 @@ private:
 
     // Assumes that "*ppTransitions" is has size "numTransitions", is sorted by CodeOffset then by SlotId,
     // and that "*ppEndTransitions" points one beyond the end of the array.  If "*ppTransitions" contains
-    // any dead/live transitions pairs for the same CodeOffset and SlotID, removes those, by allocating a
+    // any dead/live transitions pairs for the same CodeOffset and SlotID, removes those, by allocating a 
     // new array, and copying the non-removed elements into it.  If it does this, sets "*ppTransitions" to
-    // point to the new array, "*pNumTransitions" to its shorted length, and "*ppEndTransitions" to
-    // point one beyond the used portion of this array.
+    // point to the new array, "*pNumTransitions" to its shorted length, and "*ppEndTransitions" to 
+    // point one beyond the used portion of this array. 
     void EliminateRedundantLiveDeadPairs(LifetimeTransition** ppTransitions,
-                                         size_t* pNumTransitions,
+                                         size_t* pNumTransitions, 
                                          LifetimeTransition** ppEndTransitions);
 
 #ifdef _DEBUG

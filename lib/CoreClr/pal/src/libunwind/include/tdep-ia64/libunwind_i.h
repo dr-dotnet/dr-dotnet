@@ -31,7 +31,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #include "elf64.h"
 #include "mempool.h"
-#include <stdatomic.h>
 
 typedef struct
   {
@@ -98,7 +97,11 @@ struct unw_addr_space
     int big_endian;
     int abi;    /* abi < 0 => unknown, 0 => SysV, 1 => HP-UX, 2 => Windows */
     unw_caching_policy_t caching_policy;
-    _Atomic uint32_t cache_generation;
+#ifdef HAVE_ATOMIC_OPS_H
+    AO_t cache_generation;
+#else
+    uint32_t cache_generation;
+#endif
     unw_word_t dyn_generation;
     unw_word_t dyn_info_list_addr;      /* (cached) dyn_info_list_addr */
 #ifndef UNW_REMOTE_ONLY

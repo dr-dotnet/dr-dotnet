@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /***
 *output.c - printf style output to a FILE
@@ -71,6 +72,88 @@ Buffer size required to be passed to _gcvt, fcvt and other fp conversion routine
 #undef _free_crt
 #define _free_crt free
 
+/* Wrapper for _output_s so that we do not expose FILE in the _output_s signature.
+ * Always ensure null-termination. Returns the number of written chars, not including the terminating null.
+ * Returns -1 if something went wrong during the formatting (in _output_s), e.g. mbcs conversions.
+ * Returns -2 if the string has been truncated.
+ * _output_s calls _invalid_parameter (and returns -1, possibly) if the format string is malformed.
+ */
+#ifndef _UNICODE
+int __cdecl _soutput_s(char *_Dst, size_t _Size, const char *_Format, va_list _ArgList)
+#else  /* _UNICODE */
+int __cdecl _swoutput_s(wchar_t *_Dst, size_t _Size, const wchar_t *_Format, va_list _ArgList)
+#endif  /* _UNICODE */
+{
+    miniFILE stream;
+    miniFILE *outfile = &stream;
+    int written = -1;
+
+    /* validation section */
+#ifndef _UNICODE
+    if(_Size==SIZE_MAX)
+    {
+        /* user is attempting to make us unbounded, but we don't fit that much */
+        outfile->_cnt = INT_MAX;
+    }
+    else
+    {
+        _VALIDATE_RETURN(_Size <= INT_MAX, EINVAL, -1);
+        outfile->_cnt = (int)_Size;
+    }
+    outfile->_ptr = outfile->_base = _Dst;
+#else  /* _UNICODE */
+    if(_Size==SIZE_MAX)
+    {
+        /* user is attempting to make us unbounded, but we don't fit that much */
+        outfile->_cnt = INT_MAX;
+    }
+    else if(_Size>(INT_MAX/sizeof(wchar_t)))
+    {
+        /* we can't represent the amount of output the user asked for */
+        _VALIDATE_RETURN( 0 /* FALSE */, EINVAL, -1 );
+    }
+    else
+    {
+        outfile->_cnt = (int)(_Size*sizeof(wchar_t));
+    }
+    outfile->_ptr = outfile->_base = (char*)_Dst;
+#endif  /* _UNICODE */
+    outfile->_flag = _IOWRT | _IOSTRG;
+
+#ifndef _UNICODE
+    written = _output_s(outfile, _Format, _ArgList);
+#else  /* _UNICODE */
+    written = _woutput_s(outfile, _Format, _ArgList);
+#endif  /* _UNICODE */
+    _Dst[_Size - 1] = 0;
+    if (written < 0)
+    {
+        if (outfile->_cnt < 0)
+        {
+            /* the buffer was too small; we return -2 to indicate truncation */
+            return -2;
+        }
+        /* otherwise, something else failed: we reset the string and we return */
+        if (_Dst != NULL && _Size > 0)
+        {
+            *_Dst = 0;
+        }
+        return written;
+    }
+
+#ifndef _UNICODE
+    if ((_putc_nolock('\0', outfile) != EOF))
+#else  /* _UNICODE */
+    if ((_putc_nolock('\0', outfile) != EOF) && (_putc_nolock('\0', outfile) != EOF))
+#endif  /* _UNICODE */
+    {
+        return written;
+    }
+    /* the last putc failed, so it means there is not enough space in the buffer */
+    return -2;
+}
+
+
 #ifndef _CFLTCVT
 #define _CFLTCVT _cfltcvt
 #endif  /* _CFLTCVT */
@@ -78,6 +161,11 @@ Buffer size required to be passed to _gcvt, fcvt and other fp conversion routine
 #ifndef _CLDCVT
 #define _CLDCVT _cldcvt
 #endif  /* _CLDCVT */
+
+#ifdef _MBCS
+#undef  _MBCS
+#endif  /* _MBCS */
+//#include <tchar.h>
 
 /* this macro defines a function which is private and as fast as possible: */
 /* for example, in C 6.0, it might be static _fastcall <type> near. */
@@ -96,7 +184,7 @@ Buffer size required to be passed to _gcvt, fcvt and other fp conversion routine
 
 #define SHORT_IS_INT     0      /* 1 means short is same size as int */
 #define LONGLONG_IS_INT64 1     /* 1 means long long is same as int64 */
-#if defined (HOST_64BIT)
+#if defined (BIT64)
     #define PTR_IS_INT       0      /* 1 means ptr is same size as int */
     CASSERT(sizeof(void *) != sizeof(int));
     #if __LP64__
@@ -108,14 +196,14 @@ Buffer size required to be passed to _gcvt, fcvt and other fp conversion routine
     #endif
     #define PTR_IS_INT64     1      /* 1 means ptr is same size as int64 */
     CASSERT(sizeof(void *) == sizeof(int64_t));
-#else  /* defined (HOST_64BIT) */
+#else  /* defined (BIT64) */
     #define PTR_IS_INT       1      /* 1 means ptr is same size as int */
     CASSERT(sizeof(void *) == sizeof(int));
     #define PTR_IS_LONG      1      /* 1 means ptr is same size as long */
     CASSERT(sizeof(void *) == sizeof(long));
     #define PTR_IS_INT64     0      /* 1 means ptr is same size as int64 */
     CASSERT(sizeof(void *) != sizeof(int64_t));
-#endif  /* defined (HOST_64BIT) */
+#endif  /* defined (BIT64) */
 
 /* CONSTANTS */
 
@@ -187,10 +275,10 @@ enum CHARTYPE {
 /* static data (read only, since we are re-entrant) */
 //#if defined (_UNICODE) || defined (CPRFLAG) || defined (FORMAT_VALIDATIONS)
 //extern const char __nullstring[];  /* string to print on null ptr */
-//extern const char16_t __wnullstring[];  /* string to print on null ptr */
+//extern const wchar_t __wnullstring[];  /* string to print on null ptr */
 //#else  /* defined (_UNICODE) || defined (CPRFLAG) || defined (FORMAT_VALIDATIONS) */
 static const char __nullstring[] = "(null)";  /* string to print on null ptr */
-static const char16_t __wnullstring[] = {'(', 'n', 'u', 'l', 'l', ')', '\0'};/* string to print on null ptr */
+static const wchar_t __wnullstring[] = {'(', 'n', 'u', 'l', 'l', ')', '\0'};/* string to print on null ptr */
 //#endif  /* defined (_UNICODE) || defined (CPRFLAG) || defined (FORMAT_VALIDATIONS) */
 
 /* The state table.  This table is actually two tables combined into one. */
@@ -631,7 +719,7 @@ int __cdecl _output (
     int no_output=0;  /* non-zero = prodcue no output for this specifier */
     union {
         const char *sz;   /* pointer text to be printed, not zero terminated */
-        const char16_t *wz;
+        const wchar_t *wz;
         } text;
 
     int textlen;    /* length of the text in bytes/wchars to be printed.
@@ -639,10 +727,10 @@ int __cdecl _output (
     union {
         char sz[BUFFERSIZE];
 #ifdef _UNICODE
-        char16_t wz[BUFFERSIZE];
+        wchar_t wz[BUFFERSIZE];
 #endif  /* _UNICODE */
         } buffer;
-    char16_t wchar;                      /* temp char16_t */
+    wchar_t wchar;                      /* temp wchar_t */
     int buffersize;                     /* size of text.sz (used only for the call to _cfltcvt) */
     int bufferiswide=0;         /* non-zero = buffer contains wide chars already */
 
@@ -766,13 +854,13 @@ int __cdecl _output (
                 }
                 else
                 {
-                    flags |= FL_LONG;   /* 'l' => long int or char16_t */
+                    flags |= FL_LONG;   /* 'l' => long int or wchar_t */
                 }
                 break;
             case _T('L'):
                 if (*format == _T('p'))
                 {
-                    flags |= FL_LONG;
+                    flags |= FL_LONG;   
                 }
                 break;
 
@@ -847,12 +935,11 @@ int __cdecl _output (
 #endif  /* _UNICODE */
                 /* fall into 'c' case */
 
-                FALLTHROUGH;
             case _T('c'): {
                 /* print a single character specified by int argument */
 #ifdef _UNICODE
                 bufferiswide = 1;
-                wchar = (char16_t) get_int_arg(&argptr);
+                wchar = (wchar_t) get_int_arg(&argptr);
                 if (flags & FL_SHORT) {
                     /* format multibyte character */
                     /* this is an extension of ANSI */
@@ -874,7 +961,7 @@ int __cdecl _output (
                 textlen = 1;    /* print just a single character */
 #else  /* _UNICODE */
                 if (flags & (FL_LONG|FL_WIDECHAR)) {
-                    wchar = (char16_t) get_int_arg(&argptr);
+                    wchar = (wchar_t) get_int_arg(&argptr);
                     textlen = snprintf(buffer.sz, BUFFERSIZE, "%lc", wchar);
                     if (textlen == 0)
                     {
@@ -884,7 +971,7 @@ int __cdecl _output (
                     /* format multibyte character */
                     /* this is an extension of ANSI */
                     unsigned short temp;
-                    wchar = (char16_t)get_int_arg(&argptr);
+                    wchar = (wchar_t)get_int_arg(&argptr);
                     temp = (unsigned short)wchar;
                     {
                         buffer.sz[0] = (char) temp;
@@ -911,8 +998,8 @@ int __cdecl _output (
                     textlen = (int)strlen(text.sz);
                 } else {
                     if (flags & FL_WIDECHAR) {
-                        text.wz = (char16_t *)pstr->Buffer;
-                        textlen = pstr->Length / (int)sizeof(char16_t);
+                        text.wz = (wchar_t *)pstr->Buffer;
+                        textlen = pstr->Length / (int)sizeof(wchar_t);
                         bufferiswide = 1;
                     } else {
                         bufferiswide = 0;
@@ -931,7 +1018,6 @@ int __cdecl _output (
                 if (!(flags & (FL_SHORT|FL_LONG|FL_WIDECHAR)))
                     flags |= FL_SHORT;
 #endif  /* _UNICODE */
-                FALLTHROUGH;
 
             case _T('s'): {
                 /* print a string --                            */
@@ -942,7 +1028,7 @@ int __cdecl _output (
 
                 int i;
                 const char *p;       /* temps */
-                const char16_t *pwch;
+                const wchar_t *pwch;
 
                 /* At this point it is tempting to use strlen(), but */
                 /* if a precision is specified, we're not allowed to */
@@ -969,7 +1055,7 @@ int __cdecl _output (
                     pwch = text.wz;
                     while (i-- && *pwch)
                         ++pwch;
-                    textlen = (int)(pwch - text.wz);       /* in char16_ts */
+                    textlen = (int)(pwch - text.wz);       /* in wchar_ts */
                     /* textlen now contains length in wide chars */
                 }
 #else  /* _UNICODE */
@@ -1031,7 +1117,7 @@ int __cdecl _output (
             case _T('A'):
                 capexp = 1;                 /* capitalize exponent */
                 ch += _T('a') - _T('A');    /* convert format char to lower */
-                FALLTHROUGH;
+                /* DROP THROUGH */
             case _T('e'):
             case _T('f'):
             case _T('g'):
@@ -1109,7 +1195,6 @@ int __cdecl _output (
                 flags |= FL_LONG;                   /* assume we're converting a long */
 #endif  /* !PTR_IS_INT */
                 /* DROP THROUGH to hex formatting */
-                FALLTHROUGH;
 
             case _T('X'):
                 /* unsigned upper hex output */
@@ -1147,7 +1232,7 @@ int __cdecl _output (
                 /* correct radix, setting text and textlen */
                 /* appropriately. */
 
-#if _INTEGRAL_MAX_BITS >= 64
+#if _INTEGRAL_MAX_BITS >= 64       
                 uint64_t number;    /* number to convert */
                 int digit;              /* ascii value of digit */
                 __int64 l;              /* temp long value */
@@ -1158,7 +1243,7 @@ int __cdecl _output (
 #endif  /* _INTEGRAL_MAX_BITS >= 64        */
 
                 /* 1. read argument into l, sign extend as needed */
-#if _INTEGRAL_MAX_BITS >= 64
+#if _INTEGRAL_MAX_BITS >= 64       
                 if (flags & FL_I64)
                     l = get_int64_arg(&argptr);
                 else
@@ -1199,7 +1284,7 @@ int __cdecl _output (
                     number = l;
                 }
 
-#if _INTEGRAL_MAX_BITS >= 64
+#if _INTEGRAL_MAX_BITS >= 64       
                 if ( (flags & FL_I64) == 0 && (flags & FL_LONGLONG) == 0 ) {
                     /*
                      * Unless printing a full 64-bit value, insure values
@@ -1249,7 +1334,7 @@ int __cdecl _output (
                     *--sz = '0';
                     ++textlen;      /* add a zero */
                 }
-
+                
                 text.sz = sz;
             }
             break;
@@ -1379,7 +1464,7 @@ int __cdecl _output (
 /***
 *void write_char(char ch, int *pnumwritten)
 *ifdef _UNICODE
-*void write_char(char16_t ch, FILE *f, int *pnumwritten)
+*void write_char(wchar_t ch, FILE *f, int *pnumwritten)
 *endif
 *void write_char(char ch, FILE *f, int *pnumwritten)
 *
@@ -1445,7 +1530,7 @@ LOCAL(void) write_char (
 /***
 *void write_multi_char(char ch, int num, int *pnumwritten)
 *ifdef _UNICODE
-*void write_multi_char(char16_t ch, int num, FILE *f, int *pnumwritten)
+*void write_multi_char(wchar_t ch, int num, FILE *f, int *pnumwritten)
 *endif
 *void write_multi_char(char ch, int num, FILE *f, int *pnumwritten)
 *
@@ -1503,7 +1588,7 @@ LOCAL(void) write_multi_char (
 *void write_string(const char *string, int len, int *pnumwritten)
 *void write_string(const char *string, int len, FILE *f, int *pnumwritten)
 *ifdef _UNICODE
-*void write_string(const char16_t *string, int len, FILE *f, int *pnumwritten)
+*void write_string(const wchar_t *string, int len, FILE *f, int *pnumwritten)
 *endif
 *
 *Purpose:

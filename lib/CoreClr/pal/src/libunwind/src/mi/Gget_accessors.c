@@ -24,7 +24,6 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #include "libunwind_i.h"
-#include <stdatomic.h>
 
 HIDDEN ALIAS(unw_get_accessors) unw_accessors_t *
 unw_get_accessors_int (unw_addr_space_t as);
@@ -32,7 +31,7 @@ unw_get_accessors_int (unw_addr_space_t as);
 unw_accessors_t *
 unw_get_accessors (unw_addr_space_t as)
 {
-  if (!atomic_load(&tdep_init_done))
+  if (!tdep_init_done)
     tdep_init ();
   return &as->acc;
 }

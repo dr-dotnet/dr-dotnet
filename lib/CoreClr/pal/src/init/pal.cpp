@@ -1,7 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
+
+
 
 Module Name:
 
@@ -10,6 +13,8 @@ Module Name:
 Abstract:
 
     Implementation of PAL exported functions not part of the Win32 API.
+
+
 
 --*/
 
@@ -35,11 +40,11 @@ SET_DEFAULT_DEBUG_CHANNEL(PAL); // some headers have code with asserts, so do th
 #include "pal/environ.h"
 #include "pal/utils.h"
 #include "pal/debug.h"
+#include "pal/locale.h"
 #include "pal/init.h"
 #include "pal/numa.h"
 #include "pal/stackstring.hpp"
 #include "pal/cgroup.h"
-#include <getexepath.h>
 
 #if HAVE_MACH_EXCEPTIONS
 #include "../exception/machexception.h"
@@ -77,15 +82,6 @@ int CacheLineSize;
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <kvm.h>
-#elif defined(__sun)
-#ifndef _KERNEL
-#define _KERNEL
-#define UNDEF_KERNEL
-#endif
-#include <sys/procfs.h>
-#ifdef UNDEF_KERNEL
-#undef _KERNEL
-#endif
 #endif
 
 #include <algorithm>
@@ -98,8 +94,6 @@ using namespace CorUnix;
 //
 
 extern "C" BOOL CRTInitStdStreams( void );
-
-extern bool g_running_in_exe;
 
 Volatile<INT> init_count = 0;
 Volatile<BOOL> shutdown_intent = 0;
@@ -122,7 +116,7 @@ static DWORD g_initializeDLLFlags = PAL_INITIALIZE_DLL;
 static int Initialize(int argc, const char *const argv[], DWORD flags);
 static BOOL INIT_IncreaseDescriptorLimit(void);
 static LPWSTR INIT_FormatCommandLine (int argc, const char * const *argv);
-static LPWSTR INIT_GetCurrentEXEPath();
+static LPWSTR INIT_ConvertEXEPath(LPCSTR exe_name);
 static BOOL INIT_SharedFilesPath(void);
 
 #ifdef _DEBUG
@@ -218,7 +212,7 @@ Abstract:
   This sets the global PAL_INITIALIZE flags that PAL_InitializeDLL
   will use. It needs to be called before any PAL_InitializeDLL call
   is made so typical it is used in a __attribute__((constructor))
-  function to make sure.
+  function to make sure. 
 
 Return:
   none
@@ -240,8 +234,8 @@ Function:
 Abstract:
   This fixes a problem on MUSL where the initial stack size reported by the
   pthread_attr_getstack is about 128kB, but this limit is not fixed and
-  the stack can grow dynamically. The problem is that it makes the
-  functions ReflectionInvocation::[Try]EnsureSufficientExecutionStack
+  the stack can grow dynamically. The problem is that it makes the 
+  functions ReflectionInvocation::[Try]EnsureSufficientExecutionStack 
   to fail for real life scenarios like e.g. compilation of corefx.
   Since there is no real fixed limit for the stack, the code below
   ensures moving the stack limit to a value that makes reasonable
@@ -262,7 +256,7 @@ Function:
   InitializeDefaultStackSize
 
 Abstract:
-  Initializes the default stack size.
+  Initializes the default stack size. 
 
 --*/
 void
@@ -272,7 +266,7 @@ InitializeDefaultStackSize()
     if (defaultStackSizeStr != NULL)
     {
         errno = 0;
-        // Like all numeric values specific by the COMPlus_xxx variables, it is a
+        // Like all numeric values specific by the COMPlus_xxx variables, it is a 
         // hexadecimal string without any prefix.
         long int size = strtol(defaultStackSizeStr, NULL, 16);
 
@@ -338,7 +332,7 @@ Initialize(
 
     if(NULL == init_critsec)
     {
-        pthread_mutex_lock(&init_critsec_mutex); // prevents race condition of two threads
+        pthread_mutex_lock(&init_critsec_mutex); // prevents race condition of two threads 
                                                  // initializing the critical section.
         if(NULL == init_critsec)
         {
@@ -350,7 +344,7 @@ Initialize(
             if(NULL != InterlockedCompareExchangePointer(&init_critsec, &temp_critsec, NULL))
             {
                 // Another thread got in before us! shouldn't happen, if the PAL
-                // isn't initialized there shouldn't be any other threads
+                // isn't initialized there shouldn't be any other threads 
                 WARN("Another thread initialized the critical section\n");
                 InternalDeleteCriticalSection(&temp_critsec);
             }
@@ -366,32 +360,18 @@ Initialize(
         gPID = getpid();
         gSID = getsid(gPID);
 
-        // Initialize the thread local storage
-        if (FALSE == TLSInitialize())
-        {
-            palError = ERROR_PALINIT_TLS;
-            goto done;
-        }
-
-        // Initialize debug channel settings before anything else.
-        if (FALSE == DBG_init_channels())
-        {
-            palError = ERROR_PALINIT_DBG_CHANNELS;
-            goto CLEANUP0a;
-        }
-
-        // The gSharedFilesPath is allocated dynamically so its destructor does not get
+        // The gSharedFilesPath is allocated dynamically so its destructor does not get 
         // called unexpectedly during cleanup
         gSharedFilesPath = InternalNew<PathCharString>();
         if (gSharedFilesPath == nullptr)
         {
             SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-            goto CLEANUP0a;
+            goto done;
         }
 
         if (INIT_SharedFilesPath() == FALSE)
         {
-            goto CLEANUP0a;
+            goto done;
         }
 
         fFirstTimeInit = true;
@@ -421,12 +401,25 @@ Initialize(
         }
 #endif // FEATURE_ENABLE_NO_ADDRESS_SPACE_RANDOMIZATION
 
+        // Initialize the TLS lookaside cache
+        if (FALSE == TLSInitialize())
+        {
+            goto done;
+        }
+
         InitializeCGroup();
 
         // Initialize the environment.
         if (FALSE == EnvironInitialize())
         {
-            palError = ERROR_PALINIT_ENV;
+            goto CLEANUP0;
+        }
+
+        // Initialize debug channel settings before anything else.
+        // This depends on the environment, so it must come after
+        // EnvironInitialize.
+        if (FALSE == DBG_init_channels())
+        {
             goto CLEANUP0;
         }
 
@@ -440,7 +433,6 @@ Initialize(
         if (!SharedMemoryManager::StaticInitialize())
         {
             ERROR("Shared memory static initialization failed!\n");
-            palError = ERROR_PALINIT_SHARED_MEMORY_MANAGER;
             goto CLEANUP0;
         }
 
@@ -448,7 +440,6 @@ Initialize(
         if (!SHMInitialize())
         {
             ERROR("Shared memory initialization failed!\n");
-            palError = ERROR_PALINIT_SHM;
             goto CLEANUP0;
         }
 
@@ -469,7 +460,7 @@ Initialize(
         if (!SEHInitializeMachExceptions(flags))
         {
             ERROR("SEHInitializeMachExceptions failed!\n");
-            palError = ERROR_PALINIT_INITIALIZE_MACH_EXCEPTION;
+            palError = ERROR_GEN_FAILURE;
             goto CLEANUP1;
         }
 #endif // HAVE_MACH_EXCEPTIONS
@@ -499,7 +490,7 @@ Initialize(
         if (FALSE == LOADInitializeModules())
         {
             ERROR("Unable to initialize module manager\n");
-            palError = ERROR_PALINIT_MODULE_MANAGER;
+            palError = ERROR_INTERNAL_ERROR;
             goto CLEANUP1b;
         }
 
@@ -552,23 +543,27 @@ Initialize(
         if (NULL == command_line)
         {
             ERROR("Error building command line\n");
-            palError = ERROR_PALINIT_COMMAND_LINE;
             goto CLEANUP1d;
         }
 
         /* find out the application's full path */
-        exe_path = INIT_GetCurrentEXEPath();
+        exe_path = INIT_ConvertEXEPath(argv[0]);
         if (NULL == exe_path)
         {
             ERROR("Unable to find exe path\n");
-            palError = ERROR_PALINIT_CONVERT_EXE_PATH;
             goto CLEANUP1e;
+        }
+
+        if (NULL == command_line || NULL == exe_path)
+        {
+            ERROR("Failed to process command-line parameters!\n");
+            goto CLEANUP2;
         }
 
         palError = InitializeProcessCommandLine(
             command_line,
             exe_path);
-
+        
         if (NO_ERROR != palError)
         {
             ERROR("Unable to initialize command line\n");
@@ -580,19 +575,17 @@ Initialize(
 
 #ifdef PAL_PERF
         // Initialize the Profiling structure
-        if(FALSE == PERFInitialize(command_line, exe_path))
+        if(FALSE == PERFInitialize(command_line, exe_path)) 
         {
             ERROR("Performance profiling initial failed\n");
-            palError = ERROR_PALINIT_PERF;
             goto CLEANUP2;
-        }
+        }    
         PERFAllocThreadInfo();
 #endif
 
         if (!LOADSetExeName(exe_path))
         {
             ERROR("Unable to set exe name\n");
-            palError = ERROR_PALINIT_SET_EXE_NAME;
             goto CLEANUP2;
         }
 
@@ -614,11 +607,16 @@ Initialize(
 
         palError = ERROR_GEN_FAILURE;
 
+        if (FALSE == TIMEInitialize())
+        {
+            ERROR("Unable to initialize TIME support\n");
+            goto CLEANUP6;
+        }
+
         /* Initialize the File mapping critical section. */
         if (FALSE == MAPInitialize())
         {
             ERROR("Unable to initialize file mapping support\n");
-            palError = ERROR_PALINIT_MAP;
             goto CLEANUP6;
         }
 
@@ -627,7 +625,6 @@ Initialize(
         if (FALSE == VIRTUALInitialize(initializeExecutableMemoryAllocator))
         {
             ERROR("Unable to initialize virtual memory support\n");
-            palError = ERROR_PALINIT_VIRTUAL;
             goto CLEANUP10;
         }
 
@@ -648,7 +645,6 @@ Initialize(
         if (FALSE == SEHInitialize(pThread, flags))
         {
             ERROR("Unable to initialize SEH support\n");
-            palError = ERROR_PALINIT_SEH;
             goto CLEANUP13;
         }
 
@@ -658,7 +654,6 @@ Initialize(
             if (!FILEInitStdHandles())
             {
                 ERROR("Unable to initialize standard file handles\n");
-                palError = ERROR_PALINIT_STD_HANDLES;
                 goto CLEANUP14;
             }
         }
@@ -666,19 +661,17 @@ Initialize(
         if (FALSE == CRTInitStdStreams())
         {
             ERROR("Unable to initialize CRT standard streams\n");
-            palError = ERROR_PALINIT_STD_STREAMS;
             goto CLEANUP15;
         }
 
         if (FALSE == NUMASupportInitialize())
         {
             ERROR("Unable to initialize NUMA support\n");
-            palError = ERROR_PALINIT_NUMA;
             goto CLEANUP15;
         }
 
         TRACE("First-time PAL initialization complete.\n");
-        init_count++;
+        init_count++;        
 
         /* Set LastError to a non-good value - functions within the
            PAL startup may set lasterror to a nonzero value. */
@@ -697,7 +690,7 @@ Initialize(
     goto done;
 
     NUMASupportCleanup();
-    /* No cleanup required for CRTInitStdStreams */
+    /* No cleanup required for CRTInitStdStreams */ 
 CLEANUP15:
     FILECleanupStdHandles();
 CLEANUP14:
@@ -724,12 +717,11 @@ CLEANUP1:
     SHMCleanup();
 CLEANUP0:
     CleanupCGroup();
-CLEANUP0a:
     TLSCleanup();
     ERROR("PAL_Initialize failed\n");
     SetLastError(palError);
 done:
-#ifdef PAL_PERF
+#ifdef PAL_PERF 
     if( retval == 0)
     {
          PERFEnableProcessProfile();
@@ -764,7 +756,8 @@ Function:
 
 Abstract:
   A replacement for PAL_Initialize when loading CoreCLR. Instead of taking a command line (which CoreCLR
-  instances aren't given anyway) the path into which the CoreCLR is installed is supplied instead.
+  instances aren't given anyway) the path into which the CoreCLR is installed is supplied instead. This is
+  cached so that PAL_GetPALDirectoryW can return it later.
 
   This routine also makes sure the psuedo dynamic libraries PALRT and mscorwks have their initialization
   methods called.
@@ -776,10 +769,8 @@ Return:
 --*/
 PAL_ERROR
 PALAPI
-PAL_InitializeCoreCLR(const char *szExePath, BOOL runningInExe)
-{
-    g_running_in_exe = runningInExe;
-
+PAL_InitializeCoreCLR(const char *szExePath)
+{    
     // Fake up a command line to call PAL initialization with.
     int result = Initialize(1, &szExePath, PAL_INITIALIZE_CORECLR);
     if (result != 0)
@@ -804,12 +795,12 @@ PAL_InitializeCoreCLR(const char *szExePath, BOOL runningInExe)
     if (!PROCAbortInitialize())
     {
         printf("PROCAbortInitialize FAILED %d (%s)\n", errno, strerror(errno));
-        return ERROR_PALINIT_PROCABORT_INITIALIZE;
+        return ERROR_GEN_FAILURE;
     }
 
     if (!InitializeFlushProcessWriteBuffers())
     {
-        return ERROR_PALINIT_INITIALIZE_FLUSH_PROCESS_WRITE_BUFFERS;
+        return ERROR_GEN_FAILURE;
     }
 
     return ERROR_SUCCESS;
@@ -889,28 +880,43 @@ PAL_IsDebuggerPresent()
         return TRUE;
     else
         return FALSE;
-#elif defined(__sun)
-    int readResult;
-    char statusFilename[64];
-    snprintf(statusFilename, sizeof(statusFilename), "/proc/%d/status", getpid());
-    int fd = open(statusFilename, O_RDONLY);
-    if (fd == -1)
-    {
-        return FALSE;
-    }
-
-    pstatus_t status;
-    do
-    {
-        readResult = read(fd, &status, sizeof(status));
-    }
-    while ((readResult == -1) && (errno == EINTR));
-
-    close(fd);
-    return status.pr_flttrace.word[0] != 0;
 #else
     return FALSE;
 #endif
+}
+
+/*++
+Function:
+  PAL_EntryPoint
+
+Abstract:
+  This function should be used to wrap code that uses PAL library on thread that was not created by PAL.
+--*/
+PALIMPORT
+DWORD_PTR
+PALAPI
+PAL_EntryPoint(
+    IN LPTHREAD_START_ROUTINE lpStartAddress,
+    IN LPVOID lpParameter)
+{
+    CPalThread *pThread;
+    DWORD_PTR retval = (DWORD) -1;
+
+    ENTRY("PAL_EntryPoint(lpStartAddress=%p, lpParameter=%p)\n", lpStartAddress, lpParameter);
+
+    pThread = InternalGetCurrentThread();
+    if (NULL == pThread)
+    {
+        /* This function works only for thread that called PAL_Initialize for now. */
+        ERROR( "Unable to get the thread object.\n" );
+        goto done;
+    }
+
+    retval = (*lpStartAddress)(lpParameter);
+
+done:
+    LOGEXIT("PAL_EntryPoint returns int %d\n", retval);
+    return retval;
 }
 
 /*++
@@ -968,11 +974,32 @@ PAL_TerminateEx(
         LOGEXIT("PAL_Terminate returns.\n");
     }
 
-    // Declare the beginning of shutdown
+    // Declare the beginning of shutdown 
     PALSetShutdownIntent();
 
     LOGEXIT("PAL_TerminateEx is exiting the current process.\n");
     exit(exitCode);
+}
+
+/*++
+Function:
+  PAL_InitializeDebug
+
+Abstract:
+  This function is the called when cordbg attaches to the process.
+--*/
+void
+PALAPI
+PAL_InitializeDebug(
+    void)
+{
+    PERF_ENTRY(PAL_InitializeDebug);
+    ENTRY("PAL_InitializeDebug()\n");
+#if HAVE_MACH_EXCEPTIONS
+    MachExceptionInitializeDebug();
+#endif
+    LOGEXIT("PAL_InitializeDebug returns\n");
+    PERF_EXIT(PAL_InitializeDebug);
 }
 
 /*++
@@ -993,7 +1020,7 @@ Function:
   Utility function to prepare for shutdown.
 
 --*/
-void
+void 
 PALCommonCleanup()
 {
     static bool cleanupDone = false;
@@ -1021,10 +1048,10 @@ PALCommonCleanup()
 BOOL PALIsShuttingDown()
 {
     /* TODO: This function may be used to provide a reader/writer-like
-       mechanism (or a ref counting one) to prevent PAL APIs that need to access
-       PAL runtime data, from working when PAL is shutting down. Each of those API
+       mechanism (or a ref counting one) to prevent PAL APIs that need to access 
+       PAL runtime data, from working when PAL is shutting down. Each of those API 
        should acquire a read access while executing. The shutting down code would
-       acquire a write lock, i.e. suspending any new incoming reader, and waiting
+       acquire a write lock, i.e. suspending any new incoming reader, and waiting 
        for the current readers to be done. That would allow us to get rid of the
        dangerous suspend-all-other-threads at shutdown time */
     return shutdown_intent;
@@ -1040,7 +1067,7 @@ void PALSetShutdownIntent()
 Function:
   PALInitLock
 
-Take the initializaiton critical section (init_critsec). necessary to serialize
+Take the initializaiton critical section (init_critsec). necessary to serialize 
 TerminateProcess along with PAL_Terminate and PAL_Initialize
 
 (no parameters)
@@ -1055,10 +1082,10 @@ BOOL PALInitLock(void)
     {
         return FALSE;
     }
-
-    CPalThread * pThread =
+    
+    CPalThread * pThread = 
         (PALIsThreadDataInitialized() ? InternalGetCurrentThread() : NULL);
-
+    
     InternalEnterCriticalSection(pThread, init_critsec);
     return TRUE;
 }
@@ -1067,7 +1094,7 @@ BOOL PALInitLock(void)
 Function:
   PALInitUnlock
 
-Release the initialization critical section (init_critsec).
+Release the initialization critical section (init_critsec). 
 
 (no parameters, no return value)
 --*/
@@ -1078,7 +1105,7 @@ void PALInitUnlock(void)
         return;
     }
 
-    CPalThread * pThread =
+    CPalThread * pThread = 
         (PALIsThreadDataInitialized() ? InternalGetCurrentThread() : NULL);
 
     InternalLeaveCriticalSection(pThread, init_critsec);
@@ -1102,7 +1129,7 @@ static BOOL INIT_IncreaseDescriptorLimit(void)
 #ifndef DONT_SET_RLIMIT_NOFILE
     struct rlimit rlp;
     int result;
-
+    
     result = getrlimit(RLIMIT_NOFILE, &rlp);
     if (result != 0)
     {
@@ -1144,7 +1171,7 @@ Return value :
     pointer to Unicode command line. This is a buffer allocated with malloc;
     caller is responsible for freeing it with free()
 
-Note : not all peculiarities of Windows command-line processing are supported;
+Note : not all peculiarities of Windows command-line processing are supported; 
 
 -what is supported :
     -arguments with white-space must be double quoted (we'll just double-quote
@@ -1152,11 +1179,11 @@ Note : not all peculiarities of Windows command-line processing are supported;
     -some characters must be escaped with \ : particularly, the double-quote,
      to avoid confusion with the double-quotes at the start and end of
      arguments, and \ itself, to avoid confusion with escape sequences.
--what is not supported:
+-what is not supported:    
     -under Windows, \\ is interpreted as an escaped \ ONLY if it's followed by
      an escaped double-quote \". \\\" is passed to argv as \", but \\a is
      passed to argv as \\a... there may be other similar cases
-    -there may be other characters which must be escaped
+    -there may be other characters which must be escaped 
 --*/
 static LPWSTR INIT_FormatCommandLine (int argc, const char * const *argv)
 {
@@ -1256,31 +1283,45 @@ static LPWSTR INIT_FormatCommandLine (int argc, const char * const *argv)
 
 /*++
 Function:
-  INIT_GetCurrentEXEPath
+  INIT_ConvertEXEPath
 
 Abstract:
-    Get the current exe path
+    Check whether the executable path is valid, and convert its type (LPCSTR -> LPWSTR)
+
+Parameters:
+    LPCSTR exe_name : full path of the current executable
 
 Return:
     pointer to buffer containing the full path. This buffer must be released
     by the caller using free()
 
+Notes :
+    this function assumes that "exe_name" is in Unix style (no \)
 --*/
-static LPWSTR INIT_GetCurrentEXEPath()
+static LPWSTR INIT_ConvertEXEPath(LPCSTR exe_path)
 {
+    PathCharString real_path;
     LPWSTR return_value;
     INT return_size;
+    struct stat theStats;
 
-    char* path = getexepath();
-    if (!path)
+    if (!strchr(exe_path, '/'))
     {
-        ERROR( "Cannot get current exe path\n" );
+        ERROR( "The exe path is not fully specified\n" );
         return NULL;
     }
 
-    PathCharString real_path;
-    real_path.Set(path, strlen(path));
-    free(path);
+    if (-1 == stat(exe_path, &theStats))
+    {
+        ERROR( "The file does not exist\n" );
+        return NULL;
+    }
+
+    if (!CorUnix::RealPathHelper(exe_path, real_path))
+    {
+        ERROR("realpath() failed!\n");
+        return NULL;
+    }
 
     return_size = MultiByteToWideChar(CP_ACP, 0, real_path, -1, NULL, 0);
     if (0 == return_size)

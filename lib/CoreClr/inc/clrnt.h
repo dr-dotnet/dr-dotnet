@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 
 #ifndef CLRNT_H_
@@ -30,7 +31,7 @@
 #define STATUS_UNWIND                    ((NTSTATUS)0x80000027L)
 #endif
 
-#ifndef DBG_PRINTEXCEPTION_C
+#ifndef DBG_PRINTEXCEPTION_C 
 #define DBG_PRINTEXCEPTION_C             ((DWORD)0x40010006L)
 #endif
 
@@ -57,22 +58,22 @@
 
 #ifndef __out_xcount_opt
 #define __out_xcount_opt(var) __out
-#endif
+#endif 
 
 #ifndef __encoded_pointer
 #define __encoded_pointer
-#endif
+#endif 
 
 #ifndef __range
 #define __range(min, man)
-#endif
+#endif 
 
 #ifndef __field_bcount
 #define __field_bcount(size)
 #endif
 
 #ifndef __field_ecount_opt
-#define __field_ecount_opt(nFields)
+#define __field_ecount_opt(nFields) 
 #endif
 
 #ifndef __field_ecount
@@ -80,7 +81,7 @@
 #endif
 
 #undef _Ret_bytecap_
-#define _Ret_bytecap_(_Size)
+#define _Ret_bytecap_(_Size) 
 
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
@@ -95,7 +96,7 @@ typedef signed char SCHAR;
 typedef SCHAR *PSCHAR;
 typedef LONG NTSTATUS;
 
-#ifndef HOST_UNIX
+#ifndef FEATURE_PAL
 
 #define TLS_MINIMUM_AVAILABLE 64    // winnt
 #define TLS_EXPANSION_SLOTS   1024
@@ -283,7 +284,7 @@ typedef ANSI_STRING64 *PANSI_STRING64;
 #define GDI_HANDLE_BUFFER_SIZE32  34
 #define GDI_HANDLE_BUFFER_SIZE64  60
 
-#if !defined(TARGET_AMD64)
+#if !defined(_TARGET_AMD64_)
 #define GDI_HANDLE_BUFFER_SIZE      GDI_HANDLE_BUFFER_SIZE32
 #else
 #define GDI_HANDLE_BUFFER_SIZE      GDI_HANDLE_BUFFER_SIZE64
@@ -586,7 +587,7 @@ typedef struct _TEB {
     PVOID SystemReserved1[54];      // Used by FP emulator
     NTSTATUS ExceptionCode;         // for RaiseUserException
     ACTIVATION_CONTEXT_STACK ActivationContextStack;   // Fusion activation stack
-    // sizeof(PVOID) is a way to express processor-dependence, more generally than #ifdef HOST_64BIT
+    // sizeof(PVOID) is a way to express processor-dependence, more generally than #ifdef BIT64
     UCHAR SpareBytes1[48 - sizeof(PVOID) - sizeof(ACTIVATION_CONTEXT_STACK)];
     GDI_TEB_BATCH GdiTebBatch;      // Gdi batching
     CLIENT_ID RealClientId;
@@ -747,9 +748,9 @@ typedef VM_COUNTERS *PVM_COUNTERS;
 
 #undef TYPE3
 
-#endif // !defined(HOST_UNIX)
+#endif // !defined(FEATURE_PAL)
 
-#if !defined(TARGET_X86)
+#if !defined(_TARGET_X86_)
 
 typedef enum _FUNCTION_TABLE_TYPE {
     RF_SORTED,
@@ -761,8 +762,8 @@ typedef struct _DYNAMIC_FUNCTION_TABLE {
     LIST_ENTRY Links;
     PT_RUNTIME_FUNCTION FunctionTable;
     LARGE_INTEGER TimeStamp;
-
-#ifdef TARGET_ARM
+    
+#ifdef _TARGET_ARM_
     ULONG MinimumAddress;
     ULONG MaximumAddress;
     ULONG BaseAddress;
@@ -779,12 +780,12 @@ typedef struct _DYNAMIC_FUNCTION_TABLE {
     ULONG EntryCount;
 } DYNAMIC_FUNCTION_TABLE, *PDYNAMIC_FUNCTION_TABLE;
 
-#endif // !TARGET_X86
+#endif // !_TARGET_X86_
 
 //
 //   AMD64
 //
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
 
 #define RUNTIME_FUNCTION__BeginAddress(prf)             (prf)->BeginAddress
 #define RUNTIME_FUNCTION__SetBeginAddress(prf,address)  ((prf)->BeginAddress = (address))
@@ -810,9 +811,9 @@ PEXCEPTION_ROUTINE
     IN OUT PKNONVOLATILE_CONTEXT_POINTERS ContextPointers OPTIONAL
     );
 
-#ifndef HOST_UNIX
+#ifndef FEATURE_PAL
 extern RtlVirtualUnwindFn* RtlVirtualUnwind_Unsafe;
-#else // !HOST_UNIX
+#else // !FEATURE_PAL
 PEXCEPTION_ROUTINE
 RtlVirtualUnwind_Unsafe(
     IN ULONG HandlerType,
@@ -824,20 +825,19 @@ RtlVirtualUnwind_Unsafe(
     OUT PULONG64 EstablisherFrame,
     IN OUT PKNONVOLATILE_CONTEXT_POINTERS ContextPointers OPTIONAL
     );
-#endif // !HOST_UNIX
+#endif // !FEATURE_PAL
 
-#endif // TARGET_AMD64
+#endif // _TARGET_AMD64_
 
 //
 //  X86
 //
 
-#ifdef TARGET_X86
-#ifndef TARGET_UNIX
+#ifdef _TARGET_X86_
+#ifndef FEATURE_PAL
 //
 // x86 ABI does not define RUNTIME_FUNCTION. Define our own to allow unification between x86 and other platforms.
 //
-#ifdef HOST_X86
 typedef struct _RUNTIME_FUNCTION {
     DWORD BeginAddress;
     DWORD UnwindData;
@@ -846,15 +846,14 @@ typedef struct _RUNTIME_FUNCTION {
 typedef struct _DISPATCHER_CONTEXT {
     _EXCEPTION_REGISTRATION_RECORD* RegistrationPointer;
 } DISPATCHER_CONTEXT, *PDISPATCHER_CONTEXT;
-#endif // HOST_X86
-#endif // !TARGET_UNIX
+
+#endif // !FEATURE_PAL
 
 #define RUNTIME_FUNCTION__BeginAddress(prf)             (prf)->BeginAddress
 #define RUNTIME_FUNCTION__SetBeginAddress(prf,addr)     ((prf)->BeginAddress = (addr))
 
-#ifdef FEATURE_EH_FUNCLETS
+#ifdef WIN64EXCEPTIONS
 #include "win64unwind.h"
-#include "daccess.h"
 
 FORCEINLINE
 DWORD
@@ -873,7 +872,6 @@ RtlpGetFunctionEndAddress (
 #define RUNTIME_FUNCTION__GetUnwindInfoAddress(prf)    (prf)->UnwindData
 #define RUNTIME_FUNCTION__SetUnwindInfoAddress(prf, addr) do { (prf)->UnwindData = (addr); } while(0)
 
-#ifdef HOST_X86
 EXTERN_C
 NTSYSAPI
 PEXCEPTION_ROUTINE
@@ -888,12 +886,11 @@ RtlVirtualUnwind (
     __out PDWORD EstablisherFrame,
     __inout_opt PT_KNONVOLATILE_CONTEXT_POINTERS ContextPointers
     );
-#endif // HOST_X86
-#endif // FEATURE_EH_FUNCLETS
+#endif // WIN64EXCEPTIONS
 
-#endif // TARGET_X86
+#endif // _TARGET_X86_
 
-#ifdef TARGET_ARM
+#ifdef _TARGET_ARM_
 #include "daccess.h"
 
 //
@@ -903,7 +900,7 @@ RtlVirtualUnwind (
 #define UNW_FLAG_NHANDLER               0x0             /* any handler */
 #define UNW_FLAG_EHANDLER               0x1             /* filter handler */
 #define UNW_FLAG_UHANDLER               0x2             /* unwind handler */
-
+                                                            
 // This function returns the length of a function using the new unwind info on arm.
 // Taken from minkernel\ntos\rtl\arm\ntrtlarm.h.
 FORCEINLINE
@@ -914,14 +911,14 @@ RtlpGetFunctionEndAddress (
     )
 {
     ULONG FunctionLength;
-
+    
     FunctionLength = FunctionEntry->UnwindData;
     if ((FunctionLength & 3) != 0) {
         FunctionLength = (FunctionLength >> 2) & 0x7ff;
     } else {
         FunctionLength = *(PTR_ULONG)(ImageBase + FunctionLength) & 0x3ffff;
     }
-
+    
     return FunctionEntry->BeginAddress + 2 * FunctionLength;
 }
 
@@ -936,7 +933,19 @@ typedef struct _UNWIND_INFO {
     // dummy
 } UNWIND_INFO, *PUNWIND_INFO;
 
-#if defined(HOST_UNIX) || defined(HOST_X86)
+#if defined(FEATURE_PAL) || defined(_X86_)
+EXTERN_C
+NTSYSAPI
+VOID
+NTAPI
+RtlUnwindEx (
+    __in_opt PVOID TargetFrame,
+    __in_opt PVOID TargetIp,
+    __in_opt PEXCEPTION_RECORD ExceptionRecord,
+    __in PVOID ReturnValue,
+    __in PT_CONTEXT ContextRecord,
+    __in_opt PUNWIND_HISTORY_TABLE HistoryTable
+    );
 
 EXTERN_C
 NTSYSAPI
@@ -946,19 +955,19 @@ RtlVirtualUnwind (
     __in DWORD HandlerType,
     __in DWORD ImageBase,
     __in DWORD ControlPc,
-    __in PT_RUNTIME_FUNCTION FunctionEntry,
+    __in PRUNTIME_FUNCTION FunctionEntry,
     __inout PT_CONTEXT ContextRecord,
     __out PVOID *HandlerData,
     __out PDWORD EstablisherFrame,
     __inout_opt PT_KNONVOLATILE_CONTEXT_POINTERS ContextPointers
     );
-#endif // HOST_UNIX || HOST_X86
+#endif // FEATURE_PAL || _X86_
 
 #define UNW_FLAG_NHANDLER 0x0
 
-#endif // TARGET_ARM
+#endif // _TARGET_ARM_
 
-#ifdef TARGET_ARM64
+#ifdef _TARGET_ARM64_
 #include "daccess.h"
 
 #define UNW_FLAG_NHANDLER               0x0             /* any handler */
@@ -975,14 +984,14 @@ RtlpGetFunctionEndAddress (
     )
 {
     ULONG64 FunctionLength;
-
+    
     FunctionLength = FunctionEntry->UnwindData;
     if ((FunctionLength & 3) != 0) {
         FunctionLength = (FunctionLength >> 2) & 0x7ff;
     } else {
         FunctionLength = *(PTR_ULONG64)(ImageBase + FunctionLength) & 0x3ffff;
     }
-
+    
     return FunctionEntry->BeginAddress + 4 * FunctionLength;
 }
 

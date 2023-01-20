@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ class Program
     {
         Console.WriteLine("// Licensed to the .NET Foundation under one or more agreements.");
         Console.WriteLine("// The .NET Foundation licenses this file to you under the MIT license.");
+        Console.WriteLine("// See the LICENSE file in the project root for more information.");
         Console.WriteLine();
 
         Console.WriteLine("#include \"pal/unicodedata.h\"");
@@ -40,7 +42,7 @@ class Program
                 if (!hasLowerCaseMapping && !hasUpperCaseMapping)
                     continue;
 
-
+                
                 int opposingCase = hasUpperCaseMapping ?
                     int.Parse(fields[12], NumberStyles.HexNumber) :
                     int.Parse(fields[13], NumberStyles.HexNumber);

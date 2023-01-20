@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef _PAL_SHARED_MEMORY_H_
 #define _PAL_SHARED_MEMORY_H_
@@ -14,8 +15,8 @@
 #define _countof(a) (sizeof(a) / sizeof(a[0]))
 #endif // !_countof
 
-// The folder used for storing shared memory files and their lock files is defined in
-// the gSharedFilesPath global variable. The value of the variable depends on which
+// The folder used for storing shared memory files and their lock files is defined in 
+// the gSharedFilesPath global variable. The value of the variable depends on which 
 // OS is being used, and if the application is running in a sandbox in Mac.
 // gSharedFilesPath ends with '/'
 // - Global shared memory files go in:
@@ -128,7 +129,7 @@ public:
     static void VerifyStringOperation(bool success);
     static void VerifyStringOperation(BOOL success)
     {
-        VerifyStringOperation(success != FALSE);
+        VerifyStringOperation(success != FALSE); 
     }
 };
 
@@ -187,10 +188,9 @@ public:
 class SharedMemoryProcessDataBase
 {
 public:
-    virtual bool CanClose() const = 0;
-    virtual bool HasImplicitRef() const = 0;
-    virtual void SetHasImplicitRef(bool value) = 0;
-    virtual void Close(bool isAbruptShutdown, bool releaseSharedData) = 0;
+    virtual void Close(bool isAbruptShutdown, bool releaseSharedData)
+    {
+    }
 
     virtual ~SharedMemoryProcessDataBase()
     {

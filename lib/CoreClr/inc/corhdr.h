@@ -1,28 +1,40 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*****************************************************************************
  **                                                                         **
  ** CorHdr.h - contains definitions for the Runtime structures,             **
-**
+** 
 
  **            needed to work with metadata.                                **
  **                                                                         **
  *****************************************************************************/
 //
-// The top most managed code structure in a EXE or DLL is the IMAGE_COR20_HEADER
-// see code:#ManagedHeader for more
+// The top most managed code structure in a EXE or DLL is the IMAGE_COR20_HEADER 
+// see code:#ManagedHeader for more 
 
 #ifndef __CORHDR_H__
 #define __CORHDR_H__
 
-#include <stdint.h>
+#define FRAMEWORK_REGISTRY_KEY          "Software\\Microsoft\\.NETFramework"
+#define FRAMEWORK_REGISTRY_KEY_W        W("Software\\Microsoft\\.NETFramework")
+
+// keys for HKCU
+#ifdef BIT64    
+#define USER_FRAMEWORK_REGISTRY_KEY             "Software\\Microsoft\\.NETFramework64"
+#define USER_FRAMEWORK_REGISTRY_KEY_W        W("Software\\Microsoft\\.NETFramework64")
+#else
+#define USER_FRAMEWORK_REGISTRY_KEY             "Software\\Microsoft\\.NETFramework"
+#define USER_FRAMEWORK_REGISTRY_KEY_W        W("Software\\Microsoft\\.NETFramework")
+#endif
+
 
 #ifdef _MSC_VER
 #pragma warning(disable:4200) // nonstandard extension used : zero-sized array in struct/union.
 #endif
-typedef void*  mdScope;                // Obsolete; not used in the runtime.
-typedef uint32_t mdToken;                // Generic token
+typedef LPVOID  mdScope;                // Obsolete; not used in the runtime.
+typedef ULONG32 mdToken;                // Generic token
 
 
 // Token  definitions
@@ -65,7 +77,7 @@ typedef mdToken mdString;               // User literal string token.
 typedef mdToken mdCPToken;              // constantpool token
 
 #ifndef MACROS_NOT_SUPPORTED
-typedef uint32_t RID;
+typedef ULONG RID;
 #else
 typedef unsigned RID;
 #endif // MACROS_NOT_SUPPORTED
@@ -133,7 +145,7 @@ typedef enum ReplacesCorHdrNumericDefines
     COMIMAGE_FLAGS_NATIVE_ENTRYPOINT    =0x00000010,
     COMIMAGE_FLAGS_TRACKDEBUGDATA       =0x00010000,
     COMIMAGE_FLAGS_32BITPREFERRED       =0x00020000,    // *** Do not manipulate this bit directly (see notes above)
-
+    
 
 // Version flags for image.
     COR_VERSION_MAJOR_V2                =2,
@@ -143,12 +155,12 @@ typedef enum ReplacesCorHdrNumericDefines
     COR_VTABLEGAP_NAME_LENGTH           =8,
 
 // Maximum size of a NativeType descriptor.
-    NATIVE_TYPE_MAX_CB                  =1,
+    NATIVE_TYPE_MAX_CB                  =1,   
     COR_ILMETHOD_SECT_SMALL_MAX_DATASIZE=0xFF,
 
 // V-table constants
-    COR_VTABLE_32BIT                    =0x01,          // V-table slots are 32-bits in size.
-    COR_VTABLE_64BIT                    =0x02,          // V-table slots are 64-bits in size.
+    COR_VTABLE_32BIT                    =0x01,          // V-table slots are 32-bits in size.   
+    COR_VTABLE_64BIT                    =0x02,          // V-table slots are 64-bits in size.   
     COR_VTABLE_FROM_UNMANAGED           =0x04,          // If set, transition from unmanaged.
     COR_VTABLE_FROM_UNMANAGED_RETAIN_APPDOMAIN=0x08,    // NEW
     COR_VTABLE_CALL_MOST_DERIVED        =0x10,          // Call most derived method described by
@@ -156,86 +168,73 @@ typedef enum ReplacesCorHdrNumericDefines
 // EATJ constants
     IMAGE_COR_EATJ_THUNK_SIZE           = 32,           // Size of a jump thunk reserved range.
 
-// Max name lengths
+// Max name lengths    
     //@todo: Change to unlimited name lengths.
     MAX_CLASS_NAME                      =1024,
     MAX_PACKAGE_NAME                    =1024,
 } ReplacesCorHdrNumericDefines;
 
-//
-// Directory format.
-//
-#ifndef IMAGE_DATA_DIRECTORY_DEFINED
-
-#define IMAGE_DATA_DIRECTORY_DEFINED
-typedef struct _IMAGE_DATA_DIRECTORY {
-    uint32_t   VirtualAddress;
-    uint32_t   Size;
-} IMAGE_DATA_DIRECTORY, *PIMAGE_DATA_DIRECTORY;
-
-#endif // IMAGE_DATA_DIRECTORY_DEFINED
-
 // #ManagedHeader
-//
+// 
 // A managed code EXE or DLL uses the same basic format that unmanaged executables use call the Portable
 // Executable (PE) format. See http://en.wikipedia.org/wiki/Portable_Executable or
 // http://msdn.microsoft.com/msdnmag/issues/02/02/PE/default.aspx for more on this format and RVAs.
-//
+// 
 // PE files define fixed table of well known entry pointers call Directory entries. Each entry holds the
 // relative virtual address (RVA) and length of a blob of data within the PE file. You can see these using
 // the command
-//
+// 
 // link /dump /headers <EXENAME>
-//
-//
+//  
+//  
 // Managed code has defined one of these entries (the 14th see code:IMAGE_DIRECTORY_ENTRY_COMHEADER) and the RVA points
 // that the IMAGE_COR20_HEADER.  This header shows up in the previous dump as the following line
-//
+// 
 // // Managed code is identified by is following line
-//
+// 
 //             2008 [      48] RVA [size] of COM Descriptor Directory
 //
-// The IMAGE_COR20_HEADER is mostly just RVA:Length pairs (pointers) to other interesting data structures.
+// The IMAGE_COR20_HEADER is mostly just RVA:Length pairs (pointers) to other interesting data structures. 
 // The most important of these is the MetaData tables.   The easiest way of looking at meta-data is using
-// the IlDasm.exe tool.
-//
+// the IlDasm.exe tool.   
+// 
 // MetaData holds most of the information in the IL image.  The exceptions are resource blobs and the IL
 // instructions streams for individual methods.  Instead the Meta-data for a method holds an RVA to a
-// code:IMAGE_COR_ILMETHOD which holds all the IL stream (and exception handling information).
-//
+// code:IMAGE_COR_ILMETHOD which holds all the IL stream (and exception handling information).  
+// 
 // Precompiled (NGEN) images use the same IMAGE_COR20_HEADER but also use the ManagedNativeHeader field to
-// point at structures that only exist in precompiled images.
-//
+// point at structures that only exist in precompiled images. 
+//  
 typedef struct IMAGE_COR20_HEADER
 {
     // Header versioning
-    uint32_t                cb;
-    uint16_t                MajorRuntimeVersion;
-    uint16_t                MinorRuntimeVersion;
-
+    DWORD                   cb;              
+    WORD                    MajorRuntimeVersion;
+    WORD                    MinorRuntimeVersion;
+    
     // Symbol table and startup information
-    IMAGE_DATA_DIRECTORY    MetaData;
-    uint32_t                Flags;
-
+    IMAGE_DATA_DIRECTORY    MetaData;        
+    DWORD                   Flags;           
+  
 	// The main program if it is an EXE (not used if a DLL?)
     // If COMIMAGE_FLAGS_NATIVE_ENTRYPOINT is not set, EntryPointToken represents a managed entrypoint.
 	// If COMIMAGE_FLAGS_NATIVE_ENTRYPOINT is set, EntryPointRVA represents an RVA to a native entrypoint
-	// (depricated for DLLs, use modules constructors intead).
+	// (depricated for DLLs, use modules constructors intead). 
     union {
-        uint32_t            EntryPointToken;
-        uint32_t            EntryPointRVA;
+        DWORD               EntryPointToken;
+        DWORD               EntryPointRVA;
     };
-
+    
     // This is the blob of managed resources. Fetched using code:AssemblyNative.GetResource and
     // code:PEFile.GetResource and accessible from managed code from
 	// System.Assembly.GetManifestResourceStream.  The meta data has a table that maps names to offsets into
-	// this blob, so logically the blob is a set of resources.
+	// this blob, so logically the blob is a set of resources. 
     IMAGE_DATA_DIRECTORY    Resources;
 	// IL assemblies can be signed with a public-private key to validate who created it.  The signature goes
-	// here if this feature is used.
+	// here if this feature is used. 
     IMAGE_DATA_DIRECTORY    StrongNameSignature;
 
-    IMAGE_DATA_DIRECTORY    CodeManagerTable;			// Depricated, not used
+    IMAGE_DATA_DIRECTORY    CodeManagerTable;			// Depricated, not used 
 	// Used for manged codee that has unmaanaged code inside it (or exports methods as unmanaged entry points)
     IMAGE_DATA_DIRECTORY    VTableFixups;
     IMAGE_DATA_DIRECTORY    ExportAddressTableJumps;
@@ -243,14 +242,14 @@ typedef struct IMAGE_COR20_HEADER
 	// null for ordinary IL images. In NGEN images it points at a code:CORCOMPILE_HEADER structure.
 	// In Ready2Run images it points to a READYTORUN_HEADER.
     IMAGE_DATA_DIRECTORY    ManagedNativeHeader;
-
+    
 } IMAGE_COR20_HEADER, *PIMAGE_COR20_HEADER;
 
 #else // !__IMAGE_COR20_HEADER_DEFINED__
 
 // <TODO>@TODO: This is required because we pull in the COM+ 2.0 PE header
 // definition from WinNT.h, and these constants have not yet propogated to there.</TODO>
-//
+// 
 #define COR_VTABLE_FROM_UNMANAGED_RETAIN_APPDOMAIN 0x08
 #define COMIMAGE_FLAGS_32BITPREFERRED              0x00020000
 
@@ -743,7 +742,7 @@ typedef enum  CorPinvokeMap
 typedef enum CorAssemblyFlags
 {
     afPublicKey             =   0x0001,     // The assembly ref holds the full (unhashed) public key.
-
+    
     afPA_None               =   0x0000,     // Processor Architecture unspecified
     afPA_MSIL               =   0x0010,     // Processor Architecture: neutral (PE32)
     afPA_x86                =   0x0020,     // Processor Architecture: x86 (PE32)
@@ -764,8 +763,8 @@ typedef enum CorAssemblyFlags
     afRetargetable          =   0x0100,     // The assembly can be retargeted (at runtime) to an
                                             //  assembly from a different publisher.
 
-    afContentType_Default         = 0x0000,
-    afContentType_WindowsRuntime  = 0x0200,
+    afContentType_Default         = 0x0000, 
+    afContentType_WindowsRuntime  = 0x0200, 
     afContentType_Mask            = 0x0E00, // Bits describing ContentType
 } CorAssemblyFlags;
 
@@ -834,23 +833,23 @@ typedef enum CorPEKind
 // GenericParam bits, used by DefineGenericParam.
 typedef enum CorGenericParamAttr
 {
-    // Variance of type parameters, only applicable to generic parameters
+    // Variance of type parameters, only applicable to generic parameters 
     // for generic interfaces and delegates
     gpVarianceMask          =   0x0003,
-    gpNonVariant            =   0x0000,
+    gpNonVariant            =   0x0000, 
     gpCovariant             =   0x0001,
     gpContravariant         =   0x0002,
 
     // Special constraints, applicable to any type parameters
     gpSpecialConstraintMask =  0x001C,
-    gpNoSpecialConstraint   =   0x0000,
+    gpNoSpecialConstraint   =   0x0000,      
     gpReferenceTypeConstraint = 0x0004,      // type argument must be a reference type
     gpNotNullableValueTypeConstraint   =   0x0008,      // type argument must be a value type but not Nullable
     gpDefaultConstructorConstraint = 0x0010, // type argument must have a public default constructor
 } CorGenericParamAttr;
 
 // structures and enums moved from COR.H
-typedef uint8_t COR_SIGNATURE;
+typedef unsigned __int8 COR_SIGNATURE;
 
 typedef COR_SIGNATURE* PCOR_SIGNATURE;      // pointer to a cor sig.  Not void* so that
                                             // the bytes can be incremented easily
@@ -956,26 +955,16 @@ typedef enum CorSerializationType
 // Calling convention flags.
 //
 
-typedef enum CorUnmanagedCallingConvention
-{
-    IMAGE_CEE_UNMANAGED_CALLCONV_C         = 0x1,
-    IMAGE_CEE_UNMANAGED_CALLCONV_STDCALL   = 0x2,
-    IMAGE_CEE_UNMANAGED_CALLCONV_THISCALL  = 0x3,
-    IMAGE_CEE_UNMANAGED_CALLCONV_FASTCALL  = 0x4,
-} CorUnmanagedCallingConvention;
 
 typedef enum CorCallingConvention
 {
     IMAGE_CEE_CS_CALLCONV_DEFAULT       = 0x0,
-    IMAGE_CEE_CS_CALLCONV_C         = IMAGE_CEE_UNMANAGED_CALLCONV_C,
-    IMAGE_CEE_CS_CALLCONV_STDCALL   = IMAGE_CEE_UNMANAGED_CALLCONV_STDCALL,
-    IMAGE_CEE_CS_CALLCONV_THISCALL  = IMAGE_CEE_UNMANAGED_CALLCONV_THISCALL,
-    IMAGE_CEE_CS_CALLCONV_FASTCALL  = IMAGE_CEE_UNMANAGED_CALLCONV_FASTCALL,
+
     IMAGE_CEE_CS_CALLCONV_VARARG        = 0x5,
     IMAGE_CEE_CS_CALLCONV_FIELD         = 0x6,
     IMAGE_CEE_CS_CALLCONV_LOCAL_SIG     = 0x7,
     IMAGE_CEE_CS_CALLCONV_PROPERTY      = 0x8,
-    IMAGE_CEE_CS_CALLCONV_UNMANAGED     = 0x9,  // Unmanaged calling convention encoded as modopts
+    IMAGE_CEE_CS_CALLCONV_UNMGD         = 0x9,
     IMAGE_CEE_CS_CALLCONV_GENERICINST   = 0xa,  // generic method instantiation
     IMAGE_CEE_CS_CALLCONV_NATIVEVARARG  = 0xb,  // used ONLY for 64bit vararg PInvoke calls
     IMAGE_CEE_CS_CALLCONV_MAX           = 0xc,  // first invalid calling convention
@@ -990,6 +979,20 @@ typedef enum CorCallingConvention
 } CorCallingConvention;
 
 #define IMAGE_CEE_CS_CALLCONV_INSTANTIATION IMAGE_CEE_CS_CALLCONV_GENERICINST
+
+typedef enum CorUnmanagedCallingConvention
+{
+    IMAGE_CEE_UNMANAGED_CALLCONV_C         = 0x1,
+    IMAGE_CEE_UNMANAGED_CALLCONV_STDCALL   = 0x2,
+    IMAGE_CEE_UNMANAGED_CALLCONV_THISCALL  = 0x3,
+    IMAGE_CEE_UNMANAGED_CALLCONV_FASTCALL  = 0x4,
+
+    IMAGE_CEE_CS_CALLCONV_C         = IMAGE_CEE_UNMANAGED_CALLCONV_C,
+    IMAGE_CEE_CS_CALLCONV_STDCALL   = IMAGE_CEE_UNMANAGED_CALLCONV_STDCALL,
+    IMAGE_CEE_CS_CALLCONV_THISCALL  = IMAGE_CEE_UNMANAGED_CALLCONV_THISCALL,
+    IMAGE_CEE_CS_CALLCONV_FASTCALL  = IMAGE_CEE_UNMANAGED_CALLCONV_FASTCALL,
+
+} CorUnmanagedCallingConvention;
 
 
 typedef enum CorArgType
@@ -1117,8 +1120,8 @@ typedef enum CorILMethodSect                             // codes that identify 
 
 typedef struct IMAGE_COR_ILMETHOD_SECT_SMALL
 {
-    uint8_t Kind;
-    uint8_t DataSize;
+    BYTE Kind;
+    BYTE DataSize;
 
 } IMAGE_COR_ILMETHOD_SECT_SMALL;
 
@@ -1154,13 +1157,13 @@ typedef enum CorExceptionFlag                       // definitions for the Flags
 typedef struct IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_FAT
 {
     CorExceptionFlag    Flags;
-    uint32_t            TryOffset;
-    uint32_t            TryLength;      // relative to start of try block
-    uint32_t            HandlerOffset;
-    uint32_t            HandlerLength;  // relative to start of handler
+    DWORD               TryOffset;
+    DWORD               TryLength;      // relative to start of try block
+    DWORD               HandlerOffset;
+    DWORD               HandlerLength;  // relative to start of handler
     union {
-        uint32_t        ClassToken;     // use for type-based exception handlers
-        uint32_t        FilterOffset;   // use for filter-based exception handlers (COR_ILEXCEPTION_FILTER is set)
+        DWORD           ClassToken;     // use for type-based exception handlers
+        DWORD           FilterOffset;   // use for filter-based exception handlers (COR_ILEXCEPTION_FILTER is set)
     };
 } IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_FAT;
 
@@ -1173,9 +1176,9 @@ typedef struct IMAGE_COR_ILMETHOD_SECT_EH_FAT
 /***********************************/
 typedef struct IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_SMALL
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
     unsigned            Flags         : 16;
-#else // !HOST_64BIT
+#else // !BIT64
     CorExceptionFlag    Flags         : 16;
 #endif
     unsigned            TryOffset     : 16;
@@ -1183,8 +1186,8 @@ typedef struct IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_SMALL
     unsigned            HandlerOffset : 16;
     unsigned            HandlerLength : 8;  // relative to start of handler
     union {
-        uint32_t        ClassToken;
-        uint32_t        FilterOffset;
+        DWORD       ClassToken;
+        DWORD       FilterOffset;
     };
 } IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_SMALL;
 
@@ -1192,7 +1195,7 @@ typedef struct IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_SMALL
 typedef struct IMAGE_COR_ILMETHOD_SECT_EH_SMALL
 {
     IMAGE_COR_ILMETHOD_SECT_SMALL SectSmall;
-    uint16_t Reserved;
+    WORD Reserved;
     IMAGE_COR_ILMETHOD_SECT_EH_CLAUSE_SMALL Clauses[1];   // actually variable size
 } IMAGE_COR_ILMETHOD_SECT_EH_SMALL;
 
@@ -1206,17 +1209,17 @@ typedef union IMAGE_COR_ILMETHOD_SECT_EH
 
 
 /***********************************************************************************/
-// Legal values for
-// * code:IMAGE_COR_ILMETHOD_FAT::Flags or
-// * code:IMAGE_COR_ILMETHOD_TINY::Flags_CodeSize fields.
-//
+// Legal values for 
+// * code:IMAGE_COR_ILMETHOD_FAT::Flags or 
+// * code:IMAGE_COR_ILMETHOD_TINY::Flags_CodeSize fields. 
+// 
 // The only semantic flag at present is CorILMethod_InitLocals
 typedef enum CorILMethodFlags
 {
     CorILMethod_InitLocals      = 0x0010,           // call default constructor on all local vars
     CorILMethod_MoreSects       = 0x0008,           // there is another attribute after this one
 
-    CorILMethod_CompressedIL    = 0x0040,           // Not used.
+    CorILMethod_CompressedIL    = 0x0040,           // Not used.  
 
         // Indicates the format for the COR_ILMETHOD header
     CorILMethod_FormatShift     = 3,
@@ -1231,7 +1234,7 @@ typedef enum CorILMethodFlags
 /* Used when the method is tiny (< 64 bytes), and there are no local vars */
 typedef struct IMAGE_COR_ILMETHOD_TINY
 {
-    uint8_t Flags_CodeSize;
+    BYTE Flags_CodeSize;
 } IMAGE_COR_ILMETHOD_TINY;
 
 /************************************/
@@ -1242,7 +1245,7 @@ typedef struct IMAGE_COR_ILMETHOD_FAT
     unsigned Flags    : 12;     // Flags see code:CorILMethodFlags
     unsigned Size     :  4;     // size in DWords of this structure (currently 3)
     unsigned MaxStack : 16;     // maximum number of items (I4, I, I8, obj ...), on the operand stack
-    uint32_t CodeSize;          // size of the code
+    DWORD   CodeSize;           // size of the code
     mdSignature   LocalVarSigTok;     // token that indicates the signature of the local vars (0 means none)
 
 } IMAGE_COR_ILMETHOD_FAT;
@@ -1250,7 +1253,7 @@ typedef struct IMAGE_COR_ILMETHOD_FAT
 // an IMAGE_COR_ILMETHOD holds the IL instructions for a individual method.  To save space they come in two
 // flavors Fat and Tiny.  Conceptually Tiny is just a compressed version of Fat, so code:IMAGE_COR_ILMETHOD_FAT
 // is the logical structure for all headers.  Conceptually this blob holds the IL, the Exception Handling
-// Tables, the local variable information and some flags.
+// Tables, the local variable information and some flags.  
 typedef union IMAGE_COR_ILMETHOD
 {
     IMAGE_COR_ILMETHOD_TINY       Tiny;
@@ -1268,9 +1271,9 @@ typedef union IMAGE_COR_ILMETHOD
 
 typedef struct IMAGE_COR_VTABLEFIXUP
 {
-    uint32_t       RVA;                    // Offset of v-table array in image.
-    uint16_t       Count;                  // How many entries at location.
-    uint16_t       Type;                   // COR_VTABLE_xxx type of entries.
+    ULONG       RVA;                    // Offset of v-table array in image.
+    USHORT      Count;                  // How many entries at location.
+    USHORT      Type;                   // COR_VTABLE_xxx type of entries.
 } IMAGE_COR_VTABLEFIXUP;
 
 
@@ -1441,7 +1444,7 @@ typedef enum CorLinkerOptions
 typedef enum MergeFlags
 {
     MergeFlagsNone      =   0,
-    MergeManifest       =   0x00000001,
+    MergeManifest       =   0x00000001,     
     DropMemberRefCAs    =   0x00000002,
     NoDupCheck          =   0x00000004,
     MergeExportedTypes  =   0x00000008
@@ -1466,7 +1469,7 @@ typedef enum CorLocalRefPreservation
 typedef struct COR_FIELD_OFFSET
 {
     mdFieldDef  ridOfField;
-    uint32_t       ulOffset;
+    ULONG       ulOffset;
 } COR_FIELD_OFFSET;
 
 #endif
@@ -1498,7 +1501,6 @@ typedef enum CorTokenType
     mdtFile                 = 0x26000000,       //
     mdtExportedType         = 0x27000000,       //
     mdtManifestResource     = 0x28000000,       //
-    mdtNestedClass          = 0x29000000,       //
     mdtGenericParam         = 0x2a000000,       //
     mdtMethodSpec           = 0x2b000000,       //
     mdtGenericParamConstraint = 0x2c000000,
@@ -1561,7 +1563,7 @@ typedef enum CorOpenFlags
 
     ofReadOnly          =   0x00000010,     // Open scope for read. Will be unable to QI for a IMetadataEmit* interface
     ofTakeOwnership     =   0x00000020,     // The memory was allocated with CoTaskMemAlloc and will be freed by the metadata
-
+	
     // These are obsolete and are ignored.
     // ofCacheImage     =   0x00000004,     // EE maps but does not do relocations or verify image
     // ofManifestMetadata = 0x00000008,     // Open scope on ngen image, return the manifest metadata instead of the IL metadata
@@ -1586,14 +1588,14 @@ typedef enum CorOpenFlags
 
 #define IsOfReserved(x)                     (((x) & ofReserved) != 0)
 
-//
+// 
 // Type of file mapping returned by code:IMetaDataInfo::GetFileMapping.
-//
+// 
 typedef enum CorFileMapping
 {
-    fmFlat            = 0,  // Flat file mapping - file is mapped as data file (code:SEC_IMAGE flag was not
+    fmFlat            = 0,  // Flat file mapping - file is mapped as data file (code:SEC_IMAGE flag was not 
                             // passed to code:CreateFileMapping).
-    fmExecutableImage = 1,  // Executable image file mapping - file is mapped for execution
+    fmExecutableImage = 1,  // Executable image file mapping - file is mapped for execution 
                             // (either via code:LoadLibrary or code:CreateFileMapping with code:SEC_IMAGE flag).
 } CorFileMapping;
 
@@ -1799,16 +1801,16 @@ typedef enum CorAttributeTargets
 #define FORWARD_INTEROP_STUB_METHOD_TYPE        "System.Runtime.InteropServices.ManagedToNativeComInteropStubAttribute"
 
 #define FRIEND_ASSEMBLY_TYPE_W                  W("System.Runtime.CompilerServices.InternalsVisibleToAttribute")
-#define FRIEND_ASSEMBLY_TYPE                    "System.Runtime.CompilerServices.InternalsVisibleToAttribute"
-#define FRIEND_ASSEMBLY_TYPE_NAMESPACE          "System.Runtime.CompilerServices"
-#define FRIEND_ASSEMBLY_TYPE_NAME               "InternalsVisibleToAttribute"
+#define FRIEND_ASSEMBLY_TYPE                     "System.Runtime.CompilerServices.InternalsVisibleToAttribute"
 #define FRIEND_ASSEMBLY_SIG                     {IMAGE_CEE_CS_CALLCONV_DEFAULT_HASTHIS, 2, ELEMENT_TYPE_VOID, ELEMENT_TYPE_STRING, ELEMENT_TYPE_BOOLEAN}
 
 #define SUBJECT_ASSEMBLY_TYPE_W                 W("System.Runtime.CompilerServices.IgnoresAccessChecksToAttribute")
-#define SUBJECT_ASSEMBLY_TYPE                   "System.Runtime.CompilerServices.IgnoresAccessChecksToAttribute"
-#define SUBJECT_ASSEMBLY_TYPE_NAMESPACE         "System.Runtime.CompilerServices"
-#define SUBJECT_ASSEMBLY_TYPE_NAME              "IgnoresAccessChecksToAttribute"
+#define SUBJECT_ASSEMBLY_TYPE                    "System.Runtime.CompilerServices.IgnoresAccessChecksToAttribute"
 #define SUBJECT_ASSEMBLY_SIG                    {IMAGE_CEE_CS_CALLCONV_DEFAULT_HASTHIS, 1, ELEMENT_TYPE_VOID, ELEMENT_TYPE_STRING}
+
+#define DISABLED_PRIVATE_REFLECTION_TYPE_W      W("System.Runtime.CompilerServices.DisablePrivateReflectionAttribute")
+#define DISABLED_PRIVATE_REFLECTION_TYPE         "System.Runtime.CompilerServices.DisablePrivateReflectionAttribute"
+#define DISABLED_PRIVATE_REFLECTION_SIG         {IMAGE_CEE_CS_CALLCONV_DEFAULT_HASTHIS, 0, ELEMENT_TYPE_VOID}
 
 #define DEFAULTDOMAIN_STA_TYPE_W                W("System.STAThreadAttribute")
 #define DEFAULTDOMAIN_STA_TYPE                   "System.STAThreadAttribute"
@@ -1821,17 +1823,11 @@ typedef enum CorAttributeTargets
 #define NONVERSIONABLE_TYPE_W                   W("System.Runtime.Versioning.NonVersionableAttribute")
 #define NONVERSIONABLE_TYPE                      "System.Runtime.Versioning.NonVersionableAttribute"
 
-#define DEBUGGABLE_ATTRIBUTE_TYPE_W             W("System.Diagnostics.DebuggableAttribute")
-#define DEBUGGABLE_ATTRIBUTE_TYPE               "System.Diagnostics.DebuggableAttribute"
-#define DEBUGGABLE_ATTRIBUTE_TYPE_NAMESPACE     "System.Diagnostics"
-#define DEBUGGABLE_ATTRIBUTE_TYPE_NAME          "DebuggableAttribute"
-
-
 // Keep in sync with CompilationRelaxations.cs
 typedef enum CompilationRelaxationsEnum
 {
     CompilationRelaxations_NoStringInterning       = 0x0008,
-
+        
 } CompilationRelaxationEnum;
 
 #define COMPILATIONRELAXATIONS_TYPE_W           W("System.Runtime.CompilerServices.CompilationRelaxationsAttribute")
@@ -1846,12 +1842,12 @@ typedef enum CompilationRelaxationsEnum
 // Keep in sync with AssemblySettingAttributes.cs
 
 typedef enum NGenHintEnum
-{
+{    
     NGenDefault             = 0x0000, // No preference specified
 
     NGenEager               = 0x0001, // NGen at install time
     NGenLazy                = 0x0002, // NGen after install time
-    NGenNever               = 0x0003  // Assembly should not be ngened
+    NGenNever               = 0x0003  // Assembly should not be ngened      
 } NGenHintEnum;
 
 typedef enum LoadHintEnum
@@ -1869,6 +1865,12 @@ typedef enum LoadHintEnum
 #define DEPENDENCY_TYPE_W                       W("System.Runtime.CompilerServices.DependencyAttribute")
 #define DEPENDENCY_TYPE                         "System.Runtime.CompilerServices.DependencyAttribute"
 
+#define TARGET_FRAMEWORK_TYPE_W                 W("System.Runtime.Versioning.TargetFrameworkAttribute")
+#define TARGET_FRAMEWORK_TYPE                   "System.Runtime.Versioning.TargetFrameworkAttribute"
+
+#define ASSEMBLY_METADATA_TYPE_W                W("System.Reflection.AssemblyMetadataAttribute")
+#define ASSEMBLY_METADATA_TYPE                  "System.Reflection.AssemblyMetadataAttribute"
+
 
 #define CMOD_CALLCONV_NAMESPACE_OLD             "System.Runtime.InteropServices"
 #define CMOD_CALLCONV_NAMESPACE                 "System.Runtime.CompilerServices"
@@ -1876,8 +1878,6 @@ typedef enum LoadHintEnum
 #define CMOD_CALLCONV_NAME_STDCALL              "CallConvStdcall"
 #define CMOD_CALLCONV_NAME_THISCALL             "CallConvThiscall"
 #define CMOD_CALLCONV_NAME_FASTCALL             "CallConvFastcall"
-#define CMOD_CALLCONV_NAME_SUPPRESSGCTRANSITION "CallConvSuppressGCTransition"
-#define CMOD_CALLCONV_NAME_MEMBERFUNCTION       "CallConvMemberFunction"
 
 #endif // MACROS_NOT_SUPPORTED
 
@@ -1894,10 +1894,10 @@ typedef enum CorSaveSize
 } CorSaveSize;
 #endif
 
-#define COR_IS_METHOD_MANAGED_IL(flags)         (((flags) & 0xf) == (miIL | miManaged))
-#define COR_IS_METHOD_MANAGED_OPTIL(flags)      (((flags) & 0xf) == (miOPTIL | miManaged))
-#define COR_IS_METHOD_MANAGED_NATIVE(flags)     (((flags) & 0xf) == (miNative | miManaged))
-#define COR_IS_METHOD_UNMANAGED_NATIVE(flags)   (((flags) & 0xf) == (miNative | miUnmanaged))
+#define COR_IS_METHOD_MANAGED_IL(flags)         ((flags & 0xf) == (miIL | miManaged))
+#define COR_IS_METHOD_MANAGED_OPTIL(flags)      ((flags & 0xf) == (miOPTIL | miManaged))
+#define COR_IS_METHOD_MANAGED_NATIVE(flags)     ((flags & 0xf) == (miNative | miManaged))
+#define COR_IS_METHOD_UNMANAGED_NATIVE(flags)   ((flags & 0xf) == (miNative | miUnmanaged))
 
 //
 // Enum used with NATIVE_TYPE_ARRAY.
@@ -1907,17 +1907,6 @@ typedef enum NativeTypeArrayFlags
     ntaSizeParamIndexSpecified = 0x0001,
     ntaReserved                = 0xfffe      // All the reserved bits.
 } NativeTypeArrayFlags;
-
-//
-// Enum used for HFA type recognition.
-// Supported across architectures, so that it can be used in altjits and cross-compilation.
-typedef enum CorInfoHFAElemType : unsigned {
-    CORINFO_HFA_ELEM_NONE,
-    CORINFO_HFA_ELEM_FLOAT,
-    CORINFO_HFA_ELEM_DOUBLE,
-    CORINFO_HFA_ELEM_VECTOR64,
-    CORINFO_HFA_ELEM_VECTOR128,
-} CorInfoHFAElemType;
 
 //
 // Opaque types for security properties and values.
@@ -1934,8 +1923,9 @@ typedef void ** PPSECURITY_VALUE ;
 // Descriptor for a single security custom attribute.
 typedef struct COR_SECATTR {
     mdMemberRef     tkCtor;         // Ref to constructor of security attribute.
-    const void     *pCustomAttribute;  // Blob describing ctor args and field/property values.
-    uint32_t        cbCustomAttribute;  // Length of the above blob.
+    const void      *pCustomAttribute;  // Blob describing ctor args and field/property values.
+    ULONG           cbCustomAttribute;  // Length of the above blob.
 } COR_SECATTR;
 
 #endif // __CORHDR_H__
+

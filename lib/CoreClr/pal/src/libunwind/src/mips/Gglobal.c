@@ -26,7 +26,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 #include "dwarf_i.h"
 
 HIDDEN define_lock (mips_lock);
-HIDDEN atomic_bool tdep_init_done = 0;
+HIDDEN int tdep_init_done;
 
 HIDDEN void
 tdep_init (void)
@@ -37,7 +37,7 @@ tdep_init (void)
 
   lock_acquire (&mips_lock, saved_mask);
   {
-    if (atomic_load(&tdep_init_done))
+    if (tdep_init_done)
       /* another thread else beat us to it... */
       goto out;
 
@@ -48,7 +48,7 @@ tdep_init (void)
 #ifndef UNW_REMOTE_ONLY
     mips_local_addr_space_init ();
 #endif
-    atomic_store(&tdep_init_done, 1); /* signal that we're initialized... */
+    tdep_init_done = 1; /* signal that we're initialized... */
   }
  out:
   lock_release (&mips_lock, saved_mask);

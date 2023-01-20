@@ -30,7 +30,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #include <stdlib.h>
 #include <libunwind.h>
-#include <stdatomic.h>
 
 #if !defined(UNW_REMOTE_ONLY) && _MIPS_SIM == _ABI64
 # include "elf64.h"
@@ -55,7 +54,11 @@ struct unw_addr_space
     unsigned int addr_size;
 
     unw_caching_policy_t caching_policy;
-    _Atomic uint32_t cache_generation;
+#ifdef HAVE_ATOMIC_OPS_H
+    AO_t cache_generation;
+#else
+    uint32_t cache_generation;
+#endif
     unw_word_t dyn_generation;          /* see dyn-common.h */
     unw_word_t dyn_info_list_addr;      /* (cached) dyn_info_list_addr */
     struct dwarf_rs_cache global_cache;
@@ -244,14 +247,6 @@ dwarf_get (struct dwarf_cursor *c, dwarf_loc_t loc, unw_word_t *val)
                                      0, c->as_arg);
   else if (c->as->abi == UNW_MIPS_ABI_O32)
     return read_s32 (c, DWARF_GET_LOC (loc), val);
-  else if (c->as->abi == UNW_MIPS_ABI_N32) {
-    if (tdep_big_endian(c->as))
-      return (*c->as->acc.access_mem) (c->as, DWARF_GET_LOC (loc) + 4, val,
-                                       0, c->as_arg);
-    else
-      return (*c->as->acc.access_mem) (c->as, DWARF_GET_LOC (loc), val,
-                                       0, c->as_arg);
-  }
   else
     return (*c->as->acc.access_mem) (c->as, DWARF_GET_LOC (loc), val,
                                      0, c->as_arg);
@@ -317,7 +312,7 @@ dwarf_put (struct dwarf_cursor *c, dwarf_loc_t loc, unw_word_t val)
 #define tdep_get_as_arg(c)              ((c)->dwarf.as_arg)
 #define tdep_get_ip(c)                  ((c)->dwarf.ip)
 
-extern atomic_bool tdep_init_done;
+extern int tdep_init_done;
 
 extern void tdep_init (void);
 extern int tdep_search_unwind_table (unw_addr_space_t as, unw_word_t ip,

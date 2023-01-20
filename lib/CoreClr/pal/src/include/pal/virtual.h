@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -48,7 +49,7 @@ enum VIRTUAL_CONSTANTS
     /* Allocation type. */
     VIRTUAL_COMMIT_ALL_BITS     = 0xFF,
     VIRTUAL_RESERVE_ALL_BITS    = 0x0,
-
+    
     /* Protection Type. */
     VIRTUAL_READONLY,
     VIRTUAL_READWRITE,
@@ -70,7 +71,7 @@ Function :
 
 Return value:
     TRUE  if initialization succeeded
-    FALSE otherwise.
+    FALSE otherwise.        
 --*/
 BOOL VIRTUALInitialize(bool initializeExecutableMemoryAllocator);
 

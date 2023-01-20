@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -33,6 +34,7 @@ extern "C"
 
 // Process and thread initialization/cleanup/context routines
 BOOL SEHInitializeMachExceptions(DWORD flags);
+void SEHCleanupExceptionPort (void);
 void MachExceptionInitializeDebug(void);
 PAL_NORETURN void MachSetThreadContext(CONTEXT *lpContext);
 

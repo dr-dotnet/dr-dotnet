@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #include "pal/dbgmsg.h"
 SET_DEFAULT_DEBUG_CHANNEL(EXCEPT); // some headers have code with asserts, so do this first
@@ -12,11 +13,10 @@ SET_DEFAULT_DEBUG_CHANNEL(EXCEPT); // some headers have code with asserts, so do
 
 /*++
 Function :
-    ExecuteHandlerOnCustomStack
+    signal_handler_worker
 
-    Execute signal handler on a custom stack, the current stack pointer is specified by the customSp
-    If the customSp is 0, then the handler is executed on the original stack where the signal was fired.
-    It installs a fake stack frame to enable stack unwinding to the signal source location.
+    Handles signal on the original stack where the signal occured. 
+    Invoked via setcontext.
 
 Parameters :
     POSIX signal handler parameter list ("man sigaction" for details)
@@ -24,17 +24,12 @@ Parameters :
 
     (no return value)
 --*/
-void ExecuteHandlerOnCustomStack(int code, siginfo_t *siginfo, void *context, size_t customSp, SignalHandlerWorkerReturnPoint* returnPoint)
+void ExecuteHandlerOnOriginalStack(int code, siginfo_t *siginfo, void *context, SignalHandlerWorkerReturnPoint* returnPoint)
 {
     ucontext_t *ucontext = (ucontext_t *)context;
     size_t faultSp = (size_t)MCREG_Esp(ucontext->uc_mcontext);
 
     _ASSERTE(IS_ALIGNED(faultSp, 4));
-
-    if (customSp == 0)
-    {
-        customSp = ALIGN_DOWN(faultSp, 16);
-    }
 
     size_t fakeFrameReturnAddress;
 
@@ -54,14 +49,14 @@ void ExecuteHandlerOnCustomStack(int code, siginfo_t *siginfo, void *context, si
             break;
     }
 
-    size_t* sp = (size_t*)customSp;
+    size_t* sp = (size_t*)ALIGN_DOWN(faultSp, 16);
 
     // Build fake stack frame to enable the stack unwinder to unwind from signal_handler_worker to the faulting instruction
     *--sp = (size_t)MCREG_Eip(ucontext->uc_mcontext);
     *--sp = (size_t)MCREG_Ebp(ucontext->uc_mcontext);
     size_t fp = (size_t)sp;
     // Align stack
-    sp -= 2;
+    sp -= 2; 
     *--sp = (size_t)returnPoint;
     *--sp = (size_t)context;
     *--sp = (size_t)siginfo;

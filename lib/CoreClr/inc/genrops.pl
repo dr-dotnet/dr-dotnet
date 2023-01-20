@@ -1,5 +1,6 @@
 # Licensed to the .NET Foundation under one or more agreements.
 # The .NET Foundation licenses this file to you under the MIT license.
+# See the LICENSE file in the project root for more information.
 #
 # GENREFOPS.PL
 #
@@ -22,7 +23,7 @@ $count = 0;
 while (<>)
 {
    # Process only OPDEF(....) lines
-   if (/OPDEF\(\s*/)
+   if (/OPDEF\(\s*/)  
    {
       chop;               # Strip off trailing CR
        s/^OPDEF\(\s*//;    # Strip off "OP("

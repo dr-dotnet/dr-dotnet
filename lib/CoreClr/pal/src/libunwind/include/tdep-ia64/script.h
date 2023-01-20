@@ -23,8 +23,6 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
-#include <stdatomic.h>
-
 #define IA64_LOG_UNW_CACHE_SIZE 7
 #define IA64_UNW_CACHE_SIZE     (1 << IA64_LOG_UNW_CACHE_SIZE)
 
@@ -61,7 +59,11 @@ struct ia64_script
 
 struct ia64_script_cache
   {
-    atomic_flag busy;           /* is the script-cache busy? */
+#ifdef HAVE_ATOMIC_OPS_H
+    AO_TS_t busy;               /* is the script-cache busy? */
+#else
+    pthread_mutex_t lock;
+#endif
     unsigned short lru_head;    /* index of lead-recently used script */
     unsigned short lru_tail;    /* index of most-recently used script */
 

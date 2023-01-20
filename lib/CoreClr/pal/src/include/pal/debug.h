@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -11,7 +12,7 @@ Module Name:
 
 Abstract:
 
-    Debug API utility functions
+    Debug API utility functions 
 
 
 
@@ -33,7 +34,7 @@ Function :
 
 (no parameters, no return value)
 --*/
-extern "C" VOID
+extern "C" VOID 
 DBG_DebugBreak();
 
 /*++
@@ -69,14 +70,14 @@ DBG_FlushInstructionCache(
 /*++
 Function:
     DBG_CheckStackAlignment
-
+    
     The Apple ABI requires 16-byte alignment on the stack pointer.
     This function traps/interrupts otherwise.
 --*/
 VOID
 DBG_CheckStackAlignment();
-#endif
-
+#endif                       
+                      
 
 #ifdef __cplusplus
 }

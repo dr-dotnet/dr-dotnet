@@ -1,14 +1,11 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 .macro NESTED_ENTRY Name, Section, Handler
         LEAF_ENTRY \Name, \Section
         .ifnc \Handler, NoHandler
-#if defined(__APPLE__)
-        .cfi_personality 0x9b, C_FUNC(\Handler) // 0x9b == DW_EH_PE_indirect | DW_EH_PE_pcrel | DW_EH_PE_sdata4
-#else
         .cfi_personality 0x1b, C_FUNC(\Handler) // 0x1b == DW_EH_PE_pcrel | DW_EH_PE_sdata4
-#endif
         .endif
 .endm
 
@@ -23,20 +20,13 @@ C_FUNC(\Name):
 
 .macro LEAF_ENTRY Name, Section
         .global C_FUNC(\Name)
-#if defined(__APPLE__)
-        .text
-        .p2align        2
-#else
         .type \Name, %function
-#endif
 C_FUNC(\Name):
         .cfi_startproc
 .endm
 
 .macro LEAF_END Name, Section
-#if !defined(__APPLE__)
         .size \Name, .-\Name
-#endif
         .cfi_endproc
 .endm
 
@@ -47,13 +37,8 @@ C_FUNC(\Name\()_End):
 .endm
 
 .macro PREPARE_EXTERNAL_VAR Name, HelperReg
-#if defined(__APPLE__)
-        adrp    \HelperReg, C_FUNC(\Name)@GOTPAGE
-        ldr     \HelperReg, [\HelperReg, C_FUNC(\Name)@GOTPAGEOFF]
-#else
-        adrp    \HelperReg, C_FUNC(\Name)
-        add     \HelperReg, \HelperReg, :lo12:C_FUNC(\Name)
-#endif
+        adrp    \HelperReg, \Name
+        add     \HelperReg, \HelperReg, :lo12:\Name
 .endm
 
 .macro PROLOG_STACK_ALLOC Size
@@ -98,7 +83,7 @@ C_FUNC(\Name\()_End):
 
 .macro EPILOG_RESTORE_REG reg, ofs
         ldr \reg, [sp, \ofs]
-        .cfi_restore \reg
+        .cfi_restore \reg1
 .endm
 
 .macro EPILOG_RESTORE_REG_PAIR reg1, reg2, ofs

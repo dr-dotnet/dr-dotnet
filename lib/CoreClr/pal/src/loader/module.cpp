@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -40,7 +41,11 @@ SET_DEFAULT_DEBUG_CHANNEL(LOADER); // some headers have code with asserts, so do
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#if NEED_DLCOMPAT
+#include "dlcompat.h"
+#else   // NEED_DLCOMPAT
 #include <dlfcn.h>
+#endif  // NEED_DLCOMPAT
 #include <stdlib.h>
 
 #ifdef __APPLE__
@@ -67,6 +72,13 @@ using namespace CorUnix;
 /* get the full name of a module if available, and the short name otherwise*/
 #define MODNAME(x) ((x)->lib_name)
 
+/* Which path should FindLibrary search? */
+#if defined(__APPLE__)
+#define LIBSEARCHPATH "DYLD_LIBRARY_PATH"
+#else
+#define LIBSEARCHPATH "LD_LIBRARY_PATH"
+#endif
+
 #define LIBC_NAME_WITHOUT_EXTENSION "libc"
 
 /* static variables ***********************************************************/
@@ -79,7 +91,6 @@ MODSTRUCT exe_module;
 MODSTRUCT *pal_module = nullptr;
 
 char * g_szCoreCLRPath = nullptr;
-bool g_running_in_exe = false;
 
 int MaxWCharToAcpLength = 3;
 
@@ -596,13 +607,6 @@ PAL_LoadLibraryDirect(
           lpLibFileName ? lpLibFileName : W16_NULLSTRING,
           lpLibFileName ? lpLibFileName : W16_NULLSTRING);
 
-    // Getting nullptr as name indicates redirection to current library
-    if (lpLibFileName == nullptr)
-    {
-        dl_handle = dlopen(NULL, RTLD_LAZY);
-        goto done;
-    }
-
     if (!LOADVerifyLibraryPath(lpLibFileName))
     {
         goto done;
@@ -655,22 +659,6 @@ PAL_FreeLibraryDirect(
     return retValue;
 }
 
-/*++
-Function:
-  PAL_GetPalHostModule
-
-  Returns the module that hosts the PAL.
-  That is typically:
-      - coreclr.dll when coreclr is dynamically linked
-      - containing executable in the statically linked case
---*/
-HMODULE
-PALAPI
-PAL_GetPalHostModule()
-{
-    return (HMODULE)LOADGetPalLibrary();
-}
-
 /*
 Function:
   PAL_GetProcAddressDirect
@@ -685,6 +673,7 @@ PAL_GetProcAddressDirect(
         IN NATIVE_LIBRARY_HANDLE dl_handle,
         IN LPCSTR lpProcName)
 {
+    INT name_length;
     FARPROC address = nullptr;
 
     PERF_ENTRY(PAL_GetProcAddressDirect);
@@ -767,7 +756,6 @@ PAL_UnregisterModule(
 
 Parameters:
     IN hFile - file to map
-    IN offset - offset within hFile where the PE "file" is located
 
 Return value:
     non-NULL - the base address of the mapped image
@@ -775,11 +763,11 @@ Return value:
 --*/
 PVOID
 PALAPI
-PAL_LOADLoadPEFile(HANDLE hFile, size_t offset)
+PAL_LOADLoadPEFile(HANDLE hFile)
 {
-    ENTRY("PAL_LOADLoadPEFile (hFile=%p, offset=%zx)\n", hFile, offset);
+    ENTRY("PAL_LOADLoadPEFile (hFile=%p)\n", hFile);
 
-    void* loadedBase = MAPMapPEFile(hFile, offset);
+    void * loadedBase = MAPMapPEFile(hFile);
 
 #ifdef _DEBUG
     if (loadedBase != nullptr)
@@ -791,7 +779,7 @@ PAL_LOADLoadPEFile(HANDLE hFile, size_t offset)
             {
                 TRACE("Forcing failure of PE file map, and retry\n");
                 PAL_LOADUnloadPEFile(loadedBase); // unload it
-                loadedBase = MAPMapPEFile(hFile, offset); // load it again
+                loadedBase = MAPMapPEFile(hFile); // load it again
             }
 
             free(envVar);
@@ -833,39 +821,6 @@ PAL_LOADUnloadPEFile(PVOID ptr)
     }
 
     LOGEXIT("PAL_LOADUnloadPEFile returns %d\n", retval);
-    return retval;
-}
-
-/*++
-    PAL_LOADMarkSectionAsNotNeeded
-
-    Mark a section as NotNeeded that was loaded by PAL_LOADLoadPEFile().
-
-Parameters:
-    IN ptr - the section address mapped by PAL_LOADLoadPEFile()
-
-Return value:
-    TRUE - success
-    FALSE - failure (incorrect ptr, etc.)
---*/
-BOOL
-PALAPI
-PAL_LOADMarkSectionAsNotNeeded(void * ptr)
-{
-    BOOL retval = FALSE;
-
-    ENTRY("PAL_LOADMarkSectionAsNotNeeded (ptr=%p)\n", ptr);
-
-    if (nullptr == ptr)
-    {
-        ERROR( "Invalid pointer value\n" );
-    }
-    else
-    {
-        retval = MAPMarkSectionAsNotNeeded(ptr);
-    }
-
-    LOGEXIT("PAL_LOADMarkSectionAsNotNeeded returns %d\n", retval);
     return retval;
 }
 
@@ -977,8 +932,8 @@ BOOL LOADInitializeModules()
     exe_module.refcount = -1;
     exe_module.next = &exe_module;
     exe_module.prev = &exe_module;
-    exe_module.pDllMain = (PDLLMAIN)dlsym(exe_module.dl_handle, "DllMain");
-    exe_module.hinstance = (HINSTANCE)&exe_module;
+    exe_module.pDllMain = nullptr;
+    exe_module.hinstance = nullptr;
     exe_module.threadLibCalls = TRUE;
     return TRUE;
 }
@@ -1465,20 +1420,10 @@ Return value:
 */
 static NATIVE_LIBRARY_HANDLE LOADLoadLibraryDirect(LPCSTR libraryNameOrPath)
 {
-    NATIVE_LIBRARY_HANDLE dl_handle;
+    _ASSERTE(libraryNameOrPath != nullptr);
+    _ASSERTE(libraryNameOrPath[0] != '\0');
 
-    // Getting nullptr as name indicates redirection to current library
-    if (libraryNameOrPath == nullptr)
-    {
-        dl_handle = dlopen(NULL, RTLD_LAZY);
-    }
-    else
-    {
-        _ASSERTE(libraryNameOrPath != nullptr);
-        _ASSERTE(libraryNameOrPath[0] != '\0');
-        dl_handle = dlopen(libraryNameOrPath, RTLD_LAZY);
-    }
-
+    NATIVE_LIBRARY_HANDLE dl_handle = dlopen(libraryNameOrPath, RTLD_LAZY);
     if (dl_handle == nullptr)
     {
         SetLastError(ERROR_MOD_NOT_FOUND);
@@ -1532,7 +1477,18 @@ static MODSTRUCT *LOADAllocModule(NATIVE_LIBRARY_HANDLE dl_handle, LPCSTR name)
     }
 
     module->dl_handle = dl_handle;
+#if NEED_DLCOMPAT
+    if (isdylib(module))
+    {
+        module->refcount = -1;
+    }
+    else
+    {
+        module->refcount = 1;
+    }
+#else   // NEED_DLCOMPAT
     module->refcount = 1;
+#endif  // NEED_DLCOMPAT
     module->self = module;
     module->hinstance = nullptr;
     module->threadLibCalls = TRUE;
@@ -1561,7 +1517,8 @@ Return value:
 static MODSTRUCT *LOADAddModule(NATIVE_LIBRARY_HANDLE dl_handle, LPCSTR libraryNameOrPath)
 {
     _ASSERTE(dl_handle != nullptr);
-    _ASSERTE(g_running_in_exe || (libraryNameOrPath != nullptr && libraryNameOrPath[0] != '\0'));
+    _ASSERTE(libraryNameOrPath != nullptr);
+    _ASSERTE(libraryNameOrPath[0] != '\0');
 
 #if !RETURNS_NEW_HANDLES_ON_REPEAT_DLOPEN
     /* search module list for a match. */
@@ -1572,8 +1529,7 @@ static MODSTRUCT *LOADAddModule(NATIVE_LIBRARY_HANDLE dl_handle, LPCSTR libraryN
         {
             /* found the handle. increment the refcount and return the
                existing module structure */
-            TRACE("Found matching module %p for module name %s\n", module,
-                (libraryNameOrPath != nullptr) ? libraryNameOrPath : "nullptr");
+            TRACE("Found matching module %p for module name %s\n", module, libraryNameOrPath);
 
             if (module->refcount != -1)
             {
@@ -1687,8 +1643,7 @@ Function :
     implementation of LoadLibrary (for use by the A/W variants)
 
 Parameters :
-    LPSTR shortAsciiName : name of module as specified to LoadLibrary.
-                           Could be nullptr if loading containing executable.
+    LPSTR shortAsciiName : name of module as specified to LoadLibrary
 
     BOOL fDynamic : TRUE if dynamic load through LoadLibrary, FALSE if static load through RegisterLibrary
 
@@ -1701,8 +1656,7 @@ static HMODULE LOADLoadLibrary(LPCSTR shortAsciiName, BOOL fDynamic)
     HMODULE module = nullptr;
     NATIVE_LIBRARY_HANDLE dl_handle = nullptr;
 
-    if (shortAsciiName != nullptr)
-        shortAsciiName = FixLibCName(shortAsciiName);
+    shortAsciiName = FixLibCName(shortAsciiName);
 
     LockModuleList();
 
@@ -1737,7 +1691,13 @@ BOOL LOADInitializeCoreCLRModule()
         ERROR("Can not load the PAL module\n");
         return FALSE;
     }
-    return TRUE;
+    PDLLMAIN pRuntimeDllMain = (PDLLMAIN)dlsym(module->dl_handle, "CoreDllMain");
+    if (!pRuntimeDllMain)
+    {
+        ERROR("Can not find the CoreDllMain entry point\n");
+        return FALSE;
+    }
+    return pRuntimeDllMain(module->hinstance, DLL_PROCESS_ATTACH, nullptr);
 }
 
 /*++
@@ -1788,14 +1748,7 @@ MODSTRUCT *LOADGetPalLibrary()
             }
         }
 
-        if (g_running_in_exe)
-        {
-            pal_module = (MODSTRUCT*)LOADLoadLibrary(nullptr, FALSE);
-        }
-        else
-        {
-            pal_module = (MODSTRUCT*)LOADLoadLibrary(info.dli_fname, FALSE);
-        }
+        pal_module = (MODSTRUCT *)LOADLoadLibrary(info.dli_fname, FALSE);
     }
 
 exit:

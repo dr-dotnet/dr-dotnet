@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -27,9 +28,44 @@ Abstract:
 #include <string.h>
 #include <sched.h>
 
+#if HAVE_MACH_ABSOLUTE_TIME
+#include <mach/mach_time.h>
+static mach_timebase_info_data_t s_TimebaseInfo;
+#endif
+
 using namespace CorUnix;
 
 SET_DEFAULT_DEBUG_CHANNEL(MISC);
+
+/*++
+Function :
+TIMEInitialize
+
+Initialize all Time-related stuff related
+
+(no parameters)
+
+Return value :
+TRUE  if Time support initialization succeeded
+FALSE otherwise
+--*/
+BOOL TIMEInitialize(void)
+{
+    BOOL retval = TRUE;
+
+#if HAVE_MACH_ABSOLUTE_TIME
+    kern_return_t result = mach_timebase_info(&s_TimebaseInfo);
+
+    if (result != KERN_SUCCESS)
+    {
+        ASSERT("mach_timebase_info() failed: %s\n", mach_error_string(result));
+        retval = FALSE;
+    }
+#endif
+
+    return retval;
+}
+
 
 /*++
 Function:
@@ -41,8 +77,8 @@ time. The system time is expressed in Coordinated Universal Time
 
 Parameters
 
-lpSystemTime
-       [out] Pointer to a SYSTEMTIME structure to receive the current system date and time.
+lpSystemTime 
+       [out] Pointer to a SYSTEMTIME structure to receive the current system date and time. 
 
 Return Values
 
@@ -67,10 +103,10 @@ GetSystemTime(
 
     tt = time(NULL);
 
-    /* We can't get millisecond resolution from time(), so we get it from
+    /* We can't get millisecond resolution from time(), so we get it from 
        gettimeofday() */
     timeofday_retval = gettimeofday(&timeval,NULL);
-
+    
 #if HAVE_GMTIME_R
     utPtr = &ut;
     if (gmtime_r(&tt, utPtr) == NULL)
@@ -100,20 +136,20 @@ GetSystemTime(
     {
         int old_seconds;
         int new_seconds;
-
+    
         lpSystemTime->wMilliseconds = timeval.tv_usec/tccMillieSecondsToMicroSeconds;
-
+    
         old_seconds = utPtr->tm_sec;
         new_seconds = timeval.tv_sec%60;
-
-        /* just in case we reached the next second in the interval between
+   
+        /* just in case we reached the next second in the interval between 
            time() and gettimeofday() */
         if( old_seconds!=new_seconds )
         {
             TRACE("crossed seconds boundary; setting milliseconds to 999\n");
             lpSystemTime->wMilliseconds = 999;
-        }
-    }
+        }  
+    }                        
 EXIT:
     LOGEXIT("GetSystemTime returns void\n");
     PERF_EXIT(GetSystemTime);
@@ -130,7 +166,7 @@ use the GetSystemTimeAdjustment function.
 
 Parameters
 
-This function has no parameters.
+This function has no parameters. 
 
 Return Values
 
@@ -168,8 +204,8 @@ QueryPerformanceCounter(
     PERF_ENTRY(QueryPerformanceCounter);
     ENTRY("QueryPerformanceCounter()\n");
 
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-    lpPerformanceCount->QuadPart = (LONGLONG)clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+#if HAVE_MACH_ABSOLUTE_TIME
+    lpPerformanceCount->QuadPart = (LONGLONG)mach_absolute_time();
 #elif HAVE_CLOCK_MONOTONIC
     struct timespec ts;
     int result = clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -177,7 +213,7 @@ QueryPerformanceCounter(
     if (result != 0)
     {
         ASSERT("clock_gettime(CLOCK_MONOTONIC) failed: %d\n", result);
-        retval = FALSE;
+        retval = FALSE;     
     }
     else
     {
@@ -203,8 +239,21 @@ QueryPerformanceFrequency(
     PERF_ENTRY(QueryPerformanceFrequency);
     ENTRY("QueryPerformanceFrequency()\n");
 
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-    lpFrequency->QuadPart = (LONGLONG)(tccSecondsToNanoSeconds);
+#if HAVE_MACH_ABSOLUTE_TIME
+    // use denom == 0 to indicate that s_TimebaseInfo is uninitialised.
+    if (s_TimebaseInfo.denom == 0)
+    {
+        ASSERT("s_TimebaseInfo is uninitialized.\n");
+        retval = FALSE;
+    }
+    else
+    {
+        // (numer / denom) gives you the nanoseconds per tick, so the below code
+        // computes the number of ticks per second. We explicitly do the multiplication
+        // first in order to help minimize the error that is produced by integer division.
+
+        lpFrequency->QuadPart = ((LONGLONG)(tccSecondsToNanoSeconds) * (LONGLONG)(s_TimebaseInfo.denom)) / (LONGLONG)(s_TimebaseInfo.numer);
+    }
 #elif HAVE_CLOCK_MONOTONIC
     // clock_gettime() returns a result in terms of nanoseconds rather than a count. This
     // means that we need to either always scale the result by the actual resolution (to
@@ -275,8 +324,17 @@ GetTickCount64()
 {
     LONGLONG retval = 0;
 
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-    return  (LONGLONG)clock_gettime_nsec_np(CLOCK_UPTIME_RAW) / (LONGLONG)(tccMillieSecondsToNanoSeconds);
+#if HAVE_MACH_ABSOLUTE_TIME
+    // use denom == 0 to indicate that s_TimebaseInfo is uninitialised.
+    if (s_TimebaseInfo.denom == 0)
+    {
+        ASSERT("s_TimebaseInfo is uninitialized.\n");
+        retval = FALSE;
+    }
+    else
+    {
+        retval = ((LONGLONG)mach_absolute_time() * (LONGLONG)(s_TimebaseInfo.numer)) / ((LONGLONG)(tccMillieSecondsToNanoSeconds) * (LONGLONG)(s_TimebaseInfo.denom));
+    }
 #elif HAVE_CLOCK_MONOTONIC || HAVE_CLOCK_MONOTONIC_COARSE
     struct timespec ts;
 
@@ -299,7 +357,7 @@ GetTickCount64()
 #else
         ASSERT("clock_gettime(CLOCK_MONOTONIC) failed: %d\n", result);
 #endif
-        retval = FALSE;
+        retval = FALSE;     
     }
     else
     {

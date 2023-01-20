@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /***
 *swprintf.c - print formatted to string
@@ -64,11 +65,11 @@
 *       allocated 'fake' iob, we must lock/unlock to prevent collisions.
 *
 *Entry:
-*       char16_t *string - pointer to place to put output
+*       wchar_t *string - pointer to place to put output
 *ifdef _COUNT_
 *       size_t count - max number of wide characters to put in buffer
 *endif
-*       char16_t *format - format string to control data format/number
+*       wchar_t *format - format string to control data format/number
 *       of arguments followed by list of arguments, number and type
 *       controlled by format string
 *
@@ -80,9 +81,9 @@
 *******************************************************************************/
 
 DLLEXPORT int __cdecl swprintf_s (
-        char16_t *string,
+        wchar_t *string,
         size_t sizeInWords,
-        const char16_t *format,
+        const wchar_t *format,
         ...
         )
 {
@@ -99,10 +100,10 @@ DLLEXPORT int __cdecl swprintf_s (
 }
 
 DLLEXPORT int __cdecl _snwprintf_s (
-        char16_t *string,
+        wchar_t *string,
         size_t sizeInWords,
         size_t count,
-        const char16_t *format,
+        const wchar_t *format,
         ...
         )
 {

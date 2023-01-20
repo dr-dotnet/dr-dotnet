@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -37,7 +38,7 @@ them.
 Parameters
 
 uMode
-       [in] Specifies the process error mode. This parameter can be one or more of the following values.
+       [in] Specifies the process error mode. This parameter can be one or more of the following values. 
 
         Value                     Action
         0                         Use the system default, which is to display all error dialog boxes.
@@ -48,7 +49,7 @@ uMode
 
 Return Values
 
-The return value is the previous state of the error-mode bit flags.
+The return value is the previous state of the error-mode bit flags. 
 
 --*/
 UINT

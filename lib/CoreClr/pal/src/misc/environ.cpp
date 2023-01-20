@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -443,6 +444,65 @@ GetEnvironmentStringsW(
 
 /*++
 Function:
+  GetEnvironmentStringsA
+
+See GetEnvironmentStringsW.
+
+--*/
+LPSTR
+PALAPI
+GetEnvironmentStringsA(
+               VOID)
+{
+    char *environ = nullptr, *tempEnviron;
+    int i, len, envNum;
+
+    PERF_ENTRY(GetEnvironmentStringsA);
+    ENTRY("GetEnvironmentStringsA()\n");
+
+    CPalThread * pthrCurrent = InternalGetCurrentThread();
+    InternalEnterCriticalSection(pthrCurrent, &gcsEnvironment);
+
+    envNum = 0;
+    len    = 0;
+
+    /* get total length of the bytes that we need to allocate */
+    for (i = 0; palEnvironment[i] != 0; i++)
+    {
+        len = strlen(palEnvironment[i]) + 1;
+        envNum += len;
+    }
+
+    environ = (char *)PAL_malloc(envNum + 1);
+    if (environ == nullptr)
+    {
+        ERROR("malloc failed\n");
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        goto EXIT;
+    }
+
+    len = 0;
+    tempEnviron = environ;
+    for (i = 0; palEnvironment[i] != 0; i++)
+    {
+        len = strlen(palEnvironment[i]) + 1;
+        memcpy(tempEnviron, palEnvironment[i], len);
+        tempEnviron += len;
+        envNum      -= len;
+    }
+
+    *tempEnviron = 0; /* Put an extra null at the end */
+
+ EXIT:
+    InternalLeaveCriticalSection(pthrCurrent, &gcsEnvironment);
+
+    LOGEXIT("GetEnvironmentStringsA returning %p\n", environ);
+    PERF_EXIT(GetEnvironmentStringsA);
+    return environ;
+}
+
+/*++
+Function:
   FreeEnvironmentStringsW
 
 The FreeEnvironmentStrings function frees a block of environment strings.
@@ -481,6 +541,31 @@ FreeEnvironmentStringsW(
 
     LOGEXIT("FreeEnvironmentStringW returning BOOL TRUE\n");
     PERF_EXIT(FreeEnvironmentStringsW);
+    return TRUE;
+}
+
+/*++
+Function:
+  FreeEnvironmentStringsA
+
+See FreeEnvironmentStringsW.
+
+--*/
+BOOL
+PALAPI
+FreeEnvironmentStringsA(
+            IN LPSTR lpValue)
+{
+    PERF_ENTRY(FreeEnvironmentStringsA);
+    ENTRY("FreeEnvironmentStringsA(lpValue=%p (%s))\n", lpValue ? lpValue : "NULL", lpValue ? lpValue : "NULL");
+
+    if (lpValue != nullptr)
+    {
+        PAL_free(lpValue);
+    }
+
+    LOGEXIT("FreeEnvironmentStringA returning BOOL TRUE\n");
+    PERF_EXIT(FreeEnvironmentStringsA);
     return TRUE;
 }
 
@@ -808,55 +893,6 @@ done:
     return result;
 }
 
-
-/*++
-Function:
-  FindEnvVarValue
-
-Get the value of environment variable with the given name.
-Caller should take care of locking and releasing palEnvironment.
-
-Parameters
-
-    name
-            [in] The name of the environment variable to get.
-
-Return Value
-
-    A pointer to the value of the environment variable if it exists,
-    or nullptr otherwise.
-
---*/
-char* FindEnvVarValue(const char* name)
-{
-    if (*name == '\0')
-        return nullptr;
-
-    for (int i = 0; palEnvironment[i] != nullptr; ++i)
-    {
-        const char* pch = name;
-        char* p = palEnvironment[i];
-
-        do
-        {
-            if (*pch == '\0')
-            {
-                if (*p == '=')
-                    return p + 1;
-
-                if (*p == '\0') // no = sign -> empty value
-                    return p;
-
-                break;
-            }
-        }
-        while (*pch++ == *p++);
-    }
-
-    return nullptr;
-}
-
-
 /*++
 Function:
   EnvironGetenv
@@ -883,10 +919,37 @@ Return Value
 --*/
 char* EnvironGetenv(const char* name, BOOL copyValue)
 {
+    char *retValue = nullptr;
+
     CPalThread * pthrCurrent = InternalGetCurrentThread();
     InternalEnterCriticalSection(pthrCurrent, &gcsEnvironment);
 
-    char* retValue = FindEnvVarValue(name);
+    size_t nameLength = strlen(name);
+    for (int i = 0; palEnvironment[i] != nullptr; ++i)
+    {
+        if (strlen(palEnvironment[i]) < nameLength)
+        {
+            continue;
+        }
+
+        if (memcmp(palEnvironment[i], name, nameLength) == 0)
+        {
+            char *equalsSignPosition = palEnvironment[i] + nameLength;
+
+            // If this is one of the variables which has no equals sign, we
+            // treat the whole thing as name, so the value is an empty string.
+            if (*equalsSignPosition == '\0')
+            {
+                retValue = (char *)"";
+                break;
+            }
+            else if (*equalsSignPosition == '=')
+            {
+                retValue = equalsSignPosition + 1;
+                break;
+            }
+        }
+    }
 
     if ((retValue != nullptr) && copyValue)
     {
@@ -896,7 +959,6 @@ char* EnvironGetenv(const char* name, BOOL copyValue)
     InternalLeaveCriticalSection(pthrCurrent, &gcsEnvironment);
     return retValue;
 }
-
 
 /*++
 Function:

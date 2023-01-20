@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -89,13 +90,13 @@ Function :
     Call DllMain for all modules (that have one) with the given "fwReason"
 
 Parameters :
-    DWORD dwReason : parameter to pass down to DllMain, one of DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH,
+    DWORD dwReason : parameter to pass down to DllMain, one of DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH, 
         DLL_THREAD_ATTACH, DLL_THREAD_DETACH
 
     LPVOID lpReserved : parameter to pass down to DllMain
         If dwReason is DLL_PROCESS_ATTACH, lpvReserved is NULL for dynamic loads and non-NULL for static loads.
-        If dwReason is DLL_PROCESS_DETACH, lpvReserved is NULL if DllMain has been called by using FreeLibrary
-            and non-NULL if DllMain has been called during process termination.
+        If dwReason is DLL_PROCESS_DETACH, lpvReserved is NULL if DllMain has been called by using FreeLibrary 
+            and non-NULL if DllMain has been called during process termination. 
 
 (no return value)
 
@@ -144,13 +145,12 @@ Abstract
 
 Parameters:
     IN hFile    - The file to load
-    IN offset - offset within hFile where the PE "file" is located
 
 Return value:
     A valid base address if successful.
     0 if failure
 --*/
-void* PAL_LOADLoadPEFile(HANDLE hFile, size_t offset);
+void * PAL_LOADLoadPEFile(HANDLE hFile);
 
 /*++
     PAL_LOADUnloadPEFile

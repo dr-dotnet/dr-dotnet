@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -28,6 +29,7 @@ extern "C"
 #include <signal.h>
 #include <pthread.h>
 
+#if !HAVE_MACH_EXCEPTIONS
 /* A type to wrap the native context type, which is ucontext_t on some
  * platforms and another type elsewhere. */
 #if HAVE_UCONTEXT_T
@@ -37,8 +39,6 @@ typedef ucontext_t native_context_t;
 #else   // HAVE_UCONTEXT_T
 #error Native context type is not known on this platform!
 #endif  // HAVE_UCONTEXT_T
-
-#if !HAVE_MACH_EXCEPTIONS
 
 #if defined(XSTATE_SUPPORTED) && !HAVE_PUBLIC_XSTATE_STRUCT
 namespace asm_sigcontext
@@ -54,30 +54,9 @@ using asm_sigcontext::_xstate;
 #include <mach/mach_port.h>
 #endif // !HAVE_MACH_EXCEPTIONS else
 
-#ifdef HOST_S390X
+#if HAVE___GREGSET_T
 
-#define MCREG_PSWMask(mc)   ((mc).psw.mask)
-#define MCREG_PSWAddr(mc)   ((mc).psw.addr)
-#define MCREG_R0(mc)        ((mc).gregs[0])
-#define MCREG_R1(mc)        ((mc).gregs[1])
-#define MCREG_R2(mc)        ((mc).gregs[2])
-#define MCREG_R3(mc)        ((mc).gregs[3])
-#define MCREG_R4(mc)        ((mc).gregs[4])
-#define MCREG_R5(mc)        ((mc).gregs[5])
-#define MCREG_R6(mc)        ((mc).gregs[6])
-#define MCREG_R7(mc)        ((mc).gregs[7])
-#define MCREG_R8(mc)        ((mc).gregs[8])
-#define MCREG_R9(mc)        ((mc).gregs[9])
-#define MCREG_R10(mc)       ((mc).gregs[10])
-#define MCREG_R11(mc)       ((mc).gregs[11])
-#define MCREG_R12(mc)       ((mc).gregs[12])
-#define MCREG_R13(mc)       ((mc).gregs[13])
-#define MCREG_R14(mc)       ((mc).gregs[14])
-#define MCREG_R15(mc)       ((mc).gregs[15])
-
-#elif HAVE___GREGSET_T
-
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define MCREG_Rbx(mc)       ((mc).__gregs[_REG_RBX])
 #define MCREG_Rcx(mc)       ((mc).__gregs[_REG_RCX])
 #define MCREG_Rdx(mc)       ((mc).__gregs[_REG_RDX])
@@ -113,7 +92,7 @@ using asm_sigcontext::_xstate;
 #define FPREG_MxCsr(uc) (((struct fxsave*)(&(uc)->uc_mcontext.__fpregs))->fx_mxcsr)
 #define FPREG_MxCsr_Mask(uc) (((struct fxsave*)(&(uc)->uc_mcontext.__fpregs))->fx_mxcsr_mask)
 
-#else // HOST_64BIT
+#else // BIT64
 
 #define MCREG_Ebx(mc)       ((mc).__gregs[_REG_EBX])
 #define MCREG_Ecx(mc)       ((mc).__gregs[_REG_ECX])
@@ -128,11 +107,11 @@ using asm_sigcontext::_xstate;
 #define MCREG_SegSs(mc)     ((mc).__gregs[_REG_SS])
 #define MCREG_EFlags(mc)    ((mc).__gregs[_REG_RFLAGS])
 
-#endif // HOST_64BIT
+#endif // BIT64
 
 #elif HAVE_GREGSET_T
 
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define MCREG_Rbx(mc)       ((mc).gregs[REG_RBX])
 #define MCREG_Rcx(mc)       ((mc).gregs[REG_RCX])
 #define MCREG_Rdx(mc)       ((mc).gregs[REG_RDX])
@@ -142,11 +121,7 @@ using asm_sigcontext::_xstate;
 #define MCREG_Rax(mc)       ((mc).gregs[REG_RAX])
 #define MCREG_Rip(mc)       ((mc).gregs[REG_RIP])
 #define MCREG_Rsp(mc)       ((mc).gregs[REG_RSP])
-#ifdef REG_CSGSFS
 #define MCREG_SegCs(mc)     (*(WORD*)&((mc).gregs[REG_CSGSFS]))
-#else
-#define MCREG_SegCs(mc)     (*(WORD*)&((mc).gregs[REG_CS]))
-#endif
 #define MCREG_R8(mc)        ((mc).gregs[REG_R8])
 #define MCREG_R9(mc)        ((mc).gregs[REG_R9])
 #define MCREG_R10(mc)       ((mc).gregs[REG_R10])
@@ -156,35 +131,20 @@ using asm_sigcontext::_xstate;
 #define MCREG_R14(mc)       ((mc).gregs[REG_R14])
 #define MCREG_R15(mc)       ((mc).gregs[REG_R15])
 
-#if HAVE_FPREGS_WITH_CW
-#define FPREG_Fpstate(uc) (&((uc)->uc_mcontext.fpregs.fp_reg_set.fpchip_state))
-
-#define FPREG_Xmm(uc, index) *(M128A*)&(FPREG_Fpstate(uc)->xmm[index])
-#define FPREG_St(uc, index) *(M128A*)&(FPREG_Fpstate(uc)->st[index])
-#define FPREG_ControlWord(uc) (FPREG_Fpstate(uc)->cw)
-#define FPREG_StatusWord(uc) (FPREG_Fpstate(uc)->sw)
-#define FPREG_MxCsr_Mask(uc) (FPREG_Fpstate(uc)->mxcsr_mask)
-
-// on SunOS, fctw and __fx_rsvd are uint8_t, whereas on linux ftw is uint16_t,
-// so we use split and join technique for these two uint8_t members at call sites.
-#define FPREG_TagWord1(uc) (FPREG_Fpstate(uc)->fctw)
-#define FPREG_TagWord2(uc) (FPREG_Fpstate(uc)->__fx_rsvd)
-#else
 #define FPREG_Fpstate(uc) ((uc)->uc_mcontext.fpregs)
-
 #define FPREG_Xmm(uc, index) *(M128A*)&(FPREG_Fpstate(uc)->_xmm[index])
+
 #define FPREG_St(uc, index) *(M128A*)&(FPREG_Fpstate(uc)->_st[index])
+
 #define FPREG_ControlWord(uc) (FPREG_Fpstate(uc)->cwd)
 #define FPREG_StatusWord(uc) (FPREG_Fpstate(uc)->swd)
 #define FPREG_TagWord(uc) (FPREG_Fpstate(uc)->ftw)
-#define FPREG_MxCsr_Mask(uc) (FPREG_Fpstate(uc)->mxcr_mask)
-#endif
-
 #define FPREG_ErrorOffset(uc) *(DWORD*)&(FPREG_Fpstate(uc)->rip)
 #define FPREG_ErrorSelector(uc) *(((WORD*)&(FPREG_Fpstate(uc)->rip)) + 2)
 #define FPREG_DataOffset(uc) *(DWORD*)&(FPREG_Fpstate(uc)->rdp)
 #define FPREG_DataSelector(uc) *(((WORD*)&(FPREG_Fpstate(uc)->rdp)) + 2)
 #define FPREG_MxCsr(uc) (FPREG_Fpstate(uc)->mxcsr)
+#define FPREG_MxCsr_Mask(uc) (FPREG_Fpstate(uc)->mxcr_mask)
 
 /////////////////////
 // Extended state
@@ -197,8 +157,8 @@ using asm_sigcontext::_xstate;
 #define FPSTATE_RESERVED padding
 #endif
 
-// The mask for YMM registers presence flag stored in the xfeatures (formerly xstate_bv). On current Linuxes, this definition is
-// only in internal headers, so we define it here. The xfeatures (formerly xstate_bv) is extracted from the processor xstate bit
+// The mask for YMM registers presence flag stored in the xstate_bv. On current Linuxes, this definition is
+// only in internal headers, so we define it here. The xstate_bv is extracted from the processor xstate bit
 // vector register, so the value is OS independent.
 #ifndef XSTATE_YMM
 #define XSTATE_YMM 4
@@ -244,11 +204,7 @@ inline bool FPREG_HasYmmRegisters(const ucontext_t *uc)
         return false;
     }
 
-#if HAVE__FPX_SW_BYTES_WITH_XSTATE_BV
     return (FPREG_FpxSwBytes(uc)->xstate_bv & XSTATE_YMM) != 0;
-#else
-    return (FPREG_FpxSwBytes(uc)->xfeatures & XSTATE_YMM) != 0;
-#endif
 }
 
 inline void *FPREG_Xstate_Ymmh(const ucontext_t *uc)
@@ -263,7 +219,7 @@ inline void *FPREG_Xstate_Ymmh(const ucontext_t *uc)
 
 /////////////////////
 
-#else // HOST_64BIT
+#else // BIT64
 
 #define MCREG_Ebx(mc)       ((mc).gregs[REG_EBX])
 #define MCREG_Ecx(mc)       ((mc).gregs[REG_ECX])
@@ -277,22 +233,15 @@ inline void *FPREG_Xstate_Ymmh(const ucontext_t *uc)
 #define MCREG_SegCs(mc)     ((mc).gregs[REG_CS])
 #define MCREG_SegSs(mc)     ((mc).gregs[REG_SS])
 
-#endif // HOST_64BIT
+#endif // BIT64
 
-#ifdef REG_EFL
 #define MCREG_EFlags(mc)    ((mc).gregs[REG_EFL])
-#else
-#define MCREG_EFlags(mc)    ((mc).gregs[EFL])
-#endif
 
 #else // HAVE_GREGSET_T
 
-#ifdef HOST_64BIT
+#ifdef BIT64
 
-#if defined(HOST_ARM64)
-
-#ifndef TARGET_OSX
-
+#if defined(_ARM64_)
 #define MCREG_X0(mc)      ((mc).regs[0])
 #define MCREG_X1(mc)      ((mc).regs[1])
 #define MCREG_X2(mc)      ((mc).regs[2])
@@ -366,110 +315,7 @@ const fpsimd_context* GetConstNativeSigSimdContext(const native_context_t *mc)
     return GetNativeSigSimdContext(const_cast<native_context_t*>(mc));
 }
 
-#else // TARGET_OSX
-
-#define MCREG_X0(mc)      ((mc)->__ss.__x[0])
-#define MCREG_X1(mc)      ((mc)->__ss.__x[1])
-#define MCREG_X2(mc)      ((mc)->__ss.__x[2])
-#define MCREG_X3(mc)      ((mc)->__ss.__x[3])
-#define MCREG_X4(mc)      ((mc)->__ss.__x[4])
-#define MCREG_X5(mc)      ((mc)->__ss.__x[5])
-#define MCREG_X6(mc)      ((mc)->__ss.__x[6])
-#define MCREG_X7(mc)      ((mc)->__ss.__x[7])
-#define MCREG_X8(mc)      ((mc)->__ss.__x[8])
-#define MCREG_X9(mc)      ((mc)->__ss.__x[9])
-#define MCREG_X10(mc)     ((mc)->__ss.__x[10])
-#define MCREG_X11(mc)     ((mc)->__ss.__x[11])
-#define MCREG_X12(mc)     ((mc)->__ss.__x[12])
-#define MCREG_X13(mc)     ((mc)->__ss.__x[13])
-#define MCREG_X14(mc)     ((mc)->__ss.__x[14])
-#define MCREG_X15(mc)     ((mc)->__ss.__x[15])
-#define MCREG_X16(mc)     ((mc)->__ss.__x[16])
-#define MCREG_X17(mc)     ((mc)->__ss.__x[17])
-#define MCREG_X18(mc)     ((mc)->__ss.__x[18])
-#define MCREG_X19(mc)     ((mc)->__ss.__x[19])
-#define MCREG_X20(mc)     ((mc)->__ss.__x[20])
-#define MCREG_X21(mc)     ((mc)->__ss.__x[21])
-#define MCREG_X22(mc)     ((mc)->__ss.__x[22])
-#define MCREG_X23(mc)     ((mc)->__ss.__x[23])
-#define MCREG_X24(mc)     ((mc)->__ss.__x[24])
-#define MCREG_X25(mc)     ((mc)->__ss.__x[25])
-#define MCREG_X26(mc)     ((mc)->__ss.__x[26])
-#define MCREG_X27(mc)     ((mc)->__ss.__x[27])
-#define MCREG_X28(mc)     ((mc)->__ss.__x[28])
-#define MCREG_Fp(mc)      ((mc)->__ss.__fp)
-#define MCREG_Lr(mc)      ((mc)->__ss.__lr)
-
-#define MCREG_Sp(mc)      ((mc)->__ss.__sp)
-#define MCREG_Pc(mc)      ((mc)->__ss.__pc)
-#define MCREG_Cpsr(mc)    ((mc)->__ss.__cpsr)
-
-inline
-_STRUCT_ARM_NEON_STATE64* GetNativeSigSimdContext(native_context_t *mc)
-{
-    return &(mc)->uc_mcontext->__ns;
-}
-
-inline
-const _STRUCT_ARM_NEON_STATE64* GetConstNativeSigSimdContext(const native_context_t *mc)
-{
-    return GetNativeSigSimdContext(const_cast<native_context_t*>(mc));
-}
-
-#endif // TARGET_OSX
-
-#else // HOST_ARM64
-
-#ifdef TARGET_OSX
-
-#define MCREG_Rbp(mc)      ((mc)->__ss.__rbp)
-#define MCREG_Rip(mc)      ((mc)->__ss.__rip)
-#define MCREG_Rsp(mc)      ((mc)->__ss.__rsp)
-#define MCREG_Rsi(mc)      ((mc)->__ss.__rsi)
-#define MCREG_Rdi(mc)      ((mc)->__ss.__rdi)
-#define MCREG_Rbx(mc)      ((mc)->__ss.__rbx)
-#define MCREG_Rdx(mc)      ((mc)->__ss.__rdx)
-#define MCREG_Rcx(mc)      ((mc)->__ss.__rcx)
-#define MCREG_Rax(mc)      ((mc)->__ss.__rax)
-#define MCREG_R8(mc)       ((mc)->__ss.__r8)
-#define MCREG_R9(mc)       ((mc)->__ss.__r9)
-#define MCREG_R10(mc)      ((mc)->__ss.__r10)
-#define MCREG_R11(mc)      ((mc)->__ss.__r11)
-#define MCREG_R12(mc)      ((mc)->__ss.__r12)
-#define MCREG_R13(mc)      ((mc)->__ss.__r13)
-#define MCREG_R14(mc)      ((mc)->__ss.__r14)
-#define MCREG_R15(mc)      ((mc)->__ss.__r15)
-#define MCREG_EFlags(mc)   ((mc)->__ss.__rflags)
-#define MCREG_SegCs(mc)    ((mc)->__ss.__cs)
-
-#define FPSTATE(uc)             ((uc)->uc_mcontext->__fs)
-#define FPREG_ControlWord(uc)   *((WORD*)&FPSTATE(uc).__fpu_fcw)
-#define FPREG_StatusWord(uc)    *((WORD*)&FPSTATE(uc).__fpu_fsw)
-#define FPREG_TagWord(uc)       FPSTATE(uc).__fpu_ftw
-#define FPREG_MxCsr(uc)         FPSTATE(uc).__fpu_mxcsr
-#define FPREG_MxCsr_Mask(uc)    FPSTATE(uc).__fpu_mxcsrmask
-#define FPREG_ErrorOffset(uc)   *(DWORD*) &(FPSTATE(uc).__fpu_ip)
-#define FPREG_ErrorSelector(uc) *((WORD*) &(FPSTATE(uc).__fpu_ip) + 2)
-#define FPREG_DataOffset(uc)    *(DWORD*) &(FPSTATE(uc).__fpu_dp)
-#define FPREG_DataSelector(uc)  *((WORD*) &(FPSTATE(uc).__fpu_dp) + 2)
-
-#define FPREG_Xmm(uc, index)    *(M128A*) &((&FPSTATE(uc).__fpu_xmm0)[index])
-#define FPREG_St(uc, index)     *(M128A*) &((&FPSTATE(uc).__fpu_stmm0)[index]) //.fp_acc)
-
-inline bool FPREG_HasYmmRegisters(const ucontext_t *uc)
-{
-    _ASSERTE((uc->uc_mcsize == sizeof(_STRUCT_MCONTEXT_AVX64)) || (uc->uc_mcsize == sizeof(_STRUCT_MCONTEXT_AVX512_64)));
-    return (uc->uc_mcsize == sizeof(_STRUCT_MCONTEXT_AVX64)) || (uc->uc_mcsize == sizeof(_STRUCT_MCONTEXT_AVX512_64));
-}
-
-static_assert_no_msg(offsetof(_STRUCT_X86_AVX_STATE64, __fpu_ymmh0) == offsetof(_STRUCT_X86_AVX512_STATE64, __fpu_ymmh0));
-inline void *FPREG_Xstate_Ymmh(const ucontext_t *uc)
-{
-    return reinterpret_cast<void *>(&((_STRUCT_X86_AVX_STATE64&)FPSTATE(uc)).__fpu_ymmh0);
-}
-
-#else //TARGET_OSX
-
+#else
     // For FreeBSD, as found in x86/ucontext.h
 #define MCREG_Rbp(mc)	    ((mc).mc_rbp)
 #define MCREG_Rip(mc)	    ((mc).mc_rip)
@@ -505,12 +351,11 @@ inline void *FPREG_Xstate_Ymmh(const ucontext_t *uc)
 
 #define FPREG_Xmm(uc, index)    *(M128A*) &(FPSTATE(uc)->sv_xmm[index])
 #define FPREG_St(uc, index)     *(M128A*) &(FPSTATE(uc)->sv_fp[index].fp_acc)
-#endif // TARGET_OSX
-#endif // HOST_ARM64
+#endif
 
-#else // HOST_64BIT
+#else // BIT64
 
-#if defined(HOST_ARM)
+#if defined(_ARM_)
 
 #define MCREG_R0(mc)        ((mc).arm_r0)
 #define MCREG_R1(mc)        ((mc).arm_r1)
@@ -583,7 +428,7 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
     return GetNativeSigSimdContext(const_cast<native_context_t*>(mc));
 }
 
-#elif defined(HOST_X86)
+#elif defined(_X86_)
 
 #define MCREG_Ebx(mc)       ((mc).mc_ebx)
 #define MCREG_Ecx(mc)       ((mc).mc_ecx)
@@ -602,14 +447,14 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #error "Unsupported arch"
 #endif
 
-#endif // HOST_64BIT
+#endif // BIT64
 
 #endif // HAVE_GREGSET_T
 
 
 #if HAVE_PT_REGS
 
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define PTREG_Rbx(ptreg)    ((ptreg).rbx)
 #define PTREG_Rcx(ptreg)    ((ptreg).rcx)
 #define PTREG_Rdx(ptreg)    ((ptreg).rdx)
@@ -630,9 +475,9 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #define PTREG_R14(ptreg)    ((ptreg).r14)
 #define PTREG_R15(ptreg)    ((ptreg).r15)
 
-#else // HOST_64BIT
+#else // BIT64
 
-#if defined(HOST_ARM)
+#if defined(_ARM_)
 #define PTREG_R0(ptreg)        ((ptreg).uregs[0])
 #define PTREG_R1(ptreg)        ((ptreg).uregs[1])
 #define PTREG_R2(ptreg)        ((ptreg).uregs[2])
@@ -650,7 +495,7 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #define PTREG_Lr(ptreg)        ((ptreg).uregs[14])
 #define PTREG_Pc(ptreg)        ((ptreg).uregs[15])
 #define PTREG_Cpsr(ptreg)      ((ptreg).uregs[16])
-#elif defined(HOST_X86)
+#elif defined(_X86_)
 #define PTREG_Ebx(ptreg)    ((ptreg).ebx)
 #define PTREG_Ecx(ptreg)    ((ptreg).ecx)
 #define PTREG_Edx(ptreg)    ((ptreg).edx)
@@ -666,7 +511,7 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #error "Unsupported arch"
 #endif
 
-#endif // HOST_64BIT
+#endif // BIT64
 
 
 #define PTREG_EFlags(ptreg) ((ptreg).eflags)
@@ -681,7 +526,7 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #error "struct reg" has unrecognized format
 #endif
 
-#ifdef HOST_64BIT
+#ifdef BIT64
 
 #define BSDREG_Rbx(reg)     BSD_REGS_STYLE(reg,RBX,rbx)
 #define BSDREG_Rcx(reg)     BSD_REGS_STYLE(reg,RCX,rcx)
@@ -704,7 +549,7 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #define BSDREG_R15(reg)     BSD_REGS_STYLE(reg,R15,r15)
 #define BSDREG_EFlags(reg)  BSD_REGS_STYLE(reg,RFLAGS,rflags)
 
-#else // HOST_64BIT
+#else // BIT64
 
 #define BSDREG_Ebx(reg)     BSD_REGS_STYLE(reg,EBX,ebx)
 #define BSDREG_Ecx(reg)     BSD_REGS_STYLE(reg,ECX,ecx)
@@ -719,20 +564,18 @@ const VfpSigFrame* GetConstNativeSigSimdContext(const native_context_t *mc)
 #define BSDREG_Esp(reg)     BSD_REGS_STYLE(reg,ESP,esp)
 #define BSDREG_SegSs(reg)   BSD_REGS_STYLE(reg,SS,ss)
 
-#endif // HOST_64BIT
+#endif // BIT64
 
 #endif // HAVE_BSD_REGS_T
 
 inline static DWORD64 CONTEXTGetPC(LPCONTEXT pContext)
 {
-#if defined(HOST_AMD64)
+#if defined(_AMD64_)
     return pContext->Rip;
-#elif defined(HOST_X86)
+#elif defined(_X86_)
     return pContext->Eip;
-#elif defined(HOST_ARM64) || defined(HOST_ARM)
+#elif defined(_ARM64_) || defined(_ARM_)
     return pContext->Pc;
-#elif defined(HOST_S390X)
-    return pContext->PSWAddr;
 #else
 #error "don't know how to get the program counter for this architecture"
 #endif
@@ -740,14 +583,12 @@ inline static DWORD64 CONTEXTGetPC(LPCONTEXT pContext)
 
 inline static void CONTEXTSetPC(LPCONTEXT pContext, DWORD64 pc)
 {
-#if defined(HOST_AMD64)
+#if defined(_AMD64_)
     pContext->Rip = pc;
-#elif defined(HOST_X86)
+#elif defined(_X86_)
     pContext->Eip = pc;
-#elif defined(HOST_ARM64) || defined(HOST_ARM)
+#elif defined(_ARM64_) || defined(_ARM_)
     pContext->Pc = pc;
-#elif defined(HOST_S390X)
-    pContext->PSWAddr = pc;
 #else
 #error "don't know how to set the program counter for this architecture"
 #endif
@@ -755,16 +596,14 @@ inline static void CONTEXTSetPC(LPCONTEXT pContext, DWORD64 pc)
 
 inline static DWORD64 CONTEXTGetFP(LPCONTEXT pContext)
 {
-#if defined(HOST_AMD64)
+#if defined(_AMD64_)
     return pContext->Rbp;
-#elif defined(HOST_X86)
+#elif defined(_X86_)
     return pContext->Ebp;
-#elif defined(HOST_ARM)
+#elif defined(_ARM_)
     return pContext->R7;
-#elif defined(HOST_ARM64)
+#elif defined(_ARM64_)
     return pContext->Fp;
-#elif defined(HOST_S390X)
-    return pContext->R11;
 #else
 #error "don't know how to get the frame pointer for this architecture"
 #endif
@@ -864,16 +703,15 @@ CONTEXT_GetThreadContextFromThreadState(
     thread_state_t threadState,
     LPCONTEXT lpContext);
 
-#endif // HAVE_MACH_EXCEPTIONS
-
+#else // HAVE_MACH_EXCEPTIONS
 /*++
 Function :
     CONTEXTToNativeContext
-
+    
     Converts a CONTEXT record to a native context.
 
 Parameters :
-    CONST CONTEXT *lpContext : CONTEXT to convert, including
+    CONST CONTEXT *lpContext : CONTEXT to convert, including 
                                flags that determine which registers are valid in
                                lpContext and which ones to set in native
     native_context_t *native : native context to fill in
@@ -887,7 +725,7 @@ void CONTEXTToNativeContext(CONST CONTEXT *lpContext, native_context_t *native);
 /*++
 Function :
     CONTEXTFromNativeContext
-
+    
     Converts a native context to a CONTEXT record.
 
 Parameters :
@@ -903,12 +741,10 @@ Return value :
 void CONTEXTFromNativeContext(const native_context_t *native, LPCONTEXT lpContext,
                               ULONG contextFlags);
 
-#if !HAVE_MACH_EXCEPTIONS
-
 /*++
 Function :
     GetNativeContextPC
-
+    
     Returns the program counter from the native context.
 
 Parameters :
@@ -938,7 +774,7 @@ LPVOID GetNativeContextSP(const native_context_t *context);
 /*++
 Function :
     CONTEXTGetExceptionCodeForSignal
-
+    
     Translates signal and context information to a Win32 exception code.
 
 Parameters :

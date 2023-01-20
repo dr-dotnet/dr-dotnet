@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -63,7 +64,7 @@ DuplicateHandle(
 {
     PAL_ERROR palError;
     CPalThread *pThread;
-
+    
     PERF_ENTRY(DuplicateHandle);
     ENTRY("DuplicateHandle( hSrcProcHandle=%p, hSrcHandle=%p, "
           "hTargetProcHandle=%p, lpTargetHandle=%p, dwAccess=%#x, "
@@ -79,6 +80,7 @@ DuplicateHandle(
         hSourceHandle,
         hTargetProcessHandle,
         lpTargetHandle,
+        dwDesiredAccess,
         bInheritHandle,
         dwOptions
         );
@@ -100,13 +102,14 @@ CorUnix::InternalDuplicateHandle(
     HANDLE hSource,
     HANDLE hTargetProcess,
     LPHANDLE phDuplicate,
+    DWORD dwDesiredAccess,
     BOOL bInheritHandle,
     DWORD dwOptions
     )
 {
     PAL_ERROR palError = NO_ERROR;
     IPalObject *pobjSource = NULL;
-
+    
     DWORD source_process_id;
     DWORD target_process_id;
     DWORD cur_process_id;
@@ -151,7 +154,7 @@ CorUnix::InternalDuplicateHandle(
         palError = ERROR_INVALID_PARAMETER;
         goto InternalDuplicateHandleExit;
     }
-
+    
     if (0 == (dwOptions & DUPLICATE_SAME_ACCESS))
     {
         ASSERT(
@@ -195,6 +198,7 @@ CorUnix::InternalDuplicateHandle(
             pThread,
             hSource,
             &aotDuplicateHandle,
+            dwDesiredAccess,
             &pobjSource
             );
 
@@ -202,7 +206,7 @@ CorUnix::InternalDuplicateHandle(
         {
             ERROR("Unable to get object for source handle %p (%i)\n", hSource, palError);
             goto InternalDuplicateHandleExit;
-        }
+        }            
     }
     else if (hPseudoCurrentProcess == hSource)
     {
@@ -228,6 +232,9 @@ CorUnix::InternalDuplicateHandle(
     palError = g_pObjectManager->ObtainHandleForObject(
         pThread,
         pobjSource,
+        dwDesiredAccess,
+        bInheritHandle,
+        NULL,
         phDuplicate
         );
 
@@ -245,7 +252,7 @@ InternalDuplicateHandleExit:
         // MUST be closed, even if an error occurred during the duplication
         // process
         //
-
+        
         TRACE("DuplicateHandle closing source handle %p\n", hSource);
         InternalCloseHandle(pThread, hSource);
     }

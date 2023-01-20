@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -109,7 +110,7 @@ MessageBoxW(
     {
         ASSERT("hWnd != NULL");
     }
-
+    
     if(lpText)
     {
         len = WideCharToMultiByte(CP_ACP, 0, lpText, -1, NULL, 0, NULL, NULL);
@@ -122,7 +123,7 @@ MessageBoxW(
                 SetLastError( ERROR_NOT_ENOUGH_MEMORY );
                 goto error;
             }
-            if( !WideCharToMultiByte( CP_ACP, 0, lpText, -1, text, len,
+            if( !WideCharToMultiByte( CP_ACP, 0, lpText, -1, text, len, 
                                       NULL, NULL))
             {
                 ASSERT("WideCharToMultiByte failure\n");
@@ -150,7 +151,7 @@ MessageBoxW(
     }
     if (lpCaption)
     {
-        len = WideCharToMultiByte( CP_ACP, 0, lpCaption, -1, NULL, 0,
+        len = WideCharToMultiByte( CP_ACP, 0, lpCaption, -1, NULL, 0, 
                                    NULL, NULL);
         if(len)
         {
@@ -246,7 +247,7 @@ MessageBoxA(
     {
         lpCaption = "Error";
     }
-
+    
     if (uType & MB_DEFMASK)
     {
         WARN("No support for alternate default buttons.\n");
@@ -299,13 +300,13 @@ MessageBoxA(
         CFStringRef cfsButton3 = NULL;
         CFOptionFlags alertFlags = 0;
         CFOptionFlags response;
-
+                
         switch (uType & MB_TYPEMASK)
         {
         case MB_OK:
             // Nothing needed; since if all the buttons are null, a stock "OK" is used.
             break;
-
+        
         case MB_ABORTRETRYIGNORE:
             // Localization? Would be needed if this were used outside of debugging.
             cfsButton1 = CFSTR("Abort");
@@ -313,32 +314,32 @@ MessageBoxA(
             cfsButton3 = CFSTR("Ignore");
             alertFlags = kCFUserNotificationCautionAlertLevel;
             break;
-
+            
         case MB_YESNO:
             cfsButton1 = CFSTR("Yes");
             cfsButton2 = CFSTR("No");
             break;
-
+            
         case MB_OKCANCEL:
             cfsButton1 = CFSTR("OK");
             cfsButton2 = CFSTR("Cancel");
             break;
-
+        
         case MB_RETRYCANCEL:
             cfsButton1 = CFSTR("Retry");
             cfsButton2 = CFSTR("Cancel");
             break;
         }
-
+        
         CFUserNotificationDisplayAlert(0 /* no time out */, alertFlags, NULL /* iconURL */,
             NULL /* soundURL */, NULL /* localizationURL */, cfsTitle, cfsText, cfsButton1,
             cfsButton2, cfsButton3, &response);
-
+            
         switch (uType & MB_TYPEMASK)
         {
         case MB_OK:
             break;
-
+        
         case MB_ABORTRETRYIGNORE:
             switch (response)
             {
@@ -353,7 +354,7 @@ MessageBoxA(
                 break;
             }
             break;
-
+        
         case MB_YESNO:
             switch (response)
             {
@@ -365,7 +366,7 @@ MessageBoxA(
                 break;
             }
             break;
-
+        
         case MB_OKCANCEL:
             switch (response)
             {
@@ -377,7 +378,7 @@ MessageBoxA(
                 break;
             }
             break;
-
+        
         case MB_RETRYCANCEL:
             switch (response)
             {

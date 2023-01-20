@@ -72,7 +72,7 @@ tdep_init (void)
 
   lock_acquire (&unw.lock, saved_mask);
   {
-    if (atomic_load(&tdep_init_done))
+    if (tdep_init_done)
       /* another thread else beat us to it... */
       goto out;
 
@@ -115,7 +115,7 @@ tdep_init (void)
 #ifndef UNW_REMOTE_ONLY
     ia64_local_addr_space_init ();
 #endif
-    atomic_store(&tdep_init_done, 1); /* signal that we're initialized... */
+    tdep_init_done = 1; /* signal that we're initialized... */
   }
  out:
   lock_release (&unw.lock, saved_mask);

@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -106,7 +107,7 @@ namespace VirtualMemoryLogging
     // An entry in the in-memory log
     struct LogRecord
     {
-        ULONG RecordId;
+        LONG RecordId;
         DWORD Operation;
         LPVOID CurrentThread;
         LPVOID RequestedAddress;
@@ -117,14 +118,14 @@ namespace VirtualMemoryLogging
     };
 
     // Maximum number of records in the in-memory log
-    const ULONG MaxRecords = 128;
+    const LONG MaxRecords = 128;
 
     // Buffer used to store the logged data
     volatile LogRecord logRecords[MaxRecords];
 
     // Current record number. Use (recordNumber % MaxRecords) to determine
     // the current position in the circular buffer.
-    volatile ULONG recordNumber = 0;
+    volatile LONG recordNumber = 0;
 
     // Record an entry in the in-memory log
     void LogVaOperation(
@@ -136,11 +137,11 @@ namespace VirtualMemoryLogging
         IN LPVOID returnedAddress,
         IN BOOL result)
     {
-        ULONG i = (ULONG)InterlockedIncrement((LONG *)&recordNumber) - 1;
+        LONG i = InterlockedIncrement(&recordNumber) - 1;
         LogRecord* curRec = (LogRecord*)&logRecords[i % MaxRecords];
 
         curRec->RecordId = i;
-        curRec->CurrentThread = reinterpret_cast<LPVOID>(pthread_self());
+        curRec->CurrentThread = (LPVOID)pthread_self();
         curRec->RequestedAddress = requestedAddress;
         curRec->ReturnedAddress = returnedAddress;
         curRec->Size = size;
@@ -846,17 +847,12 @@ static LPVOID VIRTUALResetMemory(
 #endif
     {
         // In case the MADV_FREE is not supported, use MADV_DONTNEED
-        st = posix_madvise((LPVOID)StartBoundary, MemSize, POSIX_MADV_DONTNEED);
+        st = madvise((LPVOID)StartBoundary, MemSize, MADV_DONTNEED);
     }
 
     if (st == 0)
     {
         pRetVal = lpAddress;
-
-#ifdef MADV_DONTDUMP
-        // Do not include reset memory in coredump.
-        madvise((LPVOID)StartBoundary, MemSize, MADV_DONTDUMP);
-#endif
     }
 
     LogVaOperation(
@@ -920,10 +916,6 @@ static LPVOID VIRTUALReserveMemory(
     if (pRetVal == NULL)
     {
         // Try to reserve memory from the OS
-        if ((flProtect & 0xff) == PAGE_EXECUTE_READWRITE)
-        {
-             flAllocationType |= MEM_RESERVE_EXECUTABLE;
-        }
         pRetVal = ReserveVirtualMemory(pthrCurrent, (LPVOID)StartBoundary, MemSize, flAllocationType);
     }
 
@@ -977,7 +969,24 @@ static LPVOID ReserveVirtualMemory(
 
     // Most platforms will only commit memory if it is dirtied,
     // so this should not consume too much swap space.
-    int mmapFlags = MAP_ANON | MAP_PRIVATE;
+    int mmapFlags = 0;
+
+#if HAVE_VM_ALLOCATE
+    // Allocate with vm_allocate first, then map at the fixed address.
+    int result = vm_allocate(mach_task_self(),
+                             &StartBoundary,
+                             MemSize,
+                             ((LPVOID) StartBoundary != nullptr) ? FALSE : TRUE);
+
+    if (result != KERN_SUCCESS)
+    {
+        ERROR("vm_allocate failed to allocated the requested region!\n");
+        pthrCurrent->SetLastError(ERROR_INVALID_ADDRESS);
+        return nullptr;
+    }
+
+    mmapFlags |= MAP_FIXED;
+#endif // HAVE_VM_ALLOCATE
 
     if ((fAllocationType & MEM_LARGE_PAGES) != 0)
     {
@@ -992,12 +1001,7 @@ static LPVOID ReserveVirtualMemory(
 #endif
     }
 
-#ifdef __APPLE__
-    if ((fAllocationType & MEM_RESERVE_EXECUTABLE) && IsRunningOnMojaveHardenedRuntime())
-    {
-        mmapFlags |= MAP_JIT;
-    }
-#endif
+    mmapFlags |= MAP_ANON | MAP_PRIVATE;
 
     LPVOID pRetVal = mmap((LPVOID) StartBoundary,
                           MemSize,
@@ -1009,6 +1013,10 @@ static LPVOID ReserveVirtualMemory(
     if (pRetVal == MAP_FAILED)
     {
         ERROR( "Failed due to insufficient memory.\n" );
+
+#if HAVE_VM_ALLOCATE
+        vm_deallocate(mach_task_self(), StartBoundary, MemSize);
+#endif // HAVE_VM_ALLOCATE
 
         pthrCurrent->SetLastError(ERROR_NOT_ENOUGH_MEMORY);
         return nullptr;
@@ -1032,11 +1040,6 @@ static LPVOID ReserveVirtualMemory(
         return nullptr;
     }
 #endif  // MMAP_ANON_IGNORES_PROTECTION
-
-#ifdef MADV_DONTDUMP
-    // Do not include reserved memory in coredump.
-    madvise(pRetVal, MemSize, MADV_DONTDUMP);
-#endif
 
     return pRetVal;
 }
@@ -1181,11 +1184,6 @@ VIRTUALCommitMemory(
                 goto error;
             }
 
-#ifdef MADV_DODUMP
-            // Include committed memory in coredump.
-            madvise((void *) StartBoundary, MemSize, MADV_DODUMP);
-#endif
-
             VIRTUALSetAllocState(MEM_COMMIT, runStart, runLength, pInformation);
 
             if (nProtect == (PROT_WRITE | PROT_READ))
@@ -1271,7 +1269,7 @@ PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange(
     IN LPCVOID lpEndAddress,
     IN SIZE_T dwSize)
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
     PERF_ENTRY(PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange);
     ENTRY(
         "PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange(lpBeginAddress = %p, lpEndAddress = %p, dwSize = %Iu)\n",
@@ -1314,9 +1312,9 @@ PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange(
     LOGEXIT("PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange returning %p\n", address);
     PERF_EXIT(PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange);
     return address;
-#else // !HOST_64BIT
+#else // !BIT64
     return nullptr;
-#endif // HOST_64BIT
+#endif // BIT64
 }
 
 /*++
@@ -1543,11 +1541,6 @@ VirtualFree(
             }
 #endif  // MMAP_ANON_IGNORES_PROTECTION
 
-#ifdef MADV_DONTDUMP
-            // Do not include freed memory in coredump.
-            madvise((LPVOID) StartBoundary, MemSize, MADV_DONTDUMP);
-#endif
-
             SIZE_T index = 0;
             SIZE_T nNumOfPagesToChange = 0;
 
@@ -1728,13 +1721,6 @@ VirtualProtect(
         {
             *lpflOldProtect = PAGE_EXECUTE_READWRITE;
         }
-
-#ifdef MADV_DONTDUMP
-        // Include or exclude memory from coredump based on the protection.
-        int advise = flNewProtect == PAGE_NOACCESS ? MADV_DONTDUMP : MADV_DODUMP;
-        madvise((LPVOID)StartBoundary, MemSize, advise);
-#endif
-
         bRetVal = TRUE;
     }
     else
@@ -1759,28 +1745,6 @@ ExitVirtualProtect:
     PERF_EXIT(VirtualProtect);
     return bRetVal;
 }
-
-#if defined(HOST_OSX) && defined(HOST_ARM64)
-PALAPI VOID PAL_JitWriteProtect(bool writeEnable)
-{
-    thread_local int enabledCount = 0;
-    if (writeEnable)
-    {
-        if (enabledCount++ == 0)
-        {
-            pthread_jit_write_protect_np(0);
-        }
-    }
-    else
-    {
-        if (--enabledCount == 0)
-        {
-            pthread_jit_write_protect_np(1);
-        }
-        _ASSERTE(enabledCount >= 0);
-    }
-}
-#endif // HOST_OSX && HOST_ARM64
 
 #if HAVE_VM_ALLOCATE
 //---------------------------------------------------------------------------------------
@@ -1856,7 +1820,7 @@ static void VM_ALLOCATE_VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATIO
     vm_region_flavor_t vm_flavor;
     mach_msg_type_number_t infoCnt;
     mach_port_t object_name;
-#ifdef HOST_64BIT
+#ifdef BIT64
     vm_region_basic_info_data_64_t info;
     infoCnt = VM_REGION_BASIC_INFO_COUNT_64;
     vm_flavor = VM_REGION_BASIC_INFO_64;
@@ -1867,7 +1831,7 @@ static void VM_ALLOCATE_VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATIO
 #endif
 
     vm_address = (vm_address_t)lpAddress;
-#ifdef HOST_64BIT
+#ifdef BIT64
     MachRet = vm_region_64(
 #else
     MachRet = vm_region(
@@ -2062,6 +2026,48 @@ size_t GetVirtualPageSize()
 }
 
 /*++
+Function:
+  GetWriteWatch
+
+See MSDN doc.
+--*/
+UINT
+PALAPI
+GetWriteWatch(
+  IN DWORD dwFlags,
+  IN PVOID lpBaseAddress,
+  IN SIZE_T dwRegionSize,
+  OUT PVOID *lpAddresses,
+  IN OUT PULONG_PTR lpdwCount,
+  OUT PULONG lpdwGranularity
+)
+{
+    // TODO: implement this method
+    *lpAddresses = NULL;
+    *lpdwCount = 0;
+    // Until it is implemented, return non-zero value as an indicator of failure
+    return 1;
+}
+
+/*++
+Function:
+  ResetWriteWatch
+
+See MSDN doc.
+--*/
+UINT
+PALAPI
+ResetWriteWatch(
+  IN LPVOID lpBaseAddress,
+  IN SIZE_T dwRegionSize
+)
+{
+    // TODO: implement this method
+    // Until it is implemented, return non-zero value as an indicator of failure
+    return 1;
+}
+
+/*++
 Function :
     ReserveMemoryFromExecutableAllocator
 
@@ -2071,15 +2077,15 @@ Function :
 --*/
 void* ReserveMemoryFromExecutableAllocator(CPalThread* pThread, SIZE_T allocationSize)
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
     InternalEnterCriticalSection(pThread, &virtual_critsec);
     void* mem = g_executableMemoryAllocator.AllocateMemory(allocationSize);
     InternalLeaveCriticalSection(pThread, &virtual_critsec);
 
     return mem;
-#else // !HOST_64BIT
+#else // !BIT64
     return nullptr;
-#endif // HOST_64BIT
+#endif // BIT64
 }
 
 /*++
@@ -2100,9 +2106,9 @@ void ExecutableMemoryAllocator::Initialize()
 
     // Enable the executable memory allocator on 64-bit platforms only
     // because 32-bit platforms have limited amount of virtual address space.
-#ifdef HOST_64BIT
+#ifdef BIT64
     TryReserveInitialMemory();
-#endif // HOST_64BIT
+#endif // BIT64
 
 }
 
@@ -2154,7 +2160,7 @@ void ExecutableMemoryAllocator::TryReserveInitialMemory()
     // Do actual memory reservation.
     do
     {
-        m_startAddress = ReserveVirtualMemory(pthrCurrent, (void*)preferredStartAddress, sizeOfAllocation, MEM_RESERVE_EXECUTABLE);
+        m_startAddress = ReserveVirtualMemory(pthrCurrent, (void*)preferredStartAddress, sizeOfAllocation, 0 /* fAllocationType */);
         if (m_startAddress != nullptr)
         {
             break;
@@ -2184,7 +2190,7 @@ void ExecutableMemoryAllocator::TryReserveInitialMemory()
         //   - The code heap allocator for the JIT can allocate from this address space. Beyond this reservation, one can use
         //     the COMPlus_CodeHeapReserveForJumpStubs environment variable to reserve space for jump stubs.
         sizeOfAllocation = MaxExecutableMemorySize;
-        m_startAddress = ReserveVirtualMemory(pthrCurrent, nullptr, sizeOfAllocation, MEM_RESERVE_EXECUTABLE);
+        m_startAddress = ReserveVirtualMemory(pthrCurrent, nullptr, sizeOfAllocation, 0 /* fAllocationType */);
         if (m_startAddress == nullptr)
         {
             return;
@@ -2216,7 +2222,7 @@ Function:
 --*/
 void* ExecutableMemoryAllocator::AllocateMemory(SIZE_T allocationSize)
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
     void* allocatedMemory = nullptr;
 
     // Alignment to a 64 KB granularity should not be necessary (alignment to page size should be sufficient), but
@@ -2236,9 +2242,9 @@ void* ExecutableMemoryAllocator::AllocateMemory(SIZE_T allocationSize)
     }
 
     return allocatedMemory;
-#else // !HOST_64BIT
+#else // !BIT64
     return nullptr;
-#endif // HOST_64BIT
+#endif // BIT64
 }
 
 /*++
@@ -2254,7 +2260,7 @@ Function:
 --*/
 void *ExecutableMemoryAllocator::AllocateMemoryWithinRange(const void *beginAddress, const void *endAddress, SIZE_T allocationSize)
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
     _ASSERTE(beginAddress <= endAddress);
 
     // Alignment to a 64 KB granularity should not be necessary (alignment to page size should be sufficient), but see
@@ -2284,9 +2290,9 @@ void *ExecutableMemoryAllocator::AllocateMemoryWithinRange(const void *beginAddr
     m_nextFreeAddress = nextFreeAddress;
     m_remainingReservedMemory -= allocationSize;
     return address;
-#else // !HOST_64BIT
+#else // !BIT64
     return nullptr;
-#endif // HOST_64BIT
+#endif // BIT64
 }
 
 /*++
@@ -2297,12 +2303,6 @@ Function:
     at which the allocator should start allocating memory from its reserved memory range.
 
 --*/
-#ifdef __sun
-// The upper limit of the random() function on SunOS derived operating systems is not RAND_MAX, but 2^31-1.
-#define OFFSET_RAND_MAX 0x7FFFFFFF
-#else
-#define OFFSET_RAND_MAX RAND_MAX
-#endif
 int32_t ExecutableMemoryAllocator::GenerateRandomStartOffset()
 {
     int32_t pageCount;
@@ -2311,7 +2311,7 @@ int32_t ExecutableMemoryAllocator::GenerateRandomStartOffset()
     // This code is similar to what coreclr runtime does on Windows.
     // It generates a random number of pages to skip between 0...MaxStartPageOffset.
     srandom(time(NULL));
-    pageCount = (int32_t)(MaxStartPageOffset * (int64_t)random() / OFFSET_RAND_MAX);
+    pageCount = (int32_t)(MaxStartPageOffset * (int64_t)random() / RAND_MAX);
 
     return pageCount * GetVirtualPageSize();
 }

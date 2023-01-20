@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -21,15 +22,15 @@ using namespace CorUnix;
 
 #if HAVE_MACH_EXCEPTIONS
 
-#if defined(HOST_AMD64)
+#if defined(_AMD64_)
 #define MACH_EH_TYPE(x) mach_##x
 #else
 #define MACH_EH_TYPE(x) x
-#endif // defined(HOST_AMD64)
+#endif // defined(_AMD64_)
 
 // The vast majority of Mach calls we make in this module are critical: we cannot recover from failures of
 // these methods (principally because we're handling hardware exceptions in the context of a single dedicated
-// handler thread). The following macro encapsulates checking the return code from Mach methods and emitting
+// handler thread). The following macro encapsulates checking the return code from Mach methods and emitting 
 // some useful data and aborting the process on failure.
 #define CHECK_MACH(_msg, machret) do {                                      \
         if (machret != KERN_SUCCESS)                                        \
@@ -44,8 +45,7 @@ using namespace CorUnix;
 // This macro terminates the process with some useful debug info as above, but for the general failure points
 // that have nothing to do with Mach.
 #define NONPAL_RETAIL_ASSERT(_msg, ...) do {                                    \
-        fprintf(stdout, "%s: %u: " _msg "\n", __FUNCTION__, __LINE__, ## __VA_ARGS__);   \
-        fflush(stdout);                                                         \
+        printf("%s: %u: " _msg "\n", __FUNCTION__, __LINE__, ## __VA_ARGS__);   \
         abort();                                                                \
     } while (false)
 
@@ -68,12 +68,12 @@ using namespace CorUnix;
 
 // Debug-only output with printf-style formatting.
 #define NONPAL_TRACE(_format, ...) do {                                              \
-        if (NONPAL_TRACE_ENABLED) { fprintf(stdout, "NONPAL_TRACE: " _format, ## __VA_ARGS__); fflush(stdout); }  \
+        if (NONPAL_TRACE_ENABLED) printf("NONPAL_TRACE: " _format, ## __VA_ARGS__);  \
     } while (false)
 
 #else // _DEBUG
 
-#define NONPAL_TRACE_ENABLED false
+#define NONPAL_TRACE_ENABLED false 
 #define NONPAL_ASSERT(_msg, ...)
 #define NONPAL_ASSERTE(_expr)
 #define NONPAL_TRACE(_format, ...)
@@ -88,17 +88,10 @@ struct MachExceptionInfo
     exception_type_t ExceptionType;
     mach_msg_type_number_t SubcodeCount;
     MACH_EH_TYPE(exception_data_type_t) Subcodes[2];
-#if defined(HOST_AMD64)
     x86_thread_state_t ThreadState;
     x86_float_state_t FloatState;
     x86_debug_state_t DebugState;
-#elif defined(HOST_ARM64)
-    arm_thread_state64_t ThreadState;
-    arm_neon_state64_t FloatState;
-    arm_debug_state64_t DebugState;
-#else
-#error Unexpected architecture
-#endif
+
     MachExceptionInfo(mach_port_t thread, MachMessage& message);
     void RestoreState(mach_port_t thread);
 };
@@ -397,7 +390,7 @@ private:
     //  * fCalculate -- calculate the thread port if the message did not contain it.
     //  * fValidate  -- failfast if the message was not one expected to have a (calculable) thread port.
     void GetPorts(bool fCalculate, bool fValidThread);
-
+    
     // Given a thread's register context, locate and return the Mach port representing that thread. Only the
     // x86_THREAD_STATE and x86_THREAD_STATE32 state flavors are supported.
     thread_act_t GetThreadFromState(thread_state_flavor_t eFlavor, thread_state_t pState);
@@ -436,10 +429,10 @@ private:
 
     // Cached value of GetThread() or MACH_PORT_NULL if that has not been computed yet.
     thread_act_t    m_hThread;
-
+    
     // Cached value of the task port or MACH_PORT_NULL if the message doesn't have one.
     mach_port_t     m_hTask;
-
+    
     // Considered whether we are responsible for the deallocation of the ports in
     // this message. It is true for messages we receive, and false for messages we send.
     bool m_fPortsOwned;

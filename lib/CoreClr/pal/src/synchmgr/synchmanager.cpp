@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -567,17 +568,6 @@ namespace CorUnix
         CThreadSynchronizationInfo * pSynchInfo = &pthrTarget->synchronizationInfo;
         CPalSynchronizationManager * pSynchManager = GetInstance();
 
-        // The shared memory manager's process lock is acquired before calling into some PAL synchronization primitives that may
-        // take the PAL synchronization manager's synch lock (acquired below). For example, when using a file lock
-        // implementation for a named mutex (see NamedMutexProcessData::NamedMutexProcessData()), under the shared memory
-        // manager's process lock, CreateMutex is called, which acquires the PAL synchronization manager's synch lock. The same
-        // lock order needs to be maintained here to avoid a deadlock.
-        bool abandonNamedMutexes = pSynchInfo->OwnsAnyNamedMutex();
-        if (abandonNamedMutexes)
-        {
-            SharedMemoryManager::AcquireCreationDeletionProcessLock();
-        }
-
         // Local lock
         AcquireLocalSynchLock(pthrCurrent);
 
@@ -620,18 +610,15 @@ namespace CorUnix
             pSynchManager->m_cacheOwnedObjectsListNodes.Add(pthrCurrent, poolnItem);
         }
 
-        if (abandonNamedMutexes)
+        // Abandon owned named mutexes
+        while (true)
         {
-            // Abandon owned named mutexes
-            while (true)
+            NamedMutexProcessData *processData = pSynchInfo->RemoveFirstOwnedNamedMutex();
+            if (processData == nullptr)
             {
-                NamedMutexProcessData *processData = pSynchInfo->RemoveFirstOwnedNamedMutex();
-                if (processData == nullptr)
-                {
-                    break;
-                }
-                processData->Abandon();
+                break;
             }
+            processData->Abandon();
         }
 
         if (pthrTarget != pthrCurrent)
@@ -673,12 +660,6 @@ namespace CorUnix
         }
 
         ReleaseLocalSynchLock(pthrCurrent);
-
-        if (abandonNamedMutexes)
-        {
-            SharedMemoryManager::ReleaseCreationDeletionProcessLock();
-        }
-
         DiscardAllPendingAPCs(pthrCurrent, pthrTarget);
 
         return palErr;
@@ -1521,6 +1502,7 @@ namespace CorUnix
             pSynchManager->m_dwWorkerThreadTid = (DWORD)osThreadId;
             palErr = InternalGetThreadDataFromHandle(pthrCurrent,
                                                      hWorkerThread,
+                                                     0,
                                                      &pSynchManager->m_pthrWorker,
                                                      &pSynchManager->m_pipoThread);
             if (NO_ERROR != palErr)
@@ -2526,10 +2508,9 @@ namespace CorUnix
         BYTE * pbySrc, * pbyDst = rgSendBuf;
         WaitingThreadsListNode * pWLNode = SharedIDToTypePointer(WaitingThreadsListNode, shridWLNode);
 
-
-        _ASSERT_MSG(NULL != pWLNode, "Bad shared wait list node identifier (%p)\n", (VOID*)shridWLNode);
         _ASSERT_MSG(gPID != pWLNode->dwProcessId, "WakeUpRemoteThread called on local thread\n");
         _ASSERT_MSG(NULL != shridWLNode, "NULL shared identifier\n");
+        _ASSERT_MSG(NULL != pWLNode, "Bad shared wait list node identifier (%p)\n", (VOID*)shridWLNode);
         _ASSERT_MSG(MsgSize <= PIPE_BUF, "Message too long [MsgSize=%d PIPE_BUF=%d]\n", MsgSize, (int)PIPE_BUF);
 
         TRACE("Waking up remote thread {pid=%x, tid=%x} by sending cmd=%u and shridWLNode=%p over process pipe\n",
@@ -3055,7 +3036,7 @@ namespace CorUnix
 
         VALIDATEOBJECT(pTgtObjectSynchData);
 
-        pwtlnNode =  fSharedObject ? SharedIDToTypePointer(WaitingThreadsListNode, pTgtObjectSynchData->GetWTLHeadShmPtr())
+        pwtlnNode =  fSharedObject ? SharedIDToTypePointer(WaitingThreadsListNode, pTgtObjectSynchData->GetWTLHeadShmPtr()) 
                                    : pTgtObjectSynchData->GetWTLHeadPtr();
 
         while (pwtlnNode)
@@ -3063,7 +3044,7 @@ namespace CorUnix
             VALIDATEOBJECT(pwtlnNode);
 
             pwtlnNode->dwFlags &= ~WTLN_FLAG_DELEGATED_OBJECT_SIGNALING_IN_PROGRESS;
-            pwtlnNode = fSharedObject ? SharedIDToTypePointer(WaitingThreadsListNode, pwtlnNode->ptrNext.shrid)
+            pwtlnNode = fSharedObject ? SharedIDToTypePointer(WaitingThreadsListNode, pwtlnNode->ptrNext.shrid) 
                                       : pwtlnNode->ptrNext.ptr;
         }
     }
@@ -4055,6 +4036,7 @@ namespace CorUnix
             m_ownedNamedMutexListHead(nullptr)
     {
         InitializeListHead(&m_leOwnedObjsList);
+        InitializeCriticalSection(&m_ownedNamedMutexListLock);
 
 #ifdef SYNCHMGR_SUSPENSION_SAFE_CONDITION_SIGNALING
         m_lPendingSignalingCount = 0;
@@ -4064,6 +4046,7 @@ namespace CorUnix
 
     CThreadSynchronizationInfo::~CThreadSynchronizationInfo()
     {
+        DeleteCriticalSection(&m_ownedNamedMutexListLock);
         if (NULL != m_shridWaitAwakened)
         {
             free(m_shridWaitAwakened);
@@ -4300,21 +4283,20 @@ namespace CorUnix
 
     void CThreadSynchronizationInfo::AddOwnedNamedMutex(NamedMutexProcessData *processData)
     {
-        _ASSERTE(this == &GetCurrentPalThread()->synchronizationInfo);
         _ASSERTE(processData != nullptr);
-        _ASSERTE(processData->IsLockOwnedByCurrentThread());
         _ASSERTE(processData->GetNextInThreadOwnedNamedMutexList() == nullptr);
 
+        EnterCriticalSection(&m_ownedNamedMutexListLock);
         processData->SetNextInThreadOwnedNamedMutexList(m_ownedNamedMutexListHead);
         m_ownedNamedMutexListHead = processData;
+        LeaveCriticalSection(&m_ownedNamedMutexListLock);
     }
 
     void CThreadSynchronizationInfo::RemoveOwnedNamedMutex(NamedMutexProcessData *processData)
     {
-        _ASSERTE(this == &GetCurrentPalThread()->synchronizationInfo);
         _ASSERTE(processData != nullptr);
-        _ASSERTE(processData->IsLockOwnedByCurrentThread());
 
+        EnterCriticalSection(&m_ownedNamedMutexListLock);
         if (m_ownedNamedMutexListHead == processData)
         {
             m_ownedNamedMutexListHead = processData->GetNextInThreadOwnedNamedMutexList();
@@ -4339,44 +4321,38 @@ namespace CorUnix
             }
             _ASSERTE(found);
         }
+        LeaveCriticalSection(&m_ownedNamedMutexListLock);
     }
 
     NamedMutexProcessData *CThreadSynchronizationInfo::RemoveFirstOwnedNamedMutex()
     {
-        _ASSERTE(this == &GetCurrentPalThread()->synchronizationInfo);
-
+        EnterCriticalSection(&m_ownedNamedMutexListLock);
         NamedMutexProcessData *processData = m_ownedNamedMutexListHead;
         if (processData != nullptr)
         {
-            _ASSERTE(processData->IsLockOwnedByCurrentThread());
             m_ownedNamedMutexListHead = processData->GetNextInThreadOwnedNamedMutexList();
             processData->SetNextInThreadOwnedNamedMutexList(nullptr);
         }
+        LeaveCriticalSection(&m_ownedNamedMutexListLock);
         return processData;
     }
 
     bool CThreadSynchronizationInfo::OwnsNamedMutex(NamedMutexProcessData *processData)
     {
-        _ASSERTE(this == &GetCurrentPalThread()->synchronizationInfo);
-
+        EnterCriticalSection(&m_ownedNamedMutexListLock);
+        bool found = false;
         for (NamedMutexProcessData *current = m_ownedNamedMutexListHead;
             current != nullptr;
             current = current->GetNextInThreadOwnedNamedMutexList())
         {
-            _ASSERTE(current->IsLockOwnedByCurrentThread());
             if (current == processData)
             {
-                return true;
+                found = true;
+                break;
             }
         }
-
-        return false;
-    }
-
-    bool CThreadSynchronizationInfo::OwnsAnyNamedMutex() const
-    {
-        _ASSERTE(this == &GetCurrentPalThread()->synchronizationInfo);
-        return m_ownedNamedMutexListHead != nullptr;
+        LeaveCriticalSection(&m_ownedNamedMutexListLock);
+        return found;
     }
 
 #if SYNCHMGR_SUSPENSION_SAFE_CONDITION_SIGNALING
@@ -4609,7 +4585,7 @@ namespace CorUnix
         }
         else
         {
-#endif
+#endif        
 #if HAVE_WORKING_CLOCK_GETTIME
             // Not every platform implements a (working) clock_gettime
             iRet = clock_gettime(CLOCK_REALTIME, ptsAbsTmo);
@@ -4623,11 +4599,7 @@ namespace CorUnix
                 ptsAbsTmo->tv_nsec = tv.tv_usec * tccMicroSecondsToNanoSeconds;
             }
 #else
-#ifdef DBI_COMPONENT_MONO
-    return ERROR_INTERNAL_ERROR;
-#else
-    #error "Don't know how to get hi-res current time on this platform"
-#endif
+            #error "Don't know how to get hi-res current time on this platform"
 #endif // HAVE_WORKING_CLOCK_GETTIME, HAVE_WORKING_GETTIMEOFDAY
 #if HAVE_CLOCK_MONOTONIC && HAVE_PTHREAD_CONDATTR_SETCLOCK
         }

@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*****************************************************************
  *
@@ -8,7 +9,7 @@
  *****************************************************************/
 
 // ******************************************************************************
-// WARNING!!!: These values are used by SOS in the diagnostics repo. Values should
+// WARNING!!!: These values are used by SOS in the diagnostics repo. Values should 
 // added or removed in a backwards and forwards compatible way.
 // See: https://github.com/dotnet/diagnostics/blob/master/src/inc/gcinfodecoder.h
 // ******************************************************************************
@@ -16,10 +17,10 @@
 #ifndef _GC_INFO_DECODER_
 #define _GC_INFO_DECODER_
 
-#define _max(a, b) (((a) > (b)) ? (a) : (b))
+#define _max(a, b) (((a) > (b)) ? (a) : (b)) 
 #define _min(a, b) (((a) < (b)) ? (a) : (b))
 
-#if !defined(TARGET_X86)
+#if !defined(_TARGET_X86_)
 #define USE_GC_INFO_DECODER
 #endif
 
@@ -42,29 +43,19 @@ typedef ArrayDPTR(const uint8_t) PTR_CBYTE;
 
 #define VALIDATE_ROOT(isInterior, hCallBack, pObjRef)
 
-#define UINT32 uint32_t
-#define INT32 int32_t
-#define UINT16 uint16_t
-#define UINT uint32_t
-#define SIZE_T uintptr_t
-#define SSIZE_T intptr_t
+#define _ASSERTE(x) assert(x)
+
+#define UINT32 UInt32
+#define INT32 Int32
+#define UINT16 UInt16
+#define UINT UInt32
+#define SIZE_T UIntNative
+#define SSIZE_T IntNative
 #define LPVOID void*
 
 typedef void * OBJECTREF;
 
 #define GET_CALLER_SP(pREGDISPLAY) ((TADDR)0)
-
-struct GCInfoToken
-{
-    PTR_VOID Info;
-    UINT32 Version;
-
-    GCInfoToken(PTR_VOID info)
-    {
-        Info = info;
-        Version = 2;
-    }
-};
 
 #else // FEATURE_REDHAWK
 
@@ -79,24 +70,24 @@ inline void SetIP(T_CONTEXT* context, PCODE rip)
 
 inline TADDR GetSP(T_CONTEXT* context)
 {
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
     return (TADDR)context->Rsp;
-#elif defined(TARGET_ARM)
+#elif defined(_TARGET_ARM_)
     return (TADDR)context->Sp;
-#elif defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM64_)
     return (TADDR)context->Sp;
 #else
     _ASSERTE(!"nyi for platform");
 #endif
 }
 
-inline PCODE GetIP(T_CONTEXT* context)
+inline PCODE GetIP(T_CONTEXT* context) 
 {
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
     return (PCODE) context->Rip;
-#elif defined(TARGET_ARM)
+#elif defined(_TARGET_ARM_)
     return (PCODE)context->Pc;
-#elif defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM64_)
     return (PCODE)context->Pc;
 #else
     _ASSERTE(!"nyi for platform");
@@ -130,7 +121,7 @@ typedef SIZE_T TADDR;
 inline BOOL IS_ALIGNED( size_t val, size_t alignment )
 {
     // alignment must be a power of 2 for this implementation to work (need modulo otherwise)
-    _ASSERTE( 0 == (alignment & (alignment - 1)) );
+    _ASSERTE( 0 == (alignment & (alignment - 1)) ); 
     return 0 == (val & (alignment - 1));
 }
 inline BOOL IS_ALIGNED( void* val, size_t alignment )
@@ -145,6 +136,12 @@ inline BOOL IS_ALIGNED( void* val, size_t alignment )
         (off >= 0) ? "+" : "-",        \
         (off >= 0) ? off : -off
 
+#endif
+
+// Stuff from check.h:
+
+#ifndef UNREACHABLE
+#define UNREACHABLE() __assume(0)
 #endif
 
 // Stuff from eetwain.h:
@@ -204,7 +201,7 @@ enum GcInfoDecoderFlags
     DECODE_GC_LIFETIMES          = 0x10,
     DECODE_NO_VALIDATION         = 0x20,
     DECODE_PSP_SYM               = 0x40,
-    DECODE_GENERICS_INST_CONTEXT = 0x80,    // stack location of instantiation context for generics
+    DECODE_GENERICS_INST_CONTEXT = 0x80,    // stack location of instantiation context for generics 
                                             // (this may be either the 'this' ptr or the instantiation secret param)
     DECODE_GS_COOKIE             = 0x100,   // stack location of the GS cookie
     DECODE_FOR_RANGES_CALLBACK   = 0x200,
@@ -212,9 +209,9 @@ enum GcInfoDecoderFlags
     DECODE_EDIT_AND_CONTINUE     = 0x800,
     DECODE_REVERSE_PINVOKE_VAR   = 0x1000,
     DECODE_RETURN_KIND           = 0x2000,
-#if defined(TARGET_ARM) || defined(TARGET_ARM64)
+#if defined(_TARGET_ARM_) || defined(_TARGET_ARM64_)
     DECODE_HAS_TAILCALLS         = 0x4000,
-#endif // TARGET_ARM || TARGET_ARM64
+#endif // _TARGET_ARM_ || _TARGET_ARM64_
 };
 
 enum GcInfoHeaderFlags
@@ -229,11 +226,11 @@ enum GcInfoHeaderFlags
     GC_INFO_HAS_GENERICS_INST_CONTEXT_MD     = 0x20,
     GC_INFO_HAS_GENERICS_INST_CONTEXT_THIS   = 0x30,
     GC_INFO_HAS_STACK_BASE_REGISTER     = 0x40,
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
     GC_INFO_WANTS_REPORT_ONLY_LEAF      = 0x80,
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM_) || defined(_TARGET_ARM64_)
     GC_INFO_HAS_TAILCALLS               = 0x80,
-#endif // TARGET_AMD64
+#endif // _TARGET_AMD64_
     GC_INFO_HAS_EDIT_AND_CONTINUE_PRESERVED_SLOTS = 0x100,
     GC_INFO_REVERSE_PINVOKE_FRAME = 0x200,
 
@@ -303,7 +300,7 @@ public:
         result &= SAFE_SHIFT_LEFT(1, numBits) - 1;
         return result;
     }
-
+                
     // This version reads one bit, returning zero/non-zero (not 0/1)
     // NOTE: This routine is perf-critical
     __forceinline size_t ReadOneFast()
@@ -318,14 +315,14 @@ public:
         }
         return result;
     }
-
-
+                
+        
     __forceinline size_t GetCurrentPos()
     {
         SUPPORTS_DAC;
         return (size_t) ((m_pCurrent - m_pBuffer) * BITS_PER_SIZE_T + m_RelPos - m_InitialRelPos);
     }
-
+    
     __forceinline void SetCurrentPos( size_t pos )
     {
         size_t adjPos = pos + m_InitialRelPos;
@@ -362,7 +359,7 @@ public:
         return (*ptr) & (((size_t)1) << relPos);
     }
 
-
+    
     //--------------------------------------------------------------------------
     // Decode variable length numbers
     // See the corresponding methods on BitStreamWriter for more information on the format
@@ -376,7 +373,7 @@ public:
         for(int shift=0; ; shift+=base)
         {
             _ASSERTE(shift+base <= (int)BITS_PER_SIZE_T);
-
+            
             size_t currentChunk = Read(base+1);
             result |= (currentChunk & (numEncodings-1)) << shift;
             if(!(currentChunk & numEncodings))
@@ -395,7 +392,7 @@ public:
         for(int shift=0; ; shift+=base)
         {
             _ASSERTE(shift+base <= (int)BITS_PER_SIZE_T);
-
+            
             size_t currentChunk = Read(base+1);
             result |= (currentChunk & (numEncodings-1)) << shift;
             if(!(currentChunk & numEncodings))
@@ -429,7 +426,7 @@ struct GcSlotDesc
 class GcSlotDecoder
 {
 public:
-    GcSlotDecoder()
+    GcSlotDecoder() 
     {}
 
     void DecodeSlotTable(BitStreamReader& reader);
@@ -455,14 +452,14 @@ public:
     }
 
     const GcSlotDesc* GetSlotDesc(UINT32 slotIndex);
-
-private:
+    
+private:    
     GcSlotDesc m_SlotArray[MAX_PREDECODED_SLOTS];
     BitStreamReader m_SlotReader;
     UINT32 m_NumSlots;
     UINT32 m_NumRegisters;
     UINT32 m_NumUntracked;
-
+    
     UINT32 m_NumDecodedSlots;
     GcSlotDesc* m_pLastSlot;
 };
@@ -536,9 +533,9 @@ public:
     bool    HasMethodTableGenericsInstContext();
     bool    GetIsVarArg();
     bool    WantsReportOnlyLeaf();
-#if defined(TARGET_ARM) || defined(TARGET_ARM64)
+#if defined(_TARGET_ARM_) || defined(_TARGET_ARM64_)
     bool    HasTailCalls();
-#endif // TARGET_ARM || TARGET_ARM64
+#endif // _TARGET_ARM_ || _TARGET_ARM64_
     ReturnKind GetReturnKind();
     UINT32  GetCodeLength();
     UINT32  GetStackBaseRegister();
@@ -559,11 +556,11 @@ private:
     bool    m_IsVarArg;
     bool    m_GenericSecretParamIsMD;
     bool    m_GenericSecretParamIsMT;
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
     bool    m_WantsReportOnlyLeaf;
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM_) || defined(_TARGET_ARM64_)
     bool    m_HasTailCalls;
-#endif // TARGET_AMD64
+#endif // _TARGET_AMD64_
     INT32   m_SecurityObjectStackSlot;
     INT32   m_GSCookieStackSlot;
     INT32   m_ReversePInvokeFrameStackSlot;
@@ -599,12 +596,12 @@ private:
                         PREGDISPLAY     pRD
                         );
 
-#ifdef TARGET_UNIX
+#ifdef FEATURE_PAL
     OBJECTREF* GetCapturedRegister(
                         int             regNum,
                         PREGDISPLAY     pRD
                         );
-#endif // TARGET_UNIX
+#endif // FEATURE_PAL
 
     OBJECTREF* GetStackSlot(
                         INT32           spOffset,

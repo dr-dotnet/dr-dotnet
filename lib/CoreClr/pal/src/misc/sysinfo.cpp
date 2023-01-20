@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -24,20 +25,11 @@ Revision History:
 #include <sched.h>
 #include <errno.h>
 #include <unistd.h>
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
 #include <sys/types.h>
-
-#if HAVE_SYSCONF
-// <unistd.h> already included above
-#elif HAVE_SYSCTL
+#if HAVE_SYSCTL
 #include <sys/sysctl.h>
-#else
+#elif !HAVE_SYSCONF
 #error Either sysctl or sysconf is required for GetSystemInfo.
-#endif
-
-#if HAVE_SYSCTLBYNAME
-#include <sys/sysctl.h>
 #endif
 
 #if HAVE_SYSINFO
@@ -66,12 +58,12 @@ Revision History:
 #include <machine/vmparam.h>
 #endif  // HAVE_MACHINE_VMPARAM_H
 
-#if defined(TARGET_OSX)
+#if defined(_TARGET_MAC64)
 #include <mach/vm_statistics.h>
 #include <mach/mach_types.h>
 #include <mach/mach_init.h>
 #include <mach/mach_host.h>
-#endif // defined(TARGET_OSX)
+#endif // defined(_TARGET_MAC64)
 
 // On some platforms sys/user.h ends up defining _DEBUG; if so
 // remove the definition before including the header and put
@@ -91,10 +83,6 @@ Revision History:
 #include "pal/process.h"
 
 #include <algorithm>
-
-#if HAVE_SWAPCTL
-#include <sys/swap.h>
-#endif
 
 SET_DEFAULT_DEBUG_CHANNEL(MISC);
 
@@ -116,7 +104,7 @@ PAL_GetTotalCpuCount()
 
 #if HAVE_SYSCONF
 
-#if defined(HOST_ARM) || defined(HOST_ARM64)
+#if defined(_ARM_) || defined(_ARM64_)
 #define SYSCONF_GET_NUMPROCS       _SC_NPROCESSORS_CONF
 #define SYSCONF_GET_NUMPROCS_NAME "_SC_NPROCESSORS_CONF"
 #else
@@ -131,8 +119,11 @@ PAL_GetTotalCpuCount()
 #elif HAVE_SYSCTL
     int rc;
     size_t sz;
-    int mib[] = { CTL_HW, HW_NCPU };
+    int mib[2];
+
     sz = sizeof(nrcpus);
+    mib[0] = CTL_HW;
+    mib[1] = HW_NCPU;
     rc = sysctl(mib, 2, &nrcpus, &sz, NULL, 0);
     if (rc != 0)
     {
@@ -221,11 +212,9 @@ GetSystemInfo(
     lpSystemInfo->lpMaximumApplicationAddress = (PVOID) VM_MAXUSER_ADDRESS;
 #elif defined(__linux__)
     lpSystemInfo->lpMaximumApplicationAddress = (PVOID) (1ull << 47);
-#elif defined(__sun)
-    lpSystemInfo->lpMaximumApplicationAddress = (PVOID) 0xfffffd7fffe00000ul;
 #elif defined(USERLIMIT)
     lpSystemInfo->lpMaximumApplicationAddress = (PVOID) USERLIMIT;
-#elif defined(HOST_64BIT)
+#elif defined(BIT64)
 #if defined(USRSTACK64)
     lpSystemInfo->lpMaximumApplicationAddress = (PVOID) USRSTACK64;
 #else // !USRSTACK64
@@ -249,58 +238,6 @@ GetSystemInfo(
     LOGEXIT("GetSystemInfo returns VOID\n");
     PERF_EXIT(GetSystemInfo);
 }
-
-// Get memory size multiplier based on the passed in units (k = kilo, m = mega, g = giga)
-static uint64_t GetMemorySizeMultiplier(char units)
-{
-    switch(units)
-    {
-        case 'g':
-        case 'G': return 1024 * 1024 * 1024;
-        case 'm':
-        case 'M': return 1024 * 1024;
-        case 'k':
-        case 'K': return 1024;
-    }
-
-    // No units multiplier
-    return 1;
-}
-
-#ifndef __APPLE__
-// Try to read the MemAvailable entry from /proc/meminfo.
-// Return true if the /proc/meminfo existed, the entry was present and we were able to parse it.
-static bool ReadMemAvailable(uint64_t* memAvailable)
-{
-    bool foundMemAvailable = false;
-    FILE* memInfoFile = fopen("/proc/meminfo", "r");
-    if (memInfoFile != NULL)
-    {
-        char *line = nullptr;
-        size_t lineLen = 0;
-
-        while (getline(&line, &lineLen, memInfoFile) != -1)
-        {
-            char units = '\0';
-            uint64_t available;
-            int fieldsParsed = sscanf(line, "MemAvailable: %" SCNu64 " %cB", &available, &units);
-
-            if (fieldsParsed >= 1)
-            {
-                uint64_t multiplier = GetMemorySizeMultiplier(units);
-                *memAvailable = available * multiplier;
-                foundMemAvailable = true;
-                break;
-            }
-        }
-
-        free(line);
-        fclose(memInfoFile);
-    }
-
-    return foundMemAvailable;
-}
-#endif // __APPLE__
 
 /*++
 Function:
@@ -334,6 +271,7 @@ GlobalMemoryStatusEx(
     lpBuffer->ullAvailExtendedVirtual = 0;
 
     BOOL fRetVal = FALSE;
+    int mib[3];
     int rc;
 
     // Get the physical memory size
@@ -347,8 +285,10 @@ GlobalMemoryStatusEx(
 #elif HAVE_SYSCTL
     int64_t physical_memory;
     size_t length;
+
     // Get the Physical memory size
-    int mib[] = { CTL_HW, HW_MEMSIZE };
+    mib[0] = CTL_HW;
+    mib[1] = HW_MEMSIZE;
     length = sizeof(INT64);
     rc = sysctl(mib, 2, &physical_memory, &length, NULL, 0);
     if (rc != 0)
@@ -368,7 +308,8 @@ GlobalMemoryStatusEx(
 #if HAVE_XSW_USAGE
     // This is available on OSX
     struct xsw_usage xsu;
-    int mib[] = { CTL_HW, VM_SWAPUSAGE };
+    mib[0] = CTL_VM;
+    mib[1] = VM_SWAPUSAGE;
     size_t length = sizeof(xsu);
     rc = sysctl(mib, 2, &xsu, &length, NULL, 0);
     if (rc == 0)
@@ -379,7 +320,7 @@ GlobalMemoryStatusEx(
 #elif HAVE_XSWDEV
     // E.g. FreeBSD
     struct xswdev xsw;
-    int mib[3];
+
     size_t length = 2;
     rc = sysctlnametomib("vm.swap_info", mib, &length);
     if (rc == 0)
@@ -401,14 +342,6 @@ GlobalMemoryStatusEx(
             lpBuffer->ullTotalPageFile += (DWORDLONG)xsw.xsw_nblks * pagesize;
             lpBuffer->ullAvailPageFile += (DWORDLONG)avail * pagesize;
         }
-    }
-#elif HAVE_SWAPCTL
-    struct anoninfo ai;
-    if (swapctl(SC_AINFO, &ai) != -1)
-    {
-        int pagesize = getpagesize();
-        lpBuffer->ullTotalPageFile = ai.ani_max * pagesize;
-        lpBuffer->ullAvailPageFile = ai.ani_free * pagesize;
     }
 #elif HAVE_SYSINFO
     // Linux
@@ -432,22 +365,7 @@ GlobalMemoryStatusEx(
     if (lpBuffer->ullTotalPhys > 0)
     {
 #ifndef __APPLE__
-        static volatile bool tryReadMemInfo = true;
-
-        if (tryReadMemInfo)
-        {
-            // Ensure that we don't try to read the /proc/meminfo in successive calls to the GlobalMemoryStatusEx
-            // if we have failed to access the file or the file didn't contain the MemAvailable value.
-            tryReadMemInfo = ReadMemAvailable(&lpBuffer->ullAvailPhys);
-        }
-
-        if (!tryReadMemInfo)
-        {
-            // The /proc/meminfo doesn't exist or it doesn't contain the MemAvailable row or the format of the row is invalid
-            // Fall back to getting the available pages using sysconf.
-            lpBuffer->ullAvailPhys = sysconf(SYSCONF_PAGES) * sysconf(_SC_PAGE_SIZE);
-        }
-
+        lpBuffer->ullAvailPhys = sysconf(SYSCONF_PAGES) * sysconf(_SC_PAGE_SIZE);
         INT64 used_memory = lpBuffer->ullTotalPhys - lpBuffer->ullAvailPhys;
         lpBuffer->dwMemoryLoad = (DWORD)((used_memory * 100) / lpBuffer->ullTotalPhys);
 #else
@@ -470,11 +388,11 @@ GlobalMemoryStatusEx(
 #endif // __APPLE__
     }
 
-    // There is no API to get the total virtual address space size on
-    // Unix, so we use a constant value representing 128TB, which is
+    // There is no API to get the total virtual address space size on 
+    // Unix, so we use a constant value representing 128TB, which is 
     // the approximate size of total user virtual address space on
     // the currently supported Unix systems.
-    static const UINT64 _128TB = (1ull << 47);
+    static const UINT64 _128TB = (1ull << 47); 
     lpBuffer->ullTotalVirtual = _128TB;
     lpBuffer->ullAvailVirtual = lpBuffer->ullAvailPhys;
 
@@ -510,7 +428,7 @@ ReadMemoryValueFromFile(const char* filename, uint64_t* val)
     char *line = nullptr;
     size_t lineLen = 0;
     char* endptr = nullptr;
-    uint64_t num = 0, multiplier;
+    uint64_t num = 0, l, multiplier;
 
     if (val == nullptr)
         return false;
@@ -527,7 +445,17 @@ ReadMemoryValueFromFile(const char* filename, uint64_t* val)
     if (errno != 0)
         goto done;
 
-    multiplier = GetMemorySizeMultiplier(*endptr);
+    multiplier = 1;
+    switch(*endptr)
+    {
+        case 'g':
+        case 'G': multiplier = 1024;
+        case 'm':
+        case 'M': multiplier = multiplier*1024;
+        case 'k':
+        case 'K': multiplier = multiplier*1024;
+    }
+
     *val = num * multiplier;
     result = true;
     if (*val/multiplier != num)
@@ -558,14 +486,9 @@ PAL_GetLogicalProcessorCacheSizeFromOS()
     cacheSize = std::max(cacheSize, (size_t)sysconf(_SC_LEVEL4_CACHE_SIZE));
 #endif
 
-#if defined(TARGET_LINUX) && !defined(HOST_ARM) && !defined(HOST_X86)
-    if (cacheSize == 0)
+#if defined(_ARM64_)
+    if(cacheSize == 0)
     {
-        //
-        // Fallback to retrieve cachesize via /sys/.. if sysconf was not available
-        // for the platform. Currently musl and arm64 should be only cases to use
-        // this method to determine cache size.
-        //
         size_t size;
 
         if(ReadMemoryValueFromFile("/sys/devices/system/cpu/cpu0/cache/index0/size", &size))
@@ -579,10 +502,8 @@ PAL_GetLogicalProcessorCacheSizeFromOS()
         if(ReadMemoryValueFromFile("/sys/devices/system/cpu/cpu0/cache/index4/size", &size))
             cacheSize = std::max(cacheSize, size);
     }
-#endif
 
-#if defined(HOST_ARM64) && !defined(TARGET_OSX)
-    if (cacheSize == 0)
+    if(cacheSize == 0)
     {
         // It is currently expected to be missing cache size info
         //

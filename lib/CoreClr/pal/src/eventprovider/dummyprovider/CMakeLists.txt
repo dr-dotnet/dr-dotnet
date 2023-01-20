@@ -1,6 +1,8 @@
+cmake_minimum_required(VERSION 2.8.12)
+
 include(FindPythonInterp)
 
-set (GENERATE_SCRIPT ${CLR_DIR}/scripts/genDummyProvider.py)
+set (GENERATE_SCRIPT ${CLR_DIR}/src/scripts/genDummyProvider.py)
 
 set(GENERATE_COMMAND ${PYTHON_EXECUTABLE} ${GENERATE_SCRIPT} --man ${EVENT_MANIFEST} --intermediate ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -41,3 +43,4 @@ set_target_properties(eventprovider PROPERTIES LINKER_LANGUAGE CXX)
 
 # Install the static eventprovider library
 install(TARGETS eventprovider DESTINATION lib)
+  

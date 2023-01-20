@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef _GCINFOARRAYLIST_H_
 #define _GCINFOARRAYLIST_H_
@@ -26,7 +27,7 @@ protected:
     protected:
         IteratorBase(GcInfoArrayListBase* list, size_t firstChunkCapacity);
         ChunkBase* GetNextChunk(size_t& elementCount);
-
+    
     private:
         GcInfoArrayListBase* m_list;
         ChunkBase* m_currentChunk;

@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /******************************************************************
 *                                                                 *
@@ -31,7 +32,7 @@
 #define LODWORD(_qw)    ((ULONG)(_qw))
 
 #if defined(MIDL_PASS) || defined(RC_INVOKED) || defined(_M_CEE_PURE) \
-    || defined(_M_AMD64) || defined(__ARM_ARCH) || defined(_M_S390X)
+    || defined(_M_AMD64) || defined(__ARM_ARCH)
 
 #ifndef UInt32x32To64
 #define UInt32x32To64(a, b) ((unsigned __int64)((ULONG)(a)) * (unsigned __int64)((ULONG)(b)))
@@ -49,6 +50,11 @@
 
 #endif
 
+#define INT_MAX         2147483647
+#define LONG_MAX        2147483647L
+#define USHRT_MAX       0xffff
+#define UINT_MAX        0xffffffff
+#define ULONG_MAX       0xffffffffUL
 #define DWORD_MAX       0xffffffffUL
 
 //
@@ -66,7 +72,7 @@
 #define ULONGLONG_ERROR (0xffffffffffffffffULL)
 #define HIDWORD_MASK (0xffffffff00000000ULL)
 #endif // _MSC_VER
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define SIZET_ERROR     ULONGLONG_ERROR
 #else
 #define SIZET_ERROR     ULONG_ERROR
@@ -344,7 +350,7 @@ UIntToLong(
     IN UINT Operand,
     OUT LONG* Result)
 {
-    if (Operand <= _I32_MAX)
+    if (Operand <= LONG_MAX)
     {
         *Result = (LONG)Operand;
         return S_OK;
@@ -366,7 +372,7 @@ UIntToULong(
     OUT ULONG* pulResult)
 {
     *pulResult = (ULONG)uOperand;
-
+    
     return S_OK;
 }
 
@@ -484,7 +490,7 @@ ULongToUInt(
     OUT UINT* puResult)
 {
     *puResult = (UINT)ulOperand;
-
+    
     return S_OK;
 }
 
@@ -497,7 +503,7 @@ ULongToLong(
     IN ULONG Operand,
     OUT LONG* Result)
 {
-    if (Operand <= _I32_MAX)
+    if (Operand <= LONG_MAX)
     {
         *Result = (LONG)Operand;
         return S_OK;
@@ -539,7 +545,7 @@ ULongLongToLong(
     IN ULONGLONG Operand,
     OUT LONG* Result)
 {
-    if (Operand <= _I32_MAX)
+    if (Operand <= LONG_MAX)
     {
         *Result = (LONG)Operand;
         return S_OK;
@@ -605,13 +611,13 @@ ULongLongToULong(
 {
     HRESULT hr = INTSAFE_E_ARITHMETIC_OVERFLOW;
     *pulResult = ULONG_ERROR;
-
-    if (ullOperand <= _UI32_MAX)
+    
+    if (ullOperand <= ULONG_MAX)
     {
         *pulResult = (ULONG)ullOperand;
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -619,7 +625,7 @@ ULongLongToULong(
 // UINT_PTR -> ULONG conversion
 // ULONG_PTR -> ULONG conversion
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 
 #define UIntPtrToULong  ULongLongToULong
 #define ULongPtrToULong ULongLongToULong
@@ -659,13 +665,13 @@ ULongLongToUInt(
 {
     HRESULT hr = INTSAFE_E_ARITHMETIC_OVERFLOW;
     *puResult = UINT_ERROR;
-
+    
     if (ullOperand <= UINT_MAX)
     {
         *puResult = (UINT)ullOperand;
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -673,7 +679,7 @@ ULongLongToUInt(
 // UINT_PTR -> UINT conversion
 // ULONG_PTR -> UINT conversion
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 
 #define UIntPtrToUInt  ULongLongToUInt
 #define ULongPtrToUInt ULongLongToUInt
@@ -774,7 +780,7 @@ ULongPtrToUInt(
 //
 // * -> UINT_PTR conversion (UINT_PTR is UINT on Win32, ULONGLONG on Win64)
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define CharToUIntPtr           CharToULongLong
 #define SignedCharToUIntPtr     SignedCharToULongLong
 #define ShortToUIntPtr          ShortToULongLong
@@ -810,7 +816,7 @@ ULongLongToUIntPtr(
     IN ULONGLONG ullOperand,
     OUT UINT_PTR* puResult)
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
 	*puResult = ullOperand;
 	return S_OK;
 #else
@@ -822,7 +828,7 @@ ULongLongToUIntPtr(
 //
 // UINT_PTR -> * conversion (UINT_PTR is UINT on Win32, ULONGLONG on Win64)
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define UIntPtrToUShort         ULongLongToUShort
 #define UIntPtrToInt            ULongLongToInt
 #define UIntPtrToLong           ULongLongToLong
@@ -867,7 +873,7 @@ UIntPtrToLong(
 //
 // * -> ULONG_PTR conversion (ULONG_PTR is ULONG on Win32, ULONGLONG on Win64)
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define CharToULongPtr          CharToULongLong
 #define SignedCharToULongPtr    SignedCharToULongLong
 #define ShortToULongPtr         ShortToULongLong
@@ -903,7 +909,7 @@ ULongLongToULongPtr(
     IN ULONGLONG ullOperand,
     OUT ULONG_PTR* pulResult)
 {
-#ifdef HOST_64BIT
+#ifdef BIT64
 	*pulResult = ullOperand;
 	return S_OK;
 #else
@@ -915,7 +921,7 @@ ULongLongToULongPtr(
 //
 // ULONG_PTR -> * conversion (ULONG_PTR is ULONG on Win32, ULONGLONG on Win64)
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define ULongPtrToUShort        ULongLongToUShort
 #define ULongPtrToInt           ULongLongToInt
 #define ULongPtrToLong          ULongLongToLong
@@ -1052,7 +1058,7 @@ UShortAdd(
         *pusResult = (usAugend + usAddend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1079,7 +1085,7 @@ UIntAdd(
         *puResult = (uAugend + uAddend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1106,14 +1112,14 @@ ULongAdd(
         *pulResult = (ulAugend + ulAddend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
 //
 // ULONG_PTR addition
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define ULongPtrAdd     ULongLongAdd
 #else
 __inline
@@ -1125,7 +1131,7 @@ ULongPtrAdd(
 {
 	return ULongAdd((ULONG)ulAugend, (ULONG)ulAddend, (ULONG*)pulResult);
 }
-#endif // HOST_64BIT
+#endif // BIT64
 
 //
 // DWORD addition
@@ -1155,7 +1161,7 @@ SizeTAdd(
         *pResult = (Augend + Addend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1182,7 +1188,7 @@ ULongLongAdd(
         *pullResult = (ullAugend + ullAddend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1204,7 +1210,7 @@ UShortSub(
         *pusResult = (usMinuend - usSubtrahend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1232,7 +1238,7 @@ UIntSub(
         *puResult = (uMinuend - uSubtrahend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1259,14 +1265,14 @@ ULongSub(
         *pulResult = (ulMinuend - ulSubtrahend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
 //
 // ULONG_PTR subtraction
 //
-#ifdef HOST_64BIT
+#ifdef BIT64
 #define ULongPtrSub ULongLongSub
 #else
 __inline
@@ -1278,7 +1284,7 @@ ULongPtrSub(
 {
 	return ULongSub((ULONG)ulMinuend, (ULONG)ulSubtrahend, (ULONG*)pulResult);
 }
-#endif // HOST_64BIT
+#endif // BIT64
 
 
 //
@@ -1309,7 +1315,7 @@ SizeTSub(
         *pResult = (Minuend - Subtrahend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1336,7 +1342,7 @@ ULongLongSub(
         *pullResult = (ullMinuend - ullSubtrahend);
         hr = S_OK;
     }
-
+    
     return hr;
 }
 
@@ -1351,7 +1357,7 @@ UShortMult(
     OUT USHORT* pusResult)
 {
     ULONG ulResult = ((ULONG)usMultiplicand) * (ULONG)usMultiplier;
-
+    
     return ULongToUShort(ulResult, pusResult);
 }
 
@@ -1386,7 +1392,7 @@ ULongMult(
     OUT ULONG* pulResult)
 {
     ULONGLONG ull64Result = UInt32x32To64(ulMultiplicand, ulMultiplier);
-
+    
     return ULongLongToULong(ull64Result, pulResult);
 }
 

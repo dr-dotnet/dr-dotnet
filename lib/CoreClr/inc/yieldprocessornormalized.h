@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #pragma once
 
@@ -12,59 +13,14 @@ FORCEINLINE void System_YieldProcessor() { YieldProcessor(); }
 #endif
 #define YieldProcessor Dont_Use_YieldProcessor
 
-#define DISABLE_COPY(T) \
-    T(const T &) = delete; \
-    T &operator =(const T &) = delete
+const unsigned int MinNsPerNormalizedYield = 37; // measured typically 37-46 on post-Skylake
+const unsigned int NsPerOptimalMaxSpinIterationDuration = 272; // approx. 900 cycles, measured 281 on pre-Skylake, 263 on post-Skylake
 
-#define DISABLE_CONSTRUCT_COPY(T) \
-    T() = delete; \
-    DISABLE_COPY(T)
+extern unsigned int g_yieldsPerNormalizedYield;
+extern unsigned int g_optimalMaxNormalizedYieldsPerSpinIteration;
 
-class YieldProcessorNormalization
-{
-public:
-    static const unsigned int TargetNsPerNormalizedYield = 37;
-    static const unsigned int TargetMaxNsPerSpinIteration = 272;
-
-    // These are maximums for the computed values for normalization based their calculation
-    static const unsigned int MaxYieldsPerNormalizedYield = TargetNsPerNormalizedYield * 10;
-    static const unsigned int MaxOptimalMaxNormalizedYieldsPerSpinIteration =
-        TargetMaxNsPerSpinIteration * 3 / (TargetNsPerNormalizedYield * 2) + 1;
-
-private:
-    static bool s_isMeasurementScheduled;
-
-    static unsigned int s_yieldsPerNormalizedYield;
-    static unsigned int s_optimalMaxNormalizedYieldsPerSpinIteration;
-
-public:
-    static bool IsMeasurementScheduled()
-    {
-        return s_isMeasurementScheduled;
-    }
-
-    static void PerformMeasurement();
-
-private:
-    static void ScheduleMeasurementIfNecessary();
-
-public:
-    static unsigned int GetOptimalMaxNormalizedYieldsPerSpinIteration()
-    {
-        return s_optimalMaxNormalizedYieldsPerSpinIteration;
-    }
-
-    static void FireMeasurementEvents();
-
-private:
-    static double AtomicLoad(double *valueRef);
-    static void AtomicStore(double *valueRef, double value);
-
-    DISABLE_CONSTRUCT_COPY(YieldProcessorNormalization);
-
-    friend class YieldProcessorNormalizationInfo;
-    friend void YieldProcessorNormalizedForPreSkylakeCount(unsigned int);
-};
+void InitializeYieldProcessorNormalizedCrst();
+void EnsureYieldProcessorNormalizedInitialized();
 
 class YieldProcessorNormalizationInfo
 {
@@ -75,14 +31,11 @@ private:
 
 public:
     YieldProcessorNormalizationInfo()
-        : yieldsPerNormalizedYield(YieldProcessorNormalization::s_yieldsPerNormalizedYield),
-        optimalMaxNormalizedYieldsPerSpinIteration(YieldProcessorNormalization::s_optimalMaxNormalizedYieldsPerSpinIteration),
+        : yieldsPerNormalizedYield(g_yieldsPerNormalizedYield),
+        optimalMaxNormalizedYieldsPerSpinIteration(g_optimalMaxNormalizedYieldsPerSpinIteration),
         optimalMaxYieldsPerSpinIteration(yieldsPerNormalizedYield * optimalMaxNormalizedYieldsPerSpinIteration)
     {
-        YieldProcessorNormalization::ScheduleMeasurementIfNecessary();
     }
-
-    DISABLE_COPY(YieldProcessorNormalizationInfo);
 
     friend void YieldProcessorNormalized(const YieldProcessorNormalizationInfo &);
     friend void YieldProcessorNormalized(const YieldProcessorNormalizationInfo &, unsigned int);
@@ -146,8 +99,9 @@ FORCEINLINE void YieldProcessorNormalized(const YieldProcessorNormalizationInfo 
 
     if (sizeof(SIZE_T) <= sizeof(unsigned int))
     {
-        // On platforms with a small SIZE_T, prevent overflow on the multiply below
-        const unsigned int MaxCount = UINT_MAX / YieldProcessorNormalization::MaxYieldsPerNormalizedYield;
+        // On platforms with a small SIZE_T, prevent overflow on the multiply below. normalizationInfo.yieldsPerNormalizedYield
+        // is limited to MinNsPerNormalizedYield by InitializeYieldProcessorNormalized().
+        const unsigned int MaxCount = UINT_MAX / MinNsPerNormalizedYield;
         if (count > MaxCount)
         {
             count = MaxCount;
@@ -191,8 +145,9 @@ FORCEINLINE void YieldProcessorNormalizedForPreSkylakeCount(
 
     if (sizeof(SIZE_T) <= sizeof(unsigned int))
     {
-        // On platforms with a small SIZE_T, prevent overflow on the multiply below
-        const unsigned int MaxCount = UINT_MAX / YieldProcessorNormalization::MaxYieldsPerNormalizedYield;
+        // On platforms with a small SIZE_T, prevent overflow on the multiply below. normalizationInfo.yieldsPerNormalizedYield
+        // is limited to MinNsPerNormalizedYield by InitializeYieldProcessorNormalized().
+        const unsigned int MaxCount = UINT_MAX / MinNsPerNormalizedYield;
         if (preSkylakeCount > MaxCount)
         {
             preSkylakeCount = MaxCount;
@@ -221,35 +176,7 @@ FORCEINLINE void YieldProcessorNormalizedForPreSkylakeCount(
 //     }
 FORCEINLINE void YieldProcessorNormalizedForPreSkylakeCount(unsigned int preSkylakeCount)
 {
-    // This function does not forward to the one above because it is used by some code under utilcode, where
-    // YieldProcessorNormalizationInfo cannot be used since normalization does not happen in some of its consumers. So this
-    // version uses the fields in YieldProcessorNormalization directly.
-
-    _ASSERTE(preSkylakeCount != 0);
-
-    if (sizeof(SIZE_T) <= sizeof(unsigned int))
-    {
-        // On platforms with a small SIZE_T, prevent overflow on the multiply below
-        const unsigned int MaxCount = UINT_MAX / YieldProcessorNormalization::MaxYieldsPerNormalizedYield;
-        if (preSkylakeCount > MaxCount)
-        {
-            preSkylakeCount = MaxCount;
-        }
-    }
-
-    const unsigned int PreSkylakeCountToSkylakeCountDivisor = 8;
-    SIZE_T n =
-        (SIZE_T)preSkylakeCount *
-        YieldProcessorNormalization::s_yieldsPerNormalizedYield /
-        PreSkylakeCountToSkylakeCountDivisor;
-    if (n == 0)
-    {
-        n = 1;
-    }
-    do
-    {
-        System_YieldProcessor();
-    } while (--n != 0);
+    YieldProcessorNormalizedForPreSkylakeCount(YieldProcessorNormalizationInfo(), preSkylakeCount);
 }
 
 // See YieldProcessorNormalized() for preliminary info. This function is to be used when there is a decent possibility that the
@@ -267,12 +194,15 @@ FORCEINLINE void YieldProcessorWithBackOffNormalized(
     const YieldProcessorNormalizationInfo &normalizationInfo,
     unsigned int spinIteration)
 {
-    // This shift value should be adjusted based on the asserted conditions below
+    // normalizationInfo.optimalMaxNormalizedYieldsPerSpinIteration cannot exceed the value below based on calculations done in
+    // InitializeYieldProcessorNormalized()
+    const unsigned int MaxOptimalMaxNormalizedYieldsPerSpinIteration =
+        NsPerOptimalMaxSpinIterationDuration * 3 / (MinNsPerNormalizedYield * 2) + 1;
+    _ASSERTE(normalizationInfo.optimalMaxNormalizedYieldsPerSpinIteration <= MaxOptimalMaxNormalizedYieldsPerSpinIteration);
+
+    // This shift value should be adjusted based on the asserted condition below
     const UINT8 MaxShift = 3;
-    static_assert_no_msg(
-        ((unsigned int)1 << MaxShift) <= YieldProcessorNormalization::MaxOptimalMaxNormalizedYieldsPerSpinIteration);
-    static_assert_no_msg(
-        ((unsigned int)1 << (MaxShift + 1)) > YieldProcessorNormalization::MaxOptimalMaxNormalizedYieldsPerSpinIteration);
+    static_assert_no_msg(((unsigned int)1 << (MaxShift + 1)) >= MaxOptimalMaxNormalizedYieldsPerSpinIteration);
 
     unsigned int n;
     if (spinIteration <= MaxShift &&
@@ -290,6 +220,3 @@ FORCEINLINE void YieldProcessorWithBackOffNormalized(
         System_YieldProcessor();
     } while (--n != 0);
 }
-
-#undef DISABLE_CONSTRUCT_COPY
-#undef DISABLE_COPY

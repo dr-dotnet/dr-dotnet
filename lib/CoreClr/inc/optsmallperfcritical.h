@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 //
 // Set optimizations settings for small performance critical methods
@@ -14,7 +15,7 @@
 
 #if defined(_MSC_VER) && !defined(_DEBUG)
  #pragma optimize("t", on)   // optimize for speed
- #if !defined(HOST_AMD64)   // 'y' isn't an option on amd64
+ #if !defined(_AMD64_)   // 'y' isn't an option on amd64
   #pragma optimize("y", on)   // omit frame pointer
- #endif // !defined(TARGET_AMD64)
-#endif
+ #endif // !defined(_TARGET_AMD64_)
+#endif 

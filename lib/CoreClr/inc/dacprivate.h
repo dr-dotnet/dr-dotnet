@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 //*****************************************************************************
 //
 // Internal data access functionality.
@@ -14,10 +15,10 @@
 #include <xclrdata.h>
 #include <sospriv.h>
 
-#ifndef TARGET_UNIX
+#ifndef FEATURE_PAL
 // It is unfortunate having to include this header just to get the definition of GenericModeBlock
 #include <msodw.h>
-#endif // TARGET_UNIX
+#endif // FEATURE_PAL
 
 //
 // Whenever a structure is marshalled between different platforms, we need to ensure the
@@ -36,12 +37,26 @@
 // want to go changing the layout of, for example, structures defined in OS header files
 // so we explicitly opt-in with this attribute.
 //
-#if defined(__GNUC__) && defined(HOST_X86)
+#ifdef __GNUC__
 #define MSLAYOUT __attribute__((__ms_struct__))
 #else
 #define MSLAYOUT
 #endif
 
+//----------------------------------------------------------------------------
+//
+// Utility class to allow for zero initialization of our Dacp- structs.
+//
+//----------------------------------------------------------------------------
+
+template <class T>
+struct ZeroInit
+{
+    ZeroInit()
+    { memset(static_cast<T*>(this), 0, sizeof(T)); }
+};
+
+    
 #include <livedatatarget.h>
 
 //----------------------------------------------------------------------------
@@ -66,39 +81,39 @@ enum
 };
 
 enum DacpObjectType { OBJ_STRING=0,OBJ_FREE,OBJ_OBJECT,OBJ_ARRAY,OBJ_OTHER };
-struct MSLAYOUT DacpObjectData
+struct MSLAYOUT DacpObjectData : ZeroInit<DacpObjectData>
 {
-    CLRDATA_ADDRESS MethodTable = 0;
-    DacpObjectType ObjectType = DacpObjectType::OBJ_STRING;
-    ULONG64 Size = 0;
-    CLRDATA_ADDRESS ElementTypeHandle = 0;
-    CorElementType ElementType = CorElementType::ELEMENT_TYPE_END;
-    DWORD dwRank = 0;
-    ULONG64 dwNumComponents = 0;
-    ULONG64 dwComponentSize = 0;
-    CLRDATA_ADDRESS ArrayDataPtr = 0;
-    CLRDATA_ADDRESS ArrayBoundsPtr = 0;
-    CLRDATA_ADDRESS ArrayLowerBoundsPtr = 0;
+    CLRDATA_ADDRESS MethodTable;
+    DacpObjectType ObjectType;
+    ULONG64 Size;
+    CLRDATA_ADDRESS ElementTypeHandle;
+    CorElementType ElementType;
+    DWORD dwRank;
+    ULONG64 dwNumComponents;
+    ULONG64 dwComponentSize;
+    CLRDATA_ADDRESS ArrayDataPtr;
+    CLRDATA_ADDRESS ArrayBoundsPtr;
+    CLRDATA_ADDRESS ArrayLowerBoundsPtr;
 
-    CLRDATA_ADDRESS RCW = 0;
-    CLRDATA_ADDRESS CCW = 0;
-
+    CLRDATA_ADDRESS RCW;
+    CLRDATA_ADDRESS CCW;
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
         return sos->GetObjectData(addr, this);
     }
 };
 
-struct MSLAYOUT DacpExceptionObjectData
+struct MSLAYOUT DacpExceptionObjectData : ZeroInit<DacpExceptionObjectData>
 {
-    CLRDATA_ADDRESS   Message = 0;
-    CLRDATA_ADDRESS   InnerException = 0;
-    CLRDATA_ADDRESS   StackTrace = 0;
-    CLRDATA_ADDRESS   WatsonBuckets = 0;
-    CLRDATA_ADDRESS   StackTraceString = 0;
-    CLRDATA_ADDRESS   RemoteStackTraceString = 0;
-    INT32             HResult = 0;
-    INT32             XCode = 0;
+    CLRDATA_ADDRESS   Message;
+    CLRDATA_ADDRESS   InnerException;
+    CLRDATA_ADDRESS   StackTrace;
+    CLRDATA_ADDRESS   WatsonBuckets;
+    CLRDATA_ADDRESS   StackTraceString;
+    CLRDATA_ADDRESS   RemoteStackTraceString;
+    INT32             HResult;
+    INT32             XCode;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -113,31 +128,31 @@ struct MSLAYOUT DacpExceptionObjectData
     }
 };
 
-struct MSLAYOUT DacpUsefulGlobalsData
+struct MSLAYOUT DacpUsefulGlobalsData : ZeroInit<DacpUsefulGlobalsData>
 {
-    CLRDATA_ADDRESS ArrayMethodTable = 0;
-    CLRDATA_ADDRESS StringMethodTable = 0;
-    CLRDATA_ADDRESS ObjectMethodTable = 0;
-    CLRDATA_ADDRESS ExceptionMethodTable = 0;
-    CLRDATA_ADDRESS FreeMethodTable = 0;
+    CLRDATA_ADDRESS ArrayMethodTable;
+    CLRDATA_ADDRESS StringMethodTable;
+    CLRDATA_ADDRESS ObjectMethodTable;
+    CLRDATA_ADDRESS ExceptionMethodTable;
+    CLRDATA_ADDRESS FreeMethodTable;
 };
 
-struct MSLAYOUT DacpFieldDescData
+struct MSLAYOUT DacpFieldDescData : ZeroInit<DacpFieldDescData>
 {
-    CorElementType Type = CorElementType::ELEMENT_TYPE_END;
-    CorElementType sigType = CorElementType::ELEMENT_TYPE_END;     // ELEMENT_TYPE_XXX from signature. We need this to disply pretty name for String in minidump's case
-    CLRDATA_ADDRESS MTOfType = 0; // NULL if Type is not loaded
-
-    CLRDATA_ADDRESS ModuleOfType = 0;
-    mdTypeDef TokenOfType = 0;
-
-    mdFieldDef mb = 0;
-    CLRDATA_ADDRESS MTOfEnclosingClass = 0;
-    DWORD dwOffset = 0;
-    BOOL bIsThreadLocal = FALSE;
-    BOOL bIsContextLocal = FALSE;
-    BOOL bIsStatic = FALSE;
-    CLRDATA_ADDRESS NextField = 0;
+    CorElementType Type;
+    CorElementType sigType;     // ELEMENT_TYPE_XXX from signature. We need this to disply pretty name for String in minidump's case
+    CLRDATA_ADDRESS MTOfType; // NULL if Type is not loaded
+    
+    CLRDATA_ADDRESS ModuleOfType;
+    mdTypeDef TokenOfType;
+    
+    mdFieldDef mb;
+    CLRDATA_ADDRESS MTOfEnclosingClass;
+    DWORD dwOffset;
+    BOOL bIsThreadLocal;
+    BOOL bIsContextLocal;
+    BOOL bIsStatic;
+    CLRDATA_ADDRESS NextField;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -145,27 +160,27 @@ struct MSLAYOUT DacpFieldDescData
     }
 };
 
-struct MSLAYOUT DacpMethodTableFieldData
+struct MSLAYOUT DacpMethodTableFieldData : ZeroInit<DacpMethodTableFieldData>
 {
-    WORD wNumInstanceFields = 0;
-    WORD wNumStaticFields = 0;
-    WORD wNumThreadStaticFields = 0;
+    WORD wNumInstanceFields;
+    WORD wNumStaticFields;
+    WORD wNumThreadStaticFields;
 
-    CLRDATA_ADDRESS FirstField = 0; // If non-null, you can retrieve more
-
-    WORD wContextStaticOffset = 0;
-    WORD wContextStaticsSize = 0;
-
+    CLRDATA_ADDRESS FirstField; // If non-null, you can retrieve more
+    
+    WORD wContextStaticOffset;
+    WORD wContextStaticsSize;
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
         return sos->GetMethodTableFieldData(addr, this);
     }
 };
 
-struct MSLAYOUT DacpMethodTableCollectibleData
+struct MSLAYOUT DacpMethodTableCollectibleData : ZeroInit<DacpMethodTableCollectibleData>
 {
-    CLRDATA_ADDRESS LoaderAllocatorObjectHandle = 0;
-    BOOL bCollectible = FALSE;
+    CLRDATA_ADDRESS LoaderAllocatorObjectHandle;
+    BOOL bCollectible;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -181,11 +196,11 @@ struct MSLAYOUT DacpMethodTableCollectibleData
     }
 };
 
-struct MSLAYOUT DacpMethodTableTransparencyData
+struct MSLAYOUT DacpMethodTableTransparencyData : ZeroInit<DacpMethodTableTransparencyData>
 {
-    BOOL bHasCriticalTransparentInfo = FALSE;
-    BOOL bIsCritical = FALSE;
-    BOOL bIsTreatAsSafe = FALSE;
+    BOOL bHasCriticalTransparentInfo;
+    BOOL bIsCritical;
+    BOOL bIsTreatAsSafe;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -193,17 +208,17 @@ struct MSLAYOUT DacpMethodTableTransparencyData
     }
 };
 
-struct MSLAYOUT DacpDomainLocalModuleData
+struct MSLAYOUT DacpDomainLocalModuleData : ZeroInit<DacpDomainLocalModuleData>
 {
     // These two parameters are used as input params when calling the
     // no-argument form of Request below.
-    CLRDATA_ADDRESS appDomainAddr = 0;
-    ULONG64  ModuleID = 0;
-
-    CLRDATA_ADDRESS pClassData = 0;
-    CLRDATA_ADDRESS pDynamicClassTable = 0;
-    CLRDATA_ADDRESS pGCStaticDataStart = 0;
-    CLRDATA_ADDRESS pNonGCStaticDataStart = 0;
+    CLRDATA_ADDRESS appDomainAddr;
+    ULONG64  ModuleID;
+    
+    CLRDATA_ADDRESS pClassData;   
+    CLRDATA_ADDRESS pDynamicClassTable;   
+    CLRDATA_ADDRESS pGCStaticDataStart;
+    CLRDATA_ADDRESS pNonGCStaticDataStart; 
 
     // Called when you have a pointer to the DomainLocalModule
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
@@ -213,52 +228,52 @@ struct MSLAYOUT DacpDomainLocalModuleData
 };
 
 
-struct MSLAYOUT DacpThreadLocalModuleData
+struct MSLAYOUT DacpThreadLocalModuleData : ZeroInit<DacpThreadLocalModuleData>
 {
     // These two parameters are used as input params when calling the
     // no-argument form of Request below.
-    CLRDATA_ADDRESS threadAddr = 0;
-    ULONG64 ModuleIndex = 0;
-
-    CLRDATA_ADDRESS pClassData = 0;
-    CLRDATA_ADDRESS pDynamicClassTable = 0;
-    CLRDATA_ADDRESS pGCStaticDataStart = 0;
-    CLRDATA_ADDRESS pNonGCStaticDataStart = 0;
+    CLRDATA_ADDRESS threadAddr;
+    ULONG64 ModuleIndex;
+    
+    CLRDATA_ADDRESS pClassData;   
+    CLRDATA_ADDRESS pDynamicClassTable;   
+    CLRDATA_ADDRESS pGCStaticDataStart;
+    CLRDATA_ADDRESS pNonGCStaticDataStart;
 };
 
 
-struct MSLAYOUT DacpModuleData
+struct MSLAYOUT DacpModuleData : ZeroInit<DacpModuleData>
 {
-    CLRDATA_ADDRESS Address = 0;
-    CLRDATA_ADDRESS File = 0; // A PEFile addr
-    CLRDATA_ADDRESS  ilBase = 0;
-    CLRDATA_ADDRESS metadataStart = 0;
-    ULONG64 metadataSize = 0;
-    CLRDATA_ADDRESS Assembly = 0; // Assembly pointer
-    BOOL bIsReflection = FALSE;
-    BOOL bIsPEFile = FALSE;
-    ULONG64 dwBaseClassIndex = 0;
-    ULONG64 dwModuleID = 0;
+    CLRDATA_ADDRESS Address;
+    CLRDATA_ADDRESS File; // A PEFile addr
+    CLRDATA_ADDRESS  ilBase;
+    CLRDATA_ADDRESS metadataStart;
+    ULONG64 metadataSize;
+    CLRDATA_ADDRESS Assembly; // Assembly pointer
+    BOOL bIsReflection;
+    BOOL bIsPEFile;
+    ULONG64 dwBaseClassIndex;
+    ULONG64 dwModuleID;
 
-    DWORD dwTransientFlags = 0;
+    DWORD dwTransientFlags;
+    
+    CLRDATA_ADDRESS TypeDefToMethodTableMap;
+    CLRDATA_ADDRESS TypeRefToMethodTableMap;
+    CLRDATA_ADDRESS MethodDefToDescMap;
+    CLRDATA_ADDRESS FieldDefToDescMap;
+    CLRDATA_ADDRESS MemberRefToDescMap;
+    CLRDATA_ADDRESS FileReferencesMap;
+    CLRDATA_ADDRESS ManifestModuleReferencesMap;
 
-    CLRDATA_ADDRESS TypeDefToMethodTableMap = 0;
-    CLRDATA_ADDRESS TypeRefToMethodTableMap = 0;
-    CLRDATA_ADDRESS MethodDefToDescMap = 0;
-    CLRDATA_ADDRESS FieldDefToDescMap = 0;
-    CLRDATA_ADDRESS MemberRefToDescMap = 0;
-    CLRDATA_ADDRESS FileReferencesMap = 0;
-    CLRDATA_ADDRESS ManifestModuleReferencesMap = 0;
+    CLRDATA_ADDRESS pLookupTableHeap;
+    CLRDATA_ADDRESS pThunkHeap;
 
-    CLRDATA_ADDRESS pLookupTableHeap = 0;
-    CLRDATA_ADDRESS pThunkHeap = 0;
-
-    ULONG64 dwModuleIndex = 0;
+    ULONG64 dwModuleIndex;
 
     DacpModuleData()
     {
     }
-
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
         return sos->GetModuleData(addr, this);
@@ -270,23 +285,23 @@ private:
     void operator=(const DacpModuleData&);
 };
 
-struct MSLAYOUT DacpMethodTableData
+struct MSLAYOUT DacpMethodTableData : ZeroInit<DacpMethodTableData>
 {
-    BOOL bIsFree = FALSE; // everything else is NULL if this is true.
-    CLRDATA_ADDRESS Module = 0;
-    CLRDATA_ADDRESS Class = 0;
-    CLRDATA_ADDRESS ParentMethodTable = 0;
-    WORD wNumInterfaces = 0;
-    WORD wNumMethods = 0;
-    WORD wNumVtableSlots = 0;
-    WORD wNumVirtuals = 0;
-    DWORD BaseSize = 0;
-    DWORD ComponentSize = 0;
-    mdTypeDef cl = 0; // Metadata token
-    DWORD dwAttrClass = 0; // cached metadata
-    BOOL bIsShared = FALSE;  // Always false, preserved for backward compatibility
-    BOOL bIsDynamic = FALSE;
-    BOOL bContainsPointers = FALSE;
+    BOOL bIsFree; // everything else is NULL if this is true.
+    CLRDATA_ADDRESS Module;
+    CLRDATA_ADDRESS Class;
+    CLRDATA_ADDRESS ParentMethodTable;
+    WORD wNumInterfaces;
+    WORD wNumMethods;
+    WORD wNumVtableSlots;
+    WORD wNumVirtuals;
+    DWORD BaseSize;
+    DWORD ComponentSize;
+    mdTypeDef cl; // Metadata token    
+    DWORD dwAttrClass; // cached metadata
+    BOOL bIsShared;  // Always false, preserved for backward compatibility
+    BOOL bIsDynamic;
+    BOOL bContainsPointers;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -306,17 +321,17 @@ struct MSLAYOUT DacpMethodTableData
 #define CLRSECURITYHOSTED                           0x80
 #define CLRHOSTED           0x80000000
 
-struct MSLAYOUT DacpThreadStoreData
+struct MSLAYOUT DacpThreadStoreData : ZeroInit<DacpThreadStoreData>
 {
-    LONG threadCount = 0;
-    LONG unstartedThreadCount = 0;
-    LONG backgroundThreadCount = 0;
-    LONG pendingThreadCount = 0;
-    LONG deadThreadCount = 0;
-    CLRDATA_ADDRESS firstThread = 0;
-    CLRDATA_ADDRESS finalizerThread = 0;
-    CLRDATA_ADDRESS gcThread = 0;
-    DWORD fHostConfig = 0;          // Uses hosting flags defined above
+    LONG threadCount;
+    LONG unstartedThreadCount;
+    LONG backgroundThreadCount;
+    LONG pendingThreadCount;
+    LONG deadThreadCount;
+    CLRDATA_ADDRESS firstThread;
+    CLRDATA_ADDRESS finalizerThread;
+    CLRDATA_ADDRESS gcThread;
+    DWORD fHostConfig;          // Uses hosting flags defined above
 
     HRESULT Request(ISOSDacInterface *sos)
     {
@@ -324,11 +339,11 @@ struct MSLAYOUT DacpThreadStoreData
     }
 };
 
-struct MSLAYOUT DacpAppDomainStoreData
+struct MSLAYOUT DacpAppDomainStoreData : ZeroInit<DacpAppDomainStoreData>
 {
-    CLRDATA_ADDRESS sharedDomain = 0;
-    CLRDATA_ADDRESS systemDomain = 0;
-    LONG DomainCount = 0;
+    CLRDATA_ADDRESS sharedDomain;
+    CLRDATA_ADDRESS systemDomain;
+    LONG DomainCount;
 
     HRESULT Request(ISOSDacInterface *sos)
     {
@@ -336,33 +351,33 @@ struct MSLAYOUT DacpAppDomainStoreData
     }
 };
 
-struct MSLAYOUT DacpCOMInterfacePointerData
+struct MSLAYOUT DacpCOMInterfacePointerData : ZeroInit<DacpCOMInterfacePointerData>
 {
-    CLRDATA_ADDRESS methodTable = 0;
-    CLRDATA_ADDRESS interfacePtr = 0;
-    CLRDATA_ADDRESS comContext = 0;
+    CLRDATA_ADDRESS methodTable;
+    CLRDATA_ADDRESS interfacePtr;
+    CLRDATA_ADDRESS comContext;
 };
 
-struct MSLAYOUT DacpRCWData
+struct MSLAYOUT DacpRCWData : ZeroInit<DacpRCWData>
 {
-    CLRDATA_ADDRESS identityPointer = 0;
-    CLRDATA_ADDRESS unknownPointer = 0;
-    CLRDATA_ADDRESS managedObject = 0;
-    CLRDATA_ADDRESS jupiterObject = 0;
-    CLRDATA_ADDRESS vtablePtr = 0;
-    CLRDATA_ADDRESS creatorThread = 0;
-    CLRDATA_ADDRESS ctxCookie = 0;
+    CLRDATA_ADDRESS identityPointer;
+    CLRDATA_ADDRESS unknownPointer;
+    CLRDATA_ADDRESS managedObject;
+    CLRDATA_ADDRESS jupiterObject;
+    CLRDATA_ADDRESS vtablePtr;
+    CLRDATA_ADDRESS creatorThread;
+    CLRDATA_ADDRESS ctxCookie;
+    
+    LONG refCount;
+    LONG interfaceCount;
 
-    LONG refCount = 0;
-    LONG interfaceCount = 0;
-
-    BOOL isJupiterObject = FALSE;
-    BOOL supportsIInspectable = FALSE;
-    BOOL isAggregated = FALSE;
-    BOOL isContained = FALSE;
-    BOOL isFreeThreaded = FALSE;
-    BOOL isDisconnected = FALSE;
-
+    BOOL isJupiterObject;
+    BOOL supportsIInspectable;
+    BOOL isAggregated;
+    BOOL isContained;
+    BOOL isFreeThreaded;
+    BOOL isDisconnected;
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS rcw)
     {
         return sos->GetRCWData(rcw, this);
@@ -382,24 +397,24 @@ struct MSLAYOUT DacpRCWData
     }
 };
 
-struct MSLAYOUT DacpCCWData
+struct MSLAYOUT DacpCCWData : ZeroInit<DacpCCWData>
 {
-    CLRDATA_ADDRESS outerIUnknown = 0;
-    CLRDATA_ADDRESS managedObject = 0;
-    CLRDATA_ADDRESS handle = 0;
-    CLRDATA_ADDRESS ccwAddress = 0;
+    CLRDATA_ADDRESS outerIUnknown;
+    CLRDATA_ADDRESS managedObject;
+    CLRDATA_ADDRESS handle;
+    CLRDATA_ADDRESS ccwAddress;
 
-    LONG refCount = 0;
-    LONG interfaceCount = 0;
-    BOOL isNeutered = FALSE;
+    LONG refCount;
+    LONG interfaceCount;
+    BOOL isNeutered;
 
-    LONG jupiterRefCount = 0;
-    BOOL isPegged = FALSE;
-    BOOL isGlobalPegged = FALSE;
-    BOOL hasStrongRef = FALSE;
-    BOOL isExtendsCOMObject = FALSE;
-    BOOL isAggregated = FALSE;
-
+    LONG jupiterRefCount;
+    BOOL isPegged;
+    BOOL isGlobalPegged;
+    BOOL hasStrongRef;
+    BOOL isExtendsCOMObject;
+    BOOL isAggregated;
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS ccw)
     {
         return sos->GetCCWData(ccw, this);
@@ -423,42 +438,42 @@ enum DacpAppDomainDataStage {
 };
 
 // Information about a BaseDomain (AppDomain, SharedDomain or SystemDomain).
-// For types other than AppDomain, some fields (like dwID, DomainLocalBlock, etc.) will be 0/null.
-struct MSLAYOUT DacpAppDomainData
+// For types other than AppDomain, some fields (like dwID, DomainLocalBlock, etc.) will be 0/null. 
+struct MSLAYOUT DacpAppDomainData : ZeroInit<DacpAppDomainData>
 {
-    // The pointer to the BaseDomain (not necessarily an AppDomain).
+    // The pointer to the BaseDomain (not necessarily an AppDomain).  
     // It's useful to keep this around in the structure
-    CLRDATA_ADDRESS AppDomainPtr = 0;
-    CLRDATA_ADDRESS AppSecDesc = 0;
-    CLRDATA_ADDRESS pLowFrequencyHeap = 0;
-    CLRDATA_ADDRESS pHighFrequencyHeap = 0;
-    CLRDATA_ADDRESS pStubHeap = 0;
-    CLRDATA_ADDRESS DomainLocalBlock = 0;
-    CLRDATA_ADDRESS pDomainLocalModules = 0;
+    CLRDATA_ADDRESS AppDomainPtr; 
+    CLRDATA_ADDRESS AppSecDesc;
+    CLRDATA_ADDRESS pLowFrequencyHeap;
+    CLRDATA_ADDRESS pHighFrequencyHeap;
+    CLRDATA_ADDRESS pStubHeap;
+    CLRDATA_ADDRESS DomainLocalBlock;
+    CLRDATA_ADDRESS pDomainLocalModules;    
     // The creation sequence number of this app domain (starting from 1)
-    DWORD dwId = 0;
-    LONG AssemblyCount = 0;
-    LONG FailedAssemblyCount = 0;
-    DacpAppDomainDataStage appDomainStage = DacpAppDomainDataStage::STAGE_CREATING;
-
+    DWORD dwId;
+    LONG AssemblyCount;
+    LONG FailedAssemblyCount;
+    DacpAppDomainDataStage appDomainStage; 
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
         return sos->GetAppDomainData(addr, this);
     }
 };
 
-struct MSLAYOUT DacpAssemblyData
+struct MSLAYOUT DacpAssemblyData : ZeroInit<DacpAssemblyData>
 {
-    CLRDATA_ADDRESS AssemblyPtr = 0; //useful to have
-    CLRDATA_ADDRESS ClassLoader = 0;
-    CLRDATA_ADDRESS ParentDomain = 0;
-    CLRDATA_ADDRESS BaseDomainPtr = 0;
-    CLRDATA_ADDRESS AssemblySecDesc = 0;
-    BOOL isDynamic = FALSE;
-    UINT ModuleCount = FALSE;
-    UINT LoadContext = FALSE;
-    BOOL isDomainNeutral = FALSE; // Always false, preserved for backward compatibility
-    DWORD dwLocationFlags = 0;
+    CLRDATA_ADDRESS AssemblyPtr; //useful to have
+    CLRDATA_ADDRESS ClassLoader;
+    CLRDATA_ADDRESS ParentDomain;
+    CLRDATA_ADDRESS BaseDomainPtr;
+    CLRDATA_ADDRESS AssemblySecDesc;
+    BOOL isDynamic;
+    UINT ModuleCount;
+    UINT LoadContext;
+    BOOL isDomainNeutral; // Always false, preserved for backward compatibility
+    DWORD dwLocationFlags;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr, CLRDATA_ADDRESS baseDomainPtr)
     {
@@ -472,23 +487,23 @@ struct MSLAYOUT DacpAssemblyData
 };
 
 
-struct MSLAYOUT DacpThreadData
+struct MSLAYOUT DacpThreadData : ZeroInit<DacpThreadData>
 {
-    DWORD corThreadId = 0;
-    DWORD osThreadId = 0;
-    int state = 0;
-    ULONG preemptiveGCDisabled = 0;
-    CLRDATA_ADDRESS allocContextPtr = 0;
-    CLRDATA_ADDRESS allocContextLimit = 0;
-    CLRDATA_ADDRESS context = 0;
-    CLRDATA_ADDRESS domain = 0;
-    CLRDATA_ADDRESS pFrame = 0;
-    DWORD lockCount = 0;
-    CLRDATA_ADDRESS firstNestedException = 0; // Pass this pointer to DacpNestedExceptionInfo
-    CLRDATA_ADDRESS teb = 0;
-    CLRDATA_ADDRESS fiberData = 0;
-    CLRDATA_ADDRESS lastThrownObjectHandle = 0;
-    CLRDATA_ADDRESS nextThread = 0;
+    DWORD corThreadId;
+    DWORD osThreadId;
+    int state;
+    ULONG preemptiveGCDisabled;
+    CLRDATA_ADDRESS allocContextPtr;
+    CLRDATA_ADDRESS allocContextLimit;
+    CLRDATA_ADDRESS context;
+    CLRDATA_ADDRESS domain;
+    CLRDATA_ADDRESS pFrame;
+    DWORD lockCount;
+    CLRDATA_ADDRESS firstNestedException; // Pass this pointer to DacpNestedExceptionInfo
+    CLRDATA_ADDRESS teb;
+    CLRDATA_ADDRESS fiberData;
+    CLRDATA_ADDRESS lastThrownObjectHandle;
+    CLRDATA_ADDRESS nextThread;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -497,7 +512,7 @@ struct MSLAYOUT DacpThreadData
 };
 
 
-struct MSLAYOUT DacpReJitData
+struct MSLAYOUT DacpReJitData : ZeroInit<DacpReJitData>
 {
     enum Flags
     {
@@ -507,76 +522,47 @@ struct MSLAYOUT DacpReJitData
         kReverted,
     };
 
-    CLRDATA_ADDRESS                 rejitID = 0;
-    Flags                           flags = Flags::kUnknown;
-    CLRDATA_ADDRESS                 NativeCodeAddr = 0;
+    CLRDATA_ADDRESS                 rejitID;
+    Flags                           flags;
+    CLRDATA_ADDRESS                 NativeCodeAddr;
 };
 
-struct MSLAYOUT DacpReJitData2
+
+struct MSLAYOUT DacpMethodDescData : ZeroInit<DacpMethodDescData>
 {
-    enum Flags
-    {
-        kUnknown,
-        kRequested,
-        kActive,
-        kReverted,
-    };
-
-    ULONG                           rejitID = 0;
-    Flags                           flags = Flags::kUnknown;
-    CLRDATA_ADDRESS                 il = 0;
-    CLRDATA_ADDRESS                 ilCodeVersionNodePtr = 0;
-};
-
-struct MSLAYOUT DacpProfilerILData
-{
-    enum ModificationType
-    {
-        Unmodified,
-        ILModified,
-        ReJITModified,
-    };
-
-    ModificationType                type = ModificationType::Unmodified;
-    CLRDATA_ADDRESS                 il = 0;
-    ULONG                           rejitID = 0;
-};
-
-struct MSLAYOUT DacpMethodDescData
-{
-    BOOL            bHasNativeCode = FALSE;
-    BOOL            bIsDynamic = FALSE;
-    WORD            wSlotNumber = 0;
-    CLRDATA_ADDRESS NativeCodeAddr = 0;
+    BOOL            bHasNativeCode;
+    BOOL            bIsDynamic;
+    WORD            wSlotNumber;
+    CLRDATA_ADDRESS NativeCodeAddr;
     // Useful for breaking when a method is jitted.
-    CLRDATA_ADDRESS AddressOfNativeCodeSlot = 0;
-
-    CLRDATA_ADDRESS MethodDescPtr = 0;
-    CLRDATA_ADDRESS MethodTablePtr = 0;
-    CLRDATA_ADDRESS ModulePtr = 0;
-
-    mdToken                  MDToken = 0;
-    CLRDATA_ADDRESS GCInfo = 0;
-    CLRDATA_ADDRESS GCStressCodeCopy = 0;
+    CLRDATA_ADDRESS AddressOfNativeCodeSlot;
+    
+    CLRDATA_ADDRESS MethodDescPtr;
+    CLRDATA_ADDRESS MethodTablePtr;
+    CLRDATA_ADDRESS ModulePtr;
+    
+    mdToken                  MDToken;
+    CLRDATA_ADDRESS GCInfo;
+    CLRDATA_ADDRESS GCStressCodeCopy;
 
     // This is only valid if bIsDynamic is true
-    CLRDATA_ADDRESS managedDynamicMethodObject = 0;
+    CLRDATA_ADDRESS managedDynamicMethodObject;
 
-    CLRDATA_ADDRESS requestedIP = 0;
+    CLRDATA_ADDRESS requestedIP;
 
     // Gives info for the single currently active version of a method
-    DacpReJitData       rejitDataCurrent = {};
+    DacpReJitData       rejitDataCurrent;
 
     // Gives info corresponding to requestedIP (for !ip2md)
-    DacpReJitData       rejitDataRequested = {};
-
+    DacpReJitData       rejitDataRequested;
+    
     // Total number of rejit versions that have been jitted
-    ULONG               cJittedRejitVersions = 0;
+    ULONG               cJittedRejitVersions;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
         return sos->GetMethodDescData(
-            addr,
+            addr, 
             NULL,   // IP address
             this,
             0,      // cRejitData
@@ -587,11 +573,11 @@ struct MSLAYOUT DacpMethodDescData
 };
 
 
-struct MSLAYOUT DacpMethodDescTransparencyData
+struct MSLAYOUT DacpMethodDescTransparencyData : ZeroInit<DacpMethodDescTransparencyData>
 {
-    BOOL            bHasCriticalTransparentInfo = FALSE;
-    BOOL            bIsCritical = FALSE;
-    BOOL            bIsTreatAsSafe = FALSE;
+    BOOL            bHasCriticalTransparentInfo;
+    BOOL            bIsCritical;
+    BOOL            bIsTreatAsSafe;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
@@ -610,7 +596,7 @@ struct MSLAYOUT DacpTieredVersionData
         OptimizationTier_OptimizedTier1,
         OptimizationTier_ReadyToRun,
     };
-
+    
     CLRDATA_ADDRESS NativeCodeAddr;
     OptimizationTier OptimizationTier;
     CLRDATA_ADDRESS NativeCodeVersionNodePtr;
@@ -619,128 +605,128 @@ struct MSLAYOUT DacpTieredVersionData
 // for JITType
 enum JITTypes {TYPE_UNKNOWN=0,TYPE_JIT,TYPE_PJIT};
 
-struct MSLAYOUT DacpCodeHeaderData
-{
-    CLRDATA_ADDRESS GCInfo = 0;
-    JITTypes                   JITType = JITTypes::TYPE_UNKNOWN;
-    CLRDATA_ADDRESS MethodDescPtr = 0;
-    CLRDATA_ADDRESS MethodStart = 0;
-    DWORD                    MethodSize = 0;
-    CLRDATA_ADDRESS ColdRegionStart = 0;
-    DWORD           ColdRegionSize = 0;
-    DWORD           HotRegionSize = 0;
-
+struct MSLAYOUT DacpCodeHeaderData : ZeroInit<DacpCodeHeaderData>
+{        
+    CLRDATA_ADDRESS GCInfo;
+    JITTypes                   JITType;
+    CLRDATA_ADDRESS MethodDescPtr;
+    CLRDATA_ADDRESS MethodStart;
+    DWORD                    MethodSize;
+    CLRDATA_ADDRESS ColdRegionStart;
+    DWORD           ColdRegionSize;
+    DWORD           HotRegionSize;
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS IPAddr)
     {
         return sos->GetCodeHeaderData(IPAddr, this);
     }
 };
 
-struct MSLAYOUT DacpWorkRequestData
+struct MSLAYOUT DacpWorkRequestData : ZeroInit<DacpWorkRequestData>
 {
-    CLRDATA_ADDRESS Function = 0;
-    CLRDATA_ADDRESS Context = 0;
-    CLRDATA_ADDRESS NextWorkRequest = 0;
-
+    CLRDATA_ADDRESS Function;
+    CLRDATA_ADDRESS Context;
+    CLRDATA_ADDRESS NextWorkRequest;
+        
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr)
     {
         return sos->GetWorkRequestData(addr, this);
     }
 };
 
-struct MSLAYOUT DacpHillClimbingLogEntry
+struct MSLAYOUT DacpHillClimbingLogEntry : ZeroInit<DacpHillClimbingLogEntry>
 {
-    DWORD TickCount = 0;
-    int Transition = 0;
-    int NewControlSetting = 0;
-    int LastHistoryCount = 0;
-    double LastHistoryMean = 0;
-
+    DWORD TickCount;
+    int Transition;
+    int NewControlSetting;
+    int LastHistoryCount;
+    double LastHistoryMean;
+    
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS entry)
     {
-        return sos->GetHillClimbingLogEntry(entry, this);
+        return sos->GetHillClimbingLogEntry(entry, this);   
     }
 };
 
 
 // Used for CLR versions >= 4.0
-struct MSLAYOUT DacpThreadpoolData
+struct MSLAYOUT DacpThreadpoolData : ZeroInit<DacpThreadpoolData>
 {
-    LONG cpuUtilization = 0;
-    int NumIdleWorkerThreads = 0;
-    int NumWorkingWorkerThreads = 0;
-    int NumRetiredWorkerThreads = 0;
-    LONG MinLimitTotalWorkerThreads = 0;
-    LONG MaxLimitTotalWorkerThreads = 0;
+    LONG cpuUtilization;    
+    int NumIdleWorkerThreads;
+    int NumWorkingWorkerThreads;
+    int NumRetiredWorkerThreads;
+    LONG MinLimitTotalWorkerThreads;
+    LONG MaxLimitTotalWorkerThreads;
 
-    CLRDATA_ADDRESS FirstUnmanagedWorkRequest = 0;
+    CLRDATA_ADDRESS FirstUnmanagedWorkRequest;
 
-    CLRDATA_ADDRESS HillClimbingLog = 0;
-    int HillClimbingLogFirstIndex = 0;
-    int HillClimbingLogSize = 0;
+    CLRDATA_ADDRESS HillClimbingLog;
+    int HillClimbingLogFirstIndex;
+    int HillClimbingLogSize;
 
-    DWORD NumTimers = 0;
+    DWORD NumTimers;
     // TODO: Add support to enumerate timers too.
 
-    LONG   NumCPThreads = 0;
-    LONG   NumFreeCPThreads = 0;
-    LONG   MaxFreeCPThreads = 0;
-    LONG   NumRetiredCPThreads = 0;
-    LONG   MaxLimitTotalCPThreads = 0;
-    LONG   CurrentLimitTotalCPThreads = 0;
-    LONG   MinLimitTotalCPThreads = 0;
+    LONG   NumCPThreads;
+    LONG   NumFreeCPThreads;
+    LONG   MaxFreeCPThreads; 
+    LONG   NumRetiredCPThreads;
+    LONG   MaxLimitTotalCPThreads;
+    LONG   CurrentLimitTotalCPThreads;
+    LONG   MinLimitTotalCPThreads;
 
-    CLRDATA_ADDRESS AsyncTimerCallbackCompletionFPtr = 0;
-
+    CLRDATA_ADDRESS AsyncTimerCallbackCompletionFPtr;
+    
     HRESULT Request(ISOSDacInterface *sos)
     {
         return sos->GetThreadpoolData(this);
     }
 };
 
-struct MSLAYOUT DacpGenerationData
-{
-    CLRDATA_ADDRESS start_segment = 0;
-    CLRDATA_ADDRESS allocation_start = 0;
+struct MSLAYOUT DacpGenerationData : ZeroInit<DacpGenerationData>
+{    
+    CLRDATA_ADDRESS start_segment;
+    CLRDATA_ADDRESS allocation_start;
 
     // These are examined only for generation 0, otherwise NULL
-    CLRDATA_ADDRESS allocContextPtr = 0;
-    CLRDATA_ADDRESS allocContextLimit = 0;
+    CLRDATA_ADDRESS allocContextPtr;
+    CLRDATA_ADDRESS allocContextLimit;
 };
 
 #define DAC_NUMBERGENERATIONS 4
 
 
-struct MSLAYOUT DacpAllocData
+struct MSLAYOUT DacpAllocData : ZeroInit<DacpAllocData>
 {
-    CLRDATA_ADDRESS allocBytes = 0;
-    CLRDATA_ADDRESS allocBytesLoh = 0;
+    CLRDATA_ADDRESS allocBytes;
+    CLRDATA_ADDRESS allocBytesLoh;
 };
 
-struct MSLAYOUT DacpGenerationAllocData
+struct MSLAYOUT DacpGenerationAllocData : ZeroInit<DacpGenerationAllocData>
 {
-    DacpAllocData allocData[DAC_NUMBERGENERATIONS] = {};
+    DacpAllocData allocData[DAC_NUMBERGENERATIONS]; 
 };
 
-struct MSLAYOUT DacpGcHeapDetails
+struct MSLAYOUT DacpGcHeapDetails : ZeroInit<DacpGcHeapDetails>
 {
-    CLRDATA_ADDRESS heapAddr = 0; // Only filled in in server mode, otherwise NULL
-    CLRDATA_ADDRESS alloc_allocated = 0;
+    CLRDATA_ADDRESS heapAddr; // Only filled in in server mode, otherwise NULL
+    CLRDATA_ADDRESS alloc_allocated;
 
-    CLRDATA_ADDRESS mark_array = 0;
-    CLRDATA_ADDRESS current_c_gc_state = 0;
-    CLRDATA_ADDRESS next_sweep_obj = 0;
-    CLRDATA_ADDRESS saved_sweep_ephemeral_seg = 0;
-    CLRDATA_ADDRESS saved_sweep_ephemeral_start = 0;
-    CLRDATA_ADDRESS background_saved_lowest_address = 0;
-    CLRDATA_ADDRESS background_saved_highest_address = 0;
+    CLRDATA_ADDRESS mark_array;
+    CLRDATA_ADDRESS current_c_gc_state;
+    CLRDATA_ADDRESS next_sweep_obj;
+    CLRDATA_ADDRESS saved_sweep_ephemeral_seg;
+    CLRDATA_ADDRESS saved_sweep_ephemeral_start;
+    CLRDATA_ADDRESS background_saved_lowest_address;
+    CLRDATA_ADDRESS background_saved_highest_address;
 
-    DacpGenerationData generation_table [DAC_NUMBERGENERATIONS] = {};
-    CLRDATA_ADDRESS ephemeral_heap_segment = 0;
-    CLRDATA_ADDRESS finalization_fill_pointers [DAC_NUMBERGENERATIONS + 3] = {};
-    CLRDATA_ADDRESS lowest_address = 0;
-    CLRDATA_ADDRESS highest_address = 0;
-    CLRDATA_ADDRESS card_table = 0;
+    DacpGenerationData generation_table [DAC_NUMBERGENERATIONS]; 
+    CLRDATA_ADDRESS ephemeral_heap_segment;        
+    CLRDATA_ADDRESS finalization_fill_pointers [DAC_NUMBERGENERATIONS + 3];
+    CLRDATA_ADDRESS lowest_address;
+    CLRDATA_ADDRESS highest_address;
+    CLRDATA_ADDRESS card_table;
 
     // Use this for workstation mode (DacpGcHeapDat.bServerMode==FALSE).
     HRESULT Request(ISOSDacInterface *sos)
@@ -757,12 +743,13 @@ struct MSLAYOUT DacpGcHeapDetails
 };
 
 struct MSLAYOUT DacpGcHeapData
+    : ZeroInit<DacpGcHeapData>
 {
-    BOOL bServerMode = FALSE;
-    BOOL bGcStructuresValid = FALSE;
-    UINT HeapCount = 0;
-    UINT g_max_generation = 0;
-
+    BOOL bServerMode;
+    BOOL bGcStructuresValid;
+    UINT HeapCount;
+    UINT g_max_generation;
+    
     HRESULT Request(ISOSDacInterface *sos)
     {
         return sos->GetGCHeapData(this);
@@ -770,21 +757,22 @@ struct MSLAYOUT DacpGcHeapData
 };
 
 struct MSLAYOUT DacpHeapSegmentData
+    : ZeroInit<DacpHeapSegmentData>
 {
-    CLRDATA_ADDRESS segmentAddr = 0;
-    CLRDATA_ADDRESS allocated = 0;
-    CLRDATA_ADDRESS committed = 0;
-    CLRDATA_ADDRESS reserved = 0;
-    CLRDATA_ADDRESS used = 0;
-    CLRDATA_ADDRESS mem = 0;
+    CLRDATA_ADDRESS segmentAddr;
+    CLRDATA_ADDRESS allocated;
+    CLRDATA_ADDRESS committed;
+    CLRDATA_ADDRESS reserved;
+    CLRDATA_ADDRESS used;
+    CLRDATA_ADDRESS mem;
     // pass this to request if non-null to get the next segments.
-    CLRDATA_ADDRESS next = 0;
-    CLRDATA_ADDRESS gc_heap = 0; // only filled in in server mode, otherwise NULL
+    CLRDATA_ADDRESS next;
+    CLRDATA_ADDRESS gc_heap; // only filled in in server mode, otherwise NULL
     // computed field: if this is the ephemeral segment highMark includes the ephemeral generation
-    CLRDATA_ADDRESS highAllocMark = 0;
+    CLRDATA_ADDRESS highAllocMark;
 
-    size_t flags = 0;
-    CLRDATA_ADDRESS background_allocated = 0;
+    size_t flags;
+    CLRDATA_ADDRESS background_allocated;
 
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS addr, const DacpGcHeapDetails& heap)
     {
@@ -798,20 +786,20 @@ struct MSLAYOUT DacpHeapSegmentData
                 highAllocMark = heap.alloc_allocated;
             else
                 highAllocMark = allocated;
-        }
+        }    
         return hr;
     }
 };
 
-struct MSLAYOUT DacpOomData
+struct MSLAYOUT DacpOomData : ZeroInit<DacpOomData>
 {
-    int reason = 0;
-    ULONG64 alloc_size = 0;
-    ULONG64 available_pagefile_mb = 0;
-    ULONG64 gc_index = 0;
-    int fgm = 0;
-    ULONG64 size = 0;
-    BOOL loh_p = FALSE;
+    int reason;
+    ULONG64 alloc_size;
+    ULONG64 available_pagefile_mb;
+    ULONG64 gc_index;
+    int fgm;
+    ULONG64 size;
+    BOOL loh_p;
 
     HRESULT Request(ISOSDacInterface *sos)
     {
@@ -831,13 +819,13 @@ struct MSLAYOUT DacpOomData
 #define   DAC_MAX_EXPAND_MECHANISMS_COUNT 6
 #define   DAC_MAX_GC_MECHANISM_BITS_COUNT 2
 #define   DAC_MAX_GLOBAL_GC_MECHANISMS_COUNT 6
-struct MSLAYOUT DacpGCInterestingInfoData
+struct MSLAYOUT DacpGCInterestingInfoData : ZeroInit<DacpGCInterestingInfoData>
 {
-    size_t interestingDataPoints[DAC_NUM_GC_DATA_POINTS] = {};
-    size_t compactReasons[DAC_MAX_COMPACT_REASONS_COUNT] = {};
-    size_t expandMechanisms[DAC_MAX_EXPAND_MECHANISMS_COUNT] = {};
-    size_t bitMechanisms[DAC_MAX_GC_MECHANISM_BITS_COUNT] = {};
-    size_t globalMechanisms[DAC_MAX_GLOBAL_GC_MECHANISMS_COUNT] = {};
+    size_t interestingDataPoints[DAC_NUM_GC_DATA_POINTS];
+    size_t compactReasons[DAC_MAX_COMPACT_REASONS_COUNT];
+    size_t expandMechanisms[DAC_MAX_EXPAND_MECHANISMS_COUNT];
+    size_t bitMechanisms[DAC_MAX_GC_MECHANISM_BITS_COUNT];
+    size_t globalMechanisms[DAC_MAX_GLOBAL_GC_MECHANISMS_COUNT];
 
     HRESULT RequestGlobal(ISOSDacInterface *sos)
     {
@@ -879,17 +867,18 @@ struct MSLAYOUT DacpGCInterestingInfoData
 };
 
 struct MSLAYOUT DacpGcHeapAnalyzeData
+    : ZeroInit<DacpGcHeapAnalyzeData>
 {
-    CLRDATA_ADDRESS heapAddr = 0; // Only filled in in server mode, otherwise NULL
+    CLRDATA_ADDRESS heapAddr; // Only filled in in server mode, otherwise NULL
 
-    CLRDATA_ADDRESS internal_root_array = 0;
-    ULONG64         internal_root_array_index = 0;
-    BOOL            heap_analyze_success = FALSE;
+    CLRDATA_ADDRESS internal_root_array;
+    ULONG64         internal_root_array_index;
+    BOOL            heap_analyze_success;
 
     // Use this for workstation mode (DacpGcHeapDat.bServerMode==FALSE).
     HRESULT Request(ISOSDacInterface *sos)
     {
-        return sos->GetHeapAnalyzeStaticData(this);
+        return sos->GetHeapAnalyzeStaticData(this);   
     }
 
     // Use this for Server mode, as there are multiple heaps,
@@ -905,25 +894,25 @@ struct MSLAYOUT DacpGcHeapAnalyzeData
 #define SYNCBLOCKDATA_COMFLAGS_RCW 2
 #define SYNCBLOCKDATA_COMFLAGS_CF 4
 
-struct MSLAYOUT DacpSyncBlockData
-{
-    CLRDATA_ADDRESS Object = 0;
-    BOOL            bFree = FALSE; // if set, no other fields are useful
-
+struct MSLAYOUT DacpSyncBlockData : ZeroInit<DacpSyncBlockData>
+{        
+    CLRDATA_ADDRESS Object;
+    BOOL            bFree; // if set, no other fields are useful
+    
     // fields below provide data from this, so it's just for display
-    CLRDATA_ADDRESS SyncBlockPointer = 0;
-    DWORD           COMFlags = 0;
-    UINT            MonitorHeld = 0;
-    UINT            Recursion = 0;
-    CLRDATA_ADDRESS HoldingThread = 0;
-    UINT            AdditionalThreadCount = 0;
-    CLRDATA_ADDRESS appDomainPtr = 0;
-
+    CLRDATA_ADDRESS SyncBlockPointer;
+    DWORD           COMFlags;
+    UINT            MonitorHeld;
+    UINT            Recursion;
+    CLRDATA_ADDRESS HoldingThread;
+    UINT            AdditionalThreadCount;
+    CLRDATA_ADDRESS appDomainPtr;
+    
     // SyncBlockCount will always be filled in with the number of SyncBlocks.
     // SyncBlocks may be requested from [1,SyncBlockCount]
-    UINT            SyncBlockCount = 0;
+    UINT            SyncBlockCount;
 
-    // SyncBlockNumber must be from [1,SyncBlockCount]
+    // SyncBlockNumber must be from [1,SyncBlockCount]    
     // If there are no SyncBlocks, a call to Request with SyncBlockCount = 1
     // will return E_FAIL.
     HRESULT Request(ISOSDacInterface *sos, UINT SyncBlockNumber)
@@ -932,15 +921,15 @@ struct MSLAYOUT DacpSyncBlockData
     }
 };
 
-struct MSLAYOUT DacpSyncBlockCleanupData
+struct MSLAYOUT DacpSyncBlockCleanupData : ZeroInit<DacpSyncBlockCleanupData>
 {
-    CLRDATA_ADDRESS SyncBlockPointer = 0;
-
-    CLRDATA_ADDRESS nextSyncBlock = 0;
-    CLRDATA_ADDRESS blockRCW = 0;
-    CLRDATA_ADDRESS blockClassFactory = 0;
-    CLRDATA_ADDRESS blockCCW = 0;
-
+    CLRDATA_ADDRESS SyncBlockPointer;
+    
+    CLRDATA_ADDRESS nextSyncBlock;
+    CLRDATA_ADDRESS blockRCW;
+    CLRDATA_ADDRESS blockClassFactory;
+    CLRDATA_ADDRESS blockCCW;
+    
     // Pass NULL on the first request to start a traversal.
     HRESULT Request(ISOSDacInterface *sos, CLRDATA_ADDRESS psyncBlock)
     {
@@ -951,41 +940,41 @@ struct MSLAYOUT DacpSyncBlockCleanupData
 ///////////////////////////////////////////////////////////////////////////
 
 enum EHClauseType {EHFault, EHFinally, EHFilter, EHTyped, EHUnknown};
-
-struct MSLAYOUT DACEHInfo
+                
+struct MSLAYOUT DACEHInfo : ZeroInit<DACEHInfo>
 {
-    EHClauseType clauseType = EHClauseType::EHFault;
-    CLRDATA_ADDRESS tryStartOffset = 0;
-    CLRDATA_ADDRESS tryEndOffset = 0;
-    CLRDATA_ADDRESS handlerStartOffset = 0;
-    CLRDATA_ADDRESS handlerEndOffset = 0;
-    BOOL isDuplicateClause = FALSE;
-    CLRDATA_ADDRESS filterOffset = 0;   // valid when clauseType is EHFilter
-    BOOL isCatchAllHandler = FALSE;     // valid when clauseType is EHTyped
-    CLRDATA_ADDRESS moduleAddr = 0;     // when == 0 mtCatch contains a MethodTable, when != 0 tokCatch contains a type token
-    CLRDATA_ADDRESS mtCatch = 0;        // the method table of the TYPED clause type
-    mdToken tokCatch = 0;               // the type token of the TYPED clause type
+    EHClauseType clauseType;
+    CLRDATA_ADDRESS tryStartOffset;
+    CLRDATA_ADDRESS tryEndOffset;
+    CLRDATA_ADDRESS handlerStartOffset;
+    CLRDATA_ADDRESS handlerEndOffset;
+    BOOL isDuplicateClause;
+    CLRDATA_ADDRESS filterOffset;   // valid when clauseType is EHFilter
+    BOOL isCatchAllHandler;             // valid when clauseType is EHTyped
+    CLRDATA_ADDRESS moduleAddr;    // when == 0 mtCatch contains a MethodTable, when != 0 tokCatch contains a type token
+    CLRDATA_ADDRESS mtCatch;   // the method table of the TYPED clause type
+    mdToken tokCatch;          // the type token of the TYPED clause type
 };
 
-struct MSLAYOUT DacpGetModuleAddress
+struct MSLAYOUT DacpGetModuleAddress : ZeroInit<DacpGetModuleAddress>
 {
-    CLRDATA_ADDRESS ModulePtr = 0;
+    CLRDATA_ADDRESS ModulePtr;
     HRESULT Request(IXCLRDataModule* pDataModule)
     {
         return pDataModule->Request(DACDATAMODULEPRIV_REQUEST_GET_MODULEPTR, 0, NULL, sizeof(*this), (PBYTE) this);
     }
 };
 
-struct MSLAYOUT DacpGetModuleData
+struct MSLAYOUT DacpGetModuleData : ZeroInit<DacpGetModuleData>
 {
-    BOOL IsDynamic = FALSE;
-    BOOL IsInMemory = FALSE;
-    BOOL IsFileLayout = FALSE;
-    CLRDATA_ADDRESS PEFile = 0;
-    CLRDATA_ADDRESS LoadedPEAddress = 0;
-    ULONG64 LoadedPESize = 0;
-    CLRDATA_ADDRESS InMemoryPdbAddress = 0;
-    ULONG64 InMemoryPdbSize = 0;
+    BOOL IsDynamic;
+    BOOL IsInMemory;
+    BOOL IsFileLayout;
+    CLRDATA_ADDRESS PEFile;
+    CLRDATA_ADDRESS LoadedPEAddress;
+    ULONG64 LoadedPESize;
+    CLRDATA_ADDRESS InMemoryPdbAddress;
+    ULONG64 InMemoryPdbSize;
 
     HRESULT Request(IXCLRDataModule* pDataModule)
     {
@@ -993,9 +982,9 @@ struct MSLAYOUT DacpGetModuleData
     }
 };
 
-struct MSLAYOUT DacpFrameData
+struct MSLAYOUT DacpFrameData : ZeroInit<DacpFrameData>
 {
-    CLRDATA_ADDRESS frameAddr = 0;
+    CLRDATA_ADDRESS frameAddr;
 
     // Could also be implemented for IXCLRDataFrame if desired.
     HRESULT Request(IXCLRDataStackWalk* dac)
@@ -1006,30 +995,28 @@ struct MSLAYOUT DacpFrameData
     }
 };
 
-struct MSLAYOUT DacpJitManagerInfo
+struct MSLAYOUT DacpJitManagerInfo : ZeroInit<DacpJitManagerInfo>
 {
-    CLRDATA_ADDRESS managerAddr = 0;
-    DWORD codeType = 0; // for union below
-    CLRDATA_ADDRESS ptrHeapList = 0;    // A HeapList * if IsMiIL(codeType)
+    CLRDATA_ADDRESS managerAddr;
+    DWORD codeType; // for union below
+    CLRDATA_ADDRESS ptrHeapList;    // A HeapList * if IsMiIL(codeType)
 };
 
 enum CodeHeapType {CODEHEAP_LOADER=0,CODEHEAP_HOST,CODEHEAP_UNKNOWN};
 
-struct MSLAYOUT DacpJitCodeHeapInfo
+struct MSLAYOUT DacpJitCodeHeapInfo : ZeroInit<DacpJitCodeHeapInfo>
 {
-    DWORD codeHeapType = 0; // for union below
+    DWORD codeHeapType; // for union below
 
     union
     {
-        CLRDATA_ADDRESS LoaderHeap = 0;    // if CODEHEAP_LOADER
+        CLRDATA_ADDRESS LoaderHeap;    // if CODEHEAP_LOADER
         struct MSLAYOUT
         {
-            CLRDATA_ADDRESS baseAddr = 0; // if CODEHEAP_HOST
-            CLRDATA_ADDRESS currentAddr = 0;
+            CLRDATA_ADDRESS baseAddr; // if CODEHEAP_HOST
+            CLRDATA_ADDRESS currentAddr;
         } HostData;
     };
-
-    DacpJitCodeHeapInfo() : codeHeapType(0), LoaderHeap(0) {}
 };
 
 #include "static_assert.h"

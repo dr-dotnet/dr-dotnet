@@ -27,7 +27,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 #define dwarf_eh_h
 
 #include "dwarf.h"
-#include "libunwind_i.h"
 
 /* This header file defines the format of a DWARF exception-header
    section (.eh_frame_hdr, pointed to by program-header
@@ -107,11 +106,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #define DW_EH_VERSION           1       /* The version we're implementing */
 
-#ifdef _MSC_VER
-#pragma pack(push, 1)
-#define __attribute__(x)
-#endif
-
 struct __attribute__((packed)) dwarf_eh_frame_hdr
   {
     unsigned char version;
@@ -130,10 +124,5 @@ struct __attribute__((packed)) dwarf_eh_frame_hdr
           }
         binary_search_table[fde_count];  */
   };
-
-#ifdef _MSC_VER
-#pragma pack(pop)
-#undef __attribute__
-#endif
 
 #endif /* dwarf_eh_h */

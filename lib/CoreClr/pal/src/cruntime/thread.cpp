@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -35,4 +36,17 @@ PAL_exit(int status)
 
     LOGEXIT ("exit returns void");
     PERF_EXIT(exit);
+}
+
+int
+PAL_atexit(void (__cdecl *function)(void))
+{
+    int ret;
+    
+    PERF_ENTRY(atexit);
+    ENTRY ("atexit(function=%p)\n", function);
+    ret = atexit(function);
+    LOGEXIT ("atexit returns int %d", ret);
+    PERF_EXIT(atexit);
+    return ret;
 }

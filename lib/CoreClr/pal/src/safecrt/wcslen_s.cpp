@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /***
 *wcslen_s.c - contains wcsnlen() routine
@@ -8,7 +9,7 @@
 *
 *Purpose:
 *   wcslen returns the length of a null-terminated wide-character string,
-*   not including the null char16_t itself.
+*   not including the null wchar_t itself.
 *
 *******************************************************************************/
 
@@ -30,7 +31,7 @@
 *   returned.
 *
 *Entry:
-*   const char16_t * wcs - string whose length is to be computed
+*   const wchar_t * wcs - string whose length is to be computed
 *   size_t maxsize
 *
 *Exit:
@@ -41,7 +42,7 @@
 *
 *******************************************************************************/
 
-size_t __cdecl PAL_wcsnlen(const char16_t *wcs, size_t maxsize)
+size_t __cdecl PAL_wcsnlen(const wchar_t *wcs, size_t maxsize)
 {
     size_t n;
 

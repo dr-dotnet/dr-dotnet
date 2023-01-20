@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /***
 *vswprint.c - print formatted data into a string from var arg list
@@ -19,9 +20,9 @@
 
 #include "mbusafecrt_internal.h"
 
-typedef int (*WOUTPUTFN)(miniFILE *, const char16_t *, va_list);
+typedef int (*WOUTPUTFN)(miniFILE *, const wchar_t *, va_list);
 
-static int _vswprintf_helper( WOUTPUTFN outfn, char16_t *string, size_t count, const char16_t *format, va_list ap );
+static int _vswprintf_helper( WOUTPUTFN outfn, wchar_t *string, size_t count, const wchar_t *format, va_list ap );
 
 /***
 *int vswprintf_s(string, sizeInWords, format, ap) - print formatted data to string from arg ptr
@@ -48,10 +49,10 @@ static int _vswprintf_helper( WOUTPUTFN outfn, char16_t *string, size_t count, c
 *       lock/unlock to prevent collisions.
 *
 *Entry:
-*       char16_t *string - place to put destination string
-*       size_t sizeInWords - size of the string buffer in char16_t units
+*       wchar_t *string - place to put destination string
+*       size_t sizeInWords - size of the string buffer in wchar_t units
 *       size_t count - max number of bytes to put in buffer
-*       char16_t *format - format string, describes format of data
+*       wchar_t *format - format string, describes format of data
 *       va_list ap - varargs argument pointer
 *
 *Exit:
@@ -65,9 +66,9 @@ static int _vswprintf_helper( WOUTPUTFN outfn, char16_t *string, size_t count, c
 
 int __cdecl _vswprintf_helper (
         WOUTPUTFN woutfn,
-        char16_t *string,
+        wchar_t *string,
         size_t count,
-        const char16_t *format,
+        const wchar_t *format,
         va_list ap
         )
 {
@@ -82,14 +83,14 @@ int __cdecl _vswprintf_helper (
         outfile->_flag = _IOWRT|_IOSTRG;
         outfile->_ptr = outfile->_base = (char *) string;
 
-        if(count>(INT_MAX/sizeof(char16_t)))
+        if(count>(INT_MAX/sizeof(wchar_t)))
         {
            /* old-style functions allow any large value to mean unbounded */
            outfile->_cnt = INT_MAX;
         }
         else
         {
-            outfile->_cnt = (int)(count*sizeof(char16_t));
+            outfile->_cnt = (int)(count*sizeof(wchar_t));
         }
 
         retval = woutfn(outfile, format, ap );
@@ -112,9 +113,9 @@ int __cdecl _vswprintf_helper (
 }
 
 DLLEXPORT int __cdecl vswprintf_s (
-        char16_t *string,
+        wchar_t *string,
         size_t sizeInWords,
-        const char16_t *format,
+        const wchar_t *format,
         va_list ap
         )
 {
@@ -143,10 +144,10 @@ DLLEXPORT int __cdecl vswprintf_s (
 }
 
 DLLEXPORT int __cdecl _vsnwprintf_s (
-        char16_t *string,
+        wchar_t *string,
         size_t sizeInWords,
         size_t count,
-        const char16_t *format,
+        const wchar_t *format,
         va_list ap
         )
 {

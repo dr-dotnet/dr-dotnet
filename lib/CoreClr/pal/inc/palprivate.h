@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef __PAL_PRIVATE_H__
 #define __PAL_PRIVATE_H__
@@ -29,6 +30,18 @@ CreateFileA(
         IN DWORD dwCreationDisposition,
         IN DWORD dwFlagsAndAttributes,
         IN HANDLE hTemplateFile);
+
+PALIMPORT
+DWORD
+PALAPI
+SearchPathA(
+    IN LPCSTR lpPath,
+    IN LPCSTR lpFileName,
+    IN LPCSTR lpExtension,
+    IN DWORD nBufferLength,
+    OUT LPSTR lpBuffer,
+    OUT LPSTR *lpFilePart
+    );
 
 PALIMPORT
 BOOL
@@ -61,13 +74,6 @@ CreateDirectoryA(
          IN LPSECURITY_ATTRIBUTES lpSecurityAttributes);
 
 PALIMPORT
-BOOL
-PALAPI
-CreateDirectoryW(
-         IN LPCWSTR lpPathName,
-         IN LPSECURITY_ATTRIBUTES lpSecurityAttributes);
-
-PALIMPORT
 HANDLE
 PALAPI
 FindFirstFileA(
@@ -92,13 +98,6 @@ BOOL
 PALAPI
 SetFileAttributesA(
            IN LPCSTR lpFileName,
-           IN DWORD dwFileAttributes);
-
-PALIMPORT
-BOOL
-PALAPI
-SetFileAttributesW(
-           IN LPCWSTR lpFileName,
            IN DWORD dwFileAttributes);
 
 PALIMPORT
@@ -136,14 +135,45 @@ GetCurrentDirectoryA(
 PALIMPORT
 BOOL
 PALAPI
-SetCurrentDirectoryW(
-            IN LPCWSTR lpPathName);
-
-PALIMPORT
-BOOL
-PALAPI
 SetCurrentDirectoryA(
             IN LPCSTR lpPathName);
+
+PALIMPORT
+HANDLE
+PALAPI
+CreateSemaphoreA(
+         IN LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
+         IN LONG lInitialCount,
+         IN LONG lMaximumCount,
+         IN LPCSTR lpName);
+
+PALIMPORT
+HANDLE
+PALAPI
+CreateSemaphoreExA(
+         IN LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
+         IN LONG lInitialCount,
+         IN LONG lMaximumCount,
+         IN LPCSTR lpName,
+         IN /*_Reserved_*/  DWORD dwFlags,
+         IN DWORD dwDesiredAccess);
+
+PALIMPORT
+HANDLE
+PALAPI
+CreateEventA(
+         IN LPSECURITY_ATTRIBUTES lpEventAttributes,
+         IN BOOL bManualReset,
+         IN BOOL bInitialState,
+         IN LPCSTR lpName);
+
+PALIMPORT
+HANDLE
+PALAPI
+CreateMutexA(
+    IN LPSECURITY_ATTRIBUTES lpMutexAttributes,
+    IN BOOL bInitialOwner,
+    IN LPCSTR lpName);
 
 PALIMPORT
 HANDLE
@@ -152,6 +182,40 @@ OpenMutexA(
        IN DWORD dwDesiredAccess,
        IN BOOL bInheritHandle,
        IN LPCSTR lpName);
+
+PALIMPORT
+BOOL
+PALAPI
+CreateProcessA(
+           IN LPCSTR lpApplicationName,
+           IN LPSTR lpCommandLine,
+           IN LPSECURITY_ATTRIBUTES lpProcessAttributes,
+           IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+           IN BOOL bInheritHandles,
+           IN DWORD dwCreationFlags,
+           IN LPVOID lpEnvironment,
+           IN LPCSTR lpCurrentDirectory,
+           IN LPSTARTUPINFOA lpStartupInfo,
+           OUT LPPROCESS_INFORMATION lpProcessInformation);
+
+PALIMPORT
+HANDLE
+PALAPI
+CreateFileMappingA(
+           IN HANDLE hFile,
+           IN LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+           IN DWORD flProtect,
+           IN DWORD dwMaximumSizeHigh,
+           IN DWORD dwMaximumSizeLow,
+           IN LPCSTR lpName);
+
+PALIMPORT
+HANDLE
+PALAPI
+OpenFileMappingA(
+         IN DWORD dwDesiredAccess,
+         IN BOOL bInheritHandle,
+         IN LPCSTR lpName);
 
 PALIMPORT
 HMODULE
@@ -175,6 +239,13 @@ GetModuleFileNameA(
     OUT LPSTR lpFileName,
     IN DWORD nSize);
 
+
+PALIMPORT
+LPSTR
+PALAPI
+GetEnvironmentStringsA(
+               VOID);
+
 PALIMPORT
 BOOL
 PALAPI
@@ -193,26 +264,21 @@ GetEnvironmentVariableA(
 PALIMPORT
 BOOL
 PALAPI
-RemoveDirectoryW(
-                 IN LPCWSTR lpPathName);
+FreeEnvironmentStringsA(
+            IN LPSTR);
 
 PALIMPORT
-LONG
+BOOL
 PALAPI
-CompareFileTime(
-        IN CONST FILETIME *lpFileTime1,
-        IN CONST FILETIME *lpFileTime2);
+RemoveDirectoryA(
+                 IN LPCSTR lpPathName);
 
-PALIMPORT char * __cdecl _fullpath(char *, const char *, size_t);
-
-/*  These are from the <FCNTL.H> file in windows.
-    They are needed for _open_osfhandle.*/
-#define _O_RDONLY   0x0000
-#define _O_APPEND   0x0008
-#define _O_TEXT     0x4000
-#define _O_BINARY   0x8000
-
-PALIMPORT int __cdecl _open_osfhandle(INT_PTR, int);
+PALIMPORT
+BOOL
+PALAPI
+PAL_GetPALDirectoryA(
+    OUT LPSTR lpDirectoryName,
+    IN UINT* cchDirectoryName);
 
 #ifdef  __cplusplus
 }

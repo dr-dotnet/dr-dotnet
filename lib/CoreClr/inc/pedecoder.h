@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 // --------------------------------------------------------------------------------
 // PEDecoder.h
 //
@@ -40,7 +41,6 @@
 #include "corcompile.h"
 
 #include "readytorun.h"
-typedef DPTR(struct READYTORUN_CORE_HEADER) PTR_READYTORUN_CORE_HEADER;
 typedef DPTR(struct READYTORUN_HEADER) PTR_READYTORUN_HEADER;
 typedef DPTR(struct READYTORUN_SECTION) PTR_READYTORUN_SECTION;
 
@@ -73,16 +73,14 @@ inline CHECK CheckOverflow(RVA value1, COUNT_T value2)
 // IMAGE_FILE_MACHINE_NATIVE
 // --------------------------------------------------------------------------------
 
-#if defined(TARGET_X86)
+#if defined(_TARGET_X86_)
 #define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_I386
-#elif defined(TARGET_AMD64)
+#elif defined(_TARGET_AMD64_)
 #define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_AMD64
-#elif defined(TARGET_ARM)
+#elif defined(_TARGET_ARM_)
 #define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_ARMNT
-#elif defined(TARGET_ARM64)
+#elif defined(_TARGET_ARM64_)
 #define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_ARM64
-#elif defined(TARGET_S390X)
-#define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_UNKNOWN
 #else
 #error "port me"
 #endif
@@ -96,8 +94,6 @@ inline CHECK CheckOverflow(RVA value1, COUNT_T value2)
 #define IMAGE_FILE_MACHINE_NATIVE_OS_OVERRIDE 0x7B79
 #elif defined(__NetBSD__)
 #define IMAGE_FILE_MACHINE_NATIVE_OS_OVERRIDE 0x1993
-#elif defined(__sun)
-#define IMAGE_FILE_MACHINE_NATIVE_OS_OVERRIDE 0x1992
 #else
 #define IMAGE_FILE_MACHINE_NATIVE_OS_OVERRIDE 0
 #endif
@@ -238,7 +234,7 @@ class PEDecoder
     BOOL IsILOnly() const;
     CHECK CheckILOnly() const;
 
-    void LayoutILOnly(void *base, bool enableExecution) const;
+    void LayoutILOnly(void *base, BOOL allowFullPE = FALSE) const;
 
     // Strong name & hashing support
 
@@ -342,7 +338,6 @@ class PEDecoder
     TADDR GetVirtualSectionsTable(COUNT_T *pSize = NULL) const;
 #endif // FEATURE_PREJIT
 
-    BOOL IsComponentAssembly() const;
     BOOL HasReadyToRunHeader() const;
     READYTORUN_HEADER *GetReadyToRunHeader() const;
 
@@ -353,9 +348,6 @@ class PEDecoder
     // Native DLLMain Entrypoint
     BOOL HasNativeEntryPoint() const;
     void *GetNativeEntryPoint() const;
-
-    // Look up a named symbol in the export directory
-    PTR_VOID GetExport(LPCSTR exportName) const;
 
 #ifdef _DEBUG
     // Stress mode for relocations

@@ -8,8 +8,11 @@ set(PALRT_SOURCES
     guid.cpp
     memorystream.cpp
     path.cpp
+    unicode.cpp
     variant.cpp
 )
+
+add_compile_options(-fPIC)
 
 add_library_clr(palrt
     STATIC
@@ -17,4 +20,4 @@ add_library_clr(palrt
 )
 
 # Install the static PAL library for VS
-install_clr(TARGETS palrt DESTINATIONS lib)
+_install (TARGETS palrt DESTINATION lib)

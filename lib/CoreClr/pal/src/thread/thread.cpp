@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -42,15 +43,6 @@ SET_DEFAULT_DEBUG_CHANNEL(THREAD); // some headers have code with asserts, so do
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <kvm.h>
-#elif defined(__sun)
-#ifndef _KERNEL
-#define _KERNEL
-#define UNDEF_KERNEL
-#endif
-#include <sys/procfs.h>
-#ifdef UNDEF_KERNEL
-#undef _KERNEL
-#endif
 #endif
 
 #include <signal.h>
@@ -91,11 +83,6 @@ typedef cpuset_t cpu_set_t;
 
 using namespace CorUnix;
 
-#ifdef __APPLE__
-#define MAX_THREAD_NAME_SIZE 63
-#else
-#define MAX_THREAD_NAME_SIZE 15
-#endif
 
 /* ------------------- Definitions ------------------------------*/
 
@@ -276,6 +263,7 @@ THREADGetThreadProcessId(
     palError = InternalGetThreadDataFromHandle(
         pThread,
         hThread,
+        0,
         &pTargetThread,
         &pobjThread
         );
@@ -298,7 +286,7 @@ THREADGetThreadProcessId(
     }
     else
     {
-        ERROR("Couldn't retrieve the hThread:%p pid owner !\n", hThread);
+        ERROR("Couldn't retreive the hThread:%p pid owner !\n", hThread);
     }
 
 
@@ -544,6 +532,7 @@ CorUnix::InternalCreateThread(
 
     pthread_t pthread;
     pthread_attr_t pthreadAttr;
+    size_t pthreadStackSize;
 #if PTHREAD_CREATE_MODIFIES_ERRNO
     int storedErrno;
 #endif  // PTHREAD_CREATE_MODIFIES_ERRNO
@@ -744,6 +733,41 @@ CorUnix::InternalCreateThread(
     storedErrno = errno;
 #endif  // PTHREAD_CREATE_MODIFIES_ERRNO
 
+#if HAVE_PTHREAD_ATTR_SETAFFINITY_NP && HAVE_SCHED_GETAFFINITY
+    {
+        // Threads inherit their parent's affinity mask on Linux. This is not desired, so we reset
+        // the current thread's affinity mask to the mask of the current process.
+        cpu_set_t cpuSet;
+        CPU_ZERO(&cpuSet);
+
+        int st = sched_getaffinity(gPID, sizeof(cpu_set_t), &cpuSet);
+        if (st != 0)
+        {
+            ASSERT("sched_getaffinity failed!\n");
+            // the sched_getaffinity should never fail for getting affinity of the current process
+            palError = ERROR_INTERNAL_ERROR;
+            goto EXIT;
+        }
+
+        st = pthread_attr_setaffinity_np(&pthreadAttr, sizeof(cpu_set_t), &cpuSet);
+        if (st != 0)
+        {
+            if (st == ENOMEM)
+            {
+                palError = ERROR_NOT_ENOUGH_MEMORY;
+            }
+            else
+            {
+                ASSERT("pthread_attr_setaffinity_np failed!\n");
+                // The pthread_attr_setaffinity_np should never fail except of OOM when
+                // passed the mask extracted using sched_getaffinity.
+                palError = ERROR_INTERNAL_ERROR;
+            }
+            goto EXIT;
+        }
+    }
+#endif // HAVE_PTHREAD_GETAFFINITY_NP && HAVE_SCHED_GETAFFINITY
+
     iError = pthread_create(&pthread, &pthreadAttr, CPalThread::ThreadEntry, pNewThread);
 
 #if PTHREAD_CREATE_MODIFIES_ERRNO
@@ -859,7 +883,7 @@ ExitThread(
     pthread_exit(NULL);
 
     ASSERT("pthread_exit should not return!\n");
-    while (true);
+    for (;;);
 }
 
 /*++
@@ -930,34 +954,54 @@ CorUnix::InternalEndCurrentThread(
         ASSERT("Unable to obtain state controller for thread");
     }
 
-    //
-    // Add a reference to the thread data before releasing the
-    // thread object, so we can still use it
-    //
+#ifndef FEATURE_PAL_SXS
+    // If this is the last thread then delete the process' data,
+    // but don't exit because the application hosting the PAL
+    // might have its own threads.
+    if (PROCGetNumberOfThreads() == 1)
+    {
+        TRACE("Last thread is exiting\n");
+        TerminateCurrentProcessNoExit(FALSE);
+    }
+    else
+#endif // !FEATURE_PAL_SXS
+    {
+        /* Do this ONLY if we aren't the last thread -> otherwise
+           it gets done by TerminateProcess->
+           PROCCleanupProcess->PALShutdown->PAL_Terminate */
 
-    pThread->AddThreadReference();
+        //
+        // Add a reference to the thread data before releasing the
+        // thread object, so we can still use it
+        //
 
-    //
-    // Release the reference to the IPalObject for this thread
-    //
+        pThread->AddThreadReference();
 
-    pThread->GetThreadObject()->ReleaseReference(pThread);
+        //
+        // Release the reference to the IPalObject for this thread
+        //
 
-    /* Remove thread for the thread list of the process
-        (don't do if this is the last thread -> gets handled by
-        TerminateProcess->PROCCleanupProcess->PROCTerminateOtherThreads) */
+        pThread->GetThreadObject()->ReleaseReference(pThread);
 
-    PROCRemoveThread(pThread, pThread);
+        /* Remove thread for the thread list of the process
+           (don't do if this is the last thread -> gets handled by
+            TerminateProcess->PROCCleanupProcess->PROCTerminateOtherThreads) */
 
-    // Ensure that EH is disabled on the current thread
-    SEHDisable(pThread);
+        PROCRemoveThread(pThread, pThread);
 
-    //
-    // Now release our reference to the thread data. We cannot touch
-    // it after this point
-    //
+#ifdef FEATURE_PAL_SXS
+        // Ensure that EH is disabled on the current thread
+        SEHDisable(pThread);
+#endif // FEATURE_PAL_SXS
 
-    pThread->ReleaseThreadReference();
+
+        //
+        // Now release our reference to the thread data. We cannot touch
+        // it after this point
+        //
+
+        pThread->ReleaseThreadReference();
+    }
 }
 
 /*++
@@ -1011,6 +1055,7 @@ CorUnix::InternalGetThreadPriority(
     palError = InternalGetThreadDataFromHandle(
         pThread,
         hThread,
+        0,  // THREAD_QUERY_INFORMATION
         &pTargetThread,
         &pobjThread
         );
@@ -1096,6 +1141,7 @@ CorUnix::InternalSetThreadPriority(
     palError = InternalGetThreadDataFromHandle(
         pThread,
         hTargetThread,
+        0, // THREAD_SET_INFORMATION
         &pTargetThread,
         &pobjThread
         );
@@ -1255,9 +1301,6 @@ InternalSetThreadPriorityExit:
     return palError;
 }
 
-#define SECS_TO_NS 1000000000 /* 10^9 */
-#define USECS_TO_NS 1000 /* 10^3 */
-
 BOOL
 CorUnix::GetThreadTimesInternal(
     IN HANDLE hThread,
@@ -1266,6 +1309,8 @@ CorUnix::GetThreadTimesInternal(
 {
     __int64 calcTime;
     BOOL retval = FALSE;
+    const __int64 SECS_TO_NS = 1000000000; /* 10^9 */
+    const __int64 USECS_TO_NS = 1000;      /* 10^3 */
 
 #if HAVE_MACH_THREADS
     thread_basic_info resUsage;
@@ -1279,6 +1324,7 @@ CorUnix::GetThreadTimesInternal(
     palError = InternalGetThreadDataFromHandle(
         pthrCurrent,
         hThread,
+        0,
         &pthrTarget,
         &pobjThread
         );
@@ -1348,6 +1394,7 @@ CorUnix::GetThreadTimesInternal(
     palError = InternalGetThreadDataFromHandle(
         pThread,
         hThread,
+        0, // THREAD_GET_CONTEXT
         &pTargetThread,
         &pobjThread
         );
@@ -1419,17 +1466,14 @@ CorUnix::GetThreadTimesInternal(
     CPalThread *pThread;
     CPalThread *pTargetThread;
     IPalObject *pobjThread = NULL;
-#ifdef __sun
-    int fd;
-#else // __sun
     clockid_t cid;
-#endif // __sun
 
     pThread = InternalGetCurrentThread();
 
     palError = InternalGetThreadDataFromHandle(
         pThread,
         hThread,
+        0, // THREAD_GET_CONTEXT
         &pTargetThread,
         &pobjThread
         );
@@ -1445,6 +1489,7 @@ CorUnix::GetThreadTimesInternal(
 
 #if HAVE_PTHREAD_GETCPUCLOCKID
     if (pthread_getcpuclockid(pTargetThread->GetPThreadSelf(), &cid) != 0)
+#endif
     {
         ASSERT("Unable to get clock from thread\n", hThread);
         SetLastError(ERROR_INTERNAL_ERROR);
@@ -1460,33 +1505,6 @@ CorUnix::GetThreadTimesInternal(
         pTargetThread->Unlock(pThread);
         goto SetTimesToZero;
     }
-#elif defined(__sun)
-    timestruc_t ts;
-    int readResult;
-    char statusFilename[64];
-    snprintf(statusFilename, sizeof(statusFilename), "/proc/%d/lwp/%d/lwpstatus", getpid(), pTargetThread->GetLwpId());
-    fd = open(statusFilename, O_RDONLY);
-    if (fd == -1)
-    {
-       ASSERT("open(%s) failed; errno is %d (%s)\n", statusFilename, errno, strerror(errno));
-       SetLastError(ERROR_INTERNAL_ERROR);
-       pTargetThread->Unlock(pThread);
-       goto SetTimesToZero;
-    }
-
-    lwpstatus_t status;
-    do
-    {
-        readResult = read(fd, &status, sizeof(status));
-    }
-    while ((readResult == -1) && (errno == EINTR));
-
-    close(fd);
-
-    ts = status.pr_utime;
-#else // HAVE_PTHREAD_GETCPUCLOCKID
-#error "Don't know how to obtain user cpu time on this platform."
-#endif // HAVE_PTHREAD_GETCPUCLOCKID
 
     pTargetThread->Unlock(pThread);
 
@@ -1586,145 +1604,7 @@ GetThreadTimes(
     return (retval);
 }
 
-HRESULT
-PALAPI
-SetThreadDescription(
-    IN HANDLE hThread,
-    IN PCWSTR lpThreadDescription)
-{
-    CPalThread *pThread;
-    PAL_ERROR palError;
 
-    PERF_ENTRY(SetThreadDescription);
-    ENTRY("SetThreadDescription(hThread=%p,lpThreadDescription=%p)\n", hThread, lpThreadDescription);
-
-    pThread = InternalGetCurrentThread();
-
-    palError = InternalSetThreadDescription(
-        pThread,
-        hThread,
-        lpThreadDescription
-        );
-
-    if (NO_ERROR != palError)
-    {
-        pThread->SetLastError(palError);
-    }
-
-    LOGEXIT("SetThreadDescription");
-    PERF_EXIT(SetThreadDescription);
-
-    return HRESULT_FROM_WIN32(palError);
-}
-
-PAL_ERROR
-CorUnix::InternalSetThreadDescription(
-    CPalThread *pThread,
-    HANDLE hTargetThread,
-    PCWSTR lpThreadDescription
-)
-{
-    PAL_ERROR palError = NO_ERROR;
-    CPalThread *pTargetThread = NULL;
-    IPalObject *pobjThread = NULL;
-    int error = 0;
-    int maxNameSize = 0;
-    int nameSize;
-    char *nameBuf = NULL;
-
-// The exact API of pthread_setname_np varies very wildly depending on OS.
-// For now, only Linux and macOS are implemented.
-#if defined(__linux__) || defined(__APPLE__)
-
-    palError = InternalGetThreadDataFromHandle(
-        pThread,
-        hTargetThread,
-        &pTargetThread,
-        &pobjThread
-        );
-
-    if (NO_ERROR != palError)
-    {
-        goto InternalSetThreadDescriptionExit;
-    }
-
-    pTargetThread->Lock(pThread);
-
-    // Ignore requests to set the main thread name because
-    // it causes the value returned by Process.ProcessName to change.
-    if ((pid_t)pTargetThread->GetThreadId() == getpid())
-    {
-        goto InternalSetThreadDescriptionExit;
-    }
-
-    /* translate the wide char lpThreadDescription string to multibyte string */
-    nameSize = WideCharToMultiByte(CP_ACP, 0, lpThreadDescription, -1, NULL, 0, NULL, NULL);
-
-    if (0 == nameSize)
-    {
-        palError = ERROR_INTERNAL_ERROR;
-        goto InternalSetThreadDescriptionExit;
-    }
-
-    nameBuf = (char *)PAL_malloc(nameSize);
-    if (nameBuf == NULL)
-    {
-        palError = ERROR_OUTOFMEMORY;
-        goto InternalSetThreadDescriptionExit;
-    }
-
-    if (WideCharToMultiByte(CP_ACP, 0, lpThreadDescription, -1, nameBuf, nameSize, NULL,
-                            NULL) != nameSize)
-    {
-        palError = ERROR_INTERNAL_ERROR;
-        goto InternalSetThreadDescriptionExit;
-    }
-
-    // Null terminate early.
-    // pthread_setname_np only accepts up to 16 chars on Linux and
-    // 64 chars on macOS.
-    if (nameSize > MAX_THREAD_NAME_SIZE)
-    {
-        nameBuf[MAX_THREAD_NAME_SIZE] = '\0';
-    }
-    
-    #if defined(__linux__)
-    error = pthread_setname_np(pTargetThread->GetPThreadSelf(), nameBuf);
-    #endif
-
-    #if defined(__APPLE__)
-    // on macOS, pthread_setname_np only works for the calling thread.
-    if (PlatformGetCurrentThreadId() == pTargetThread->GetThreadId()) 
-    {
-        error = pthread_setname_np(nameBuf);
-    }
-    #endif
-
-    if (error != 0)
-    {
-        palError = ERROR_INTERNAL_ERROR;
-    }
-
-InternalSetThreadDescriptionExit:
-
-    if (NULL != pTargetThread)
-    {
-        pTargetThread->Unlock(pThread);
-    }
-
-    if (NULL != pobjThread)
-    {
-        pobjThread->ReleaseReference(pThread);
-    }
-
-    if (NULL != nameBuf) {
-        PAL_free(nameBuf);
-    }
-
-#endif //defined(__linux__) || defined(__APPLE__)
-
-    return palError;
-}
 
 void *
 CPalThread::ThreadEntry(
@@ -1736,10 +1616,6 @@ CPalThread::ThreadEntry(
     PTHREAD_START_ROUTINE pfnStartRoutine;
     LPVOID pvPar;
     DWORD retValue;
-#if HAVE_SCHED_GETAFFINITY && HAVE_SCHED_SETAFFINITY
-    cpu_set_t cpuSet;
-    int st;
-#endif
 
     pThread = reinterpret_cast<CPalThread*>(pvParam);
 
@@ -1748,42 +1624,6 @@ CPalThread::ThreadEntry(
         ASSERT("THREAD pointer is NULL!\n");
         goto fail;
     }
-
-#if HAVE_SCHED_GETAFFINITY && HAVE_SCHED_SETAFFINITY
-    // Threads inherit their parent's affinity mask on Linux. This is not desired, so we reset
-    // the current thread's affinity mask to the mask of the current process.
-    //
-    // Typically, we would use pthread_attr_setaffinity_np() and have pthread_create() create the thread with the specified
-    // affinity. At least one implementation of pthread_create() following a pthread_attr_setaffinity_np() calls
-    // sched_setaffinity(<newThreadPid>, ...), which is not allowed under Snap's default strict confinement without manually
-    // connecting the process-control plug. To work around that, have the thread set the affinity after it starts.
-    // sched_setaffinity(<currentThreadPid>, ...) is also currently not allowed, only sched_setaffinity(0, ...).
-    // pthread_setaffinity_np(pthread_self(), ...) seems to call sched_setaffinity(<currentThreadPid>, ...) in at least one
-    // implementation, and does not work. Use sched_setaffinity(0, ...) instead. See the following for more information:
-    // - https://github.com/dotnet/runtime/pull/38795
-    // - https://github.com/dotnet/runtime/issues/1634
-    // - https://forum.snapcraft.io/t/requesting-autoconnect-for-interfaces-in-pigmeat-process-control-home/17987/13
-
-    CPU_ZERO(&cpuSet);
-
-    st = sched_getaffinity(gPID, sizeof(cpu_set_t), &cpuSet);
-    if (st != 0)
-    {
-        ASSERT("sched_getaffinity failed!\n");
-        // The sched_getaffinity should never fail for getting affinity of the current process
-        palError = ERROR_INTERNAL_ERROR;
-        goto fail;
-    }
-
-    st = sched_setaffinity(0, sizeof(cpu_set_t), &cpuSet);
-    if (st != 0)
-    {
-        ASSERT("sched_setaffinity failed!\n");
-        // The sched_setaffinity should never fail when passed the mask extracted using sched_getaffinity
-        palError = ERROR_INTERNAL_ERROR;
-        goto fail;
-    }
-#endif // HAVE_SCHED_GETAFFINITY && HAVE_SCHED_SETAFFINITY
 
 #if !HAVE_MACH_EXCEPTIONS
     if (!pThread->EnsureSignalAlternateStack())
@@ -2036,6 +1876,7 @@ CorUnix::CreateThreadObject(
         pThread,
         pobjThread,
         &aotThread,
+        0, //THREAD_ALL_ACCESS,
         &hThread,
         &pobjRegisteredThread
         );
@@ -2165,6 +2006,7 @@ CorUnix::InternalCreateDummyThread(
         pThread,
         pobjThread,
         &aotThread,
+        0, // THREAD_ALL_ACCESS
         phThread,
         &pobjThreadRegistered
         );
@@ -2216,6 +2058,7 @@ PAL_ERROR
 CorUnix::InternalGetThreadDataFromHandle(
     CPalThread *pThread,
     HANDLE hThread,
+    DWORD dwRightsRequired,
     CPalThread **ppTargetThread,
     IPalObject **ppobjThread
     )
@@ -2237,6 +2080,7 @@ CorUnix::InternalGetThreadDataFromHandle(
             pThread,
             hThread,
             &aotThread,
+            dwRightsRequired,
             &pobj
             );
 
@@ -2426,11 +2270,13 @@ CPalThread::RunPostCreateInitializers(
         goto RunPostCreateInitializersExit;
     }
 
+#ifdef FEATURE_PAL_SXS
     palError = SEHEnable(this);
     if (NO_ERROR != palError)
     {
         goto RunPostCreateInitializersExit;
     }
+#endif // FEATURE_PAL_SXS
 
 RunPostCreateInitializersExit:
 
@@ -2557,11 +2403,7 @@ CPalThread::EnsureSignalAlternateStack()
             altStackSize += SIGSTKSZ * 4;
 #endif
             altStackSize = ALIGN_UP(altStackSize, GetVirtualPageSize());
-            int flags = MAP_ANONYMOUS | MAP_PRIVATE;
-#ifdef MAP_STACK
-            flags |= MAP_STACK;
-#endif
-            void* altStack = mmap(NULL, altStackSize, PROT_READ | PROT_WRITE, flags, -1, 0);
+            void* altStack = mmap(NULL, altStackSize, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_STACK | MAP_PRIVATE, -1, 0);
             if (altStack != MAP_FAILED)
             {
                 // create a guard page for the alternate stack
@@ -2617,7 +2459,6 @@ CPalThread::FreeSignalAlternateStack()
         // ss_size is >= MINSIGSTKSZ even in this case.
         ss.ss_size = MINSIGSTKSZ;
         ss.ss_flags = SS_DISABLE;
-        ss.ss_sp = NULL;
         int st = sigaltstack(&ss, &oss);
         if ((st == 0) && (oss.ss_flags != SS_DISABLE))
         {
@@ -2698,7 +2539,7 @@ void *
 CPalThread::GetStackBase()
 {
     void* stackBase;
-#ifdef TARGET_OSX
+#ifdef _TARGET_MAC64
     // This is a Mac specific method
     stackBase = pthread_get_stackaddr_np(pthread_self());
 #else
@@ -2738,7 +2579,7 @@ void *
 CPalThread::GetStackLimit()
 {
     void* stackLimit;
-#ifdef TARGET_OSX
+#ifdef _TARGET_MAC64
     // This is a Mac specific method
     stackLimit = ((BYTE *)pthread_get_stackaddr_np(pthread_self()) -
                    pthread_get_stacksize_np(pthread_self()));
@@ -2874,6 +2715,7 @@ PAL_InjectActivation(
     PAL_ERROR palError = InternalGetThreadDataFromHandle(
         pCurrentThread,
         hThread,
+        0,
         &pTargetThread,
         &pobjThread
         );
@@ -2883,7 +2725,7 @@ PAL_InjectActivation(
         palError = InjectActivationInternal(pTargetThread);
     }
 
-    if (palError != NO_ERROR)
+    if (palError == NO_ERROR)
     {
         pCurrentThread->SetLastError(palError);
     }
@@ -2969,31 +2811,18 @@ BOOL
 PALAPI
 PAL_SetCurrentThreadAffinity(WORD procNo)
 {
-#if HAVE_SCHED_SETAFFINITY || HAVE_PTHREAD_SETAFFINITY_NP
+#if HAVE_PTHREAD_GETAFFINITY_NP
     cpu_set_t cpuSet;
     CPU_ZERO(&cpuSet);
-    CPU_SET(procNo, &cpuSet);
 
-    // Snap's default strict confinement does not allow sched_setaffinity(<nonzeroPid>, ...) without manually connecting the
-    // process-control plug. sched_setaffinity(<currentThreadPid>, ...) is also currently not allowed, only
-    // sched_setaffinity(0, ...). pthread_setaffinity_np(pthread_self(), ...) seems to call
-    // sched_setaffinity(<currentThreadPid>, ...) in at least one implementation, and does not work. To work around those
-    // issues, use sched_setaffinity(0, ...) if available and only otherwise fall back to pthread_setaffinity_np(). See the
-    // following for more information:
-    // - https://github.com/dotnet/runtime/pull/38795
-    // - https://github.com/dotnet/runtime/issues/1634
-    // - https://forum.snapcraft.io/t/requesting-autoconnect-for-interfaces-in-pigmeat-process-control-home/17987/13
-#if HAVE_SCHED_SETAFFINITY
-    int st = sched_setaffinity(0, sizeof(cpu_set_t), &cpuSet);
-#else
+    CPU_SET(procNo, &cpuSet);
     int st = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuSet);
-#endif
 
     return st == 0;
-#else  // !(HAVE_SCHED_SETAFFINITY || HAVE_PTHREAD_SETAFFINITY_NP)
+#else  // HAVE_PTHREAD_GETAFFINITY_NP
     // There is no API to manage thread affinity, so let's ignore the request
     return FALSE;
-#endif // HAVE_SCHED_SETAFFINITY || HAVE_PTHREAD_SETAFFINITY_NP
+#endif // HAVE_PTHREAD_GETAFFINITY_NP
 }
 
 /*++
@@ -3023,9 +2852,10 @@ PAL_GetCurrentThreadAffinitySet(SIZE_T size, UINT_PTR* data)
     if (st == 0)
     {
         const SIZE_T BitsPerBitsetEntry = 8 * sizeof(UINT_PTR);
+        int nrcpus = PAL_GetTotalCpuCount();
 
         // Get info for as much processors as it is possible to fit into the resulting set
-        SIZE_T remainingCount = std::min(size * BitsPerBitsetEntry, (SIZE_T)CPU_SETSIZE);
+        SIZE_T remainingCount = std::min(size * BitsPerBitsetEntry, (SIZE_T)nrcpus);
         SIZE_T i = 0;
         while (remainingCount != 0)
         {

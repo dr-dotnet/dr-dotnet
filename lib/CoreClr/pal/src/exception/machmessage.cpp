@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -35,7 +36,7 @@ MachMessage::MachMessage()
 void MachMessage::Receive(mach_port_t hPort)
 {
     kern_return_t machret;
-
+    
     // Erase any stale data.
     ResetMessage();
 
@@ -71,7 +72,7 @@ void MachMessage::Receive(mach_port_t hPort)
     default:
         NONPAL_RETAIL_ASSERT("Unsupported message type: %u", m_pMessage->header.msgh_id);
     }
-
+    
     m_fPortsOwned = true;
 }
 
@@ -200,7 +201,7 @@ void MachMessage::GetPorts(bool fCalculate, bool fValidThread)
     case FORWARD_EXCEPTION_MESSAGE_ID:
         m_hThread = m_pMessage->data.forward_exception.thread;
         break;
-
+    
     case EXCEPTION_RAISE_MESSAGE_ID:
         m_hThread = m_pMessage->data.raise.thread_port.name;
         m_hTask = m_pMessage->data.raise.task_port.name;
@@ -238,7 +239,7 @@ void MachMessage::GetPorts(bool fCalculate, bool fValidThread)
         m_hThread = m_pMessage->data.raise_state_identity_64.thread_port.name;
         m_hTask = m_pMessage->data.raise_state_identity_64.task_port.name;
         break;
-
+        
     default:
         if (fValidThread)
         {
@@ -248,8 +249,8 @@ void MachMessage::GetPorts(bool fCalculate, bool fValidThread)
     }
 }
 
-// Get the properties of a set thread or forward exception request. Fills in the provided
-// context structure with the context from the message and returns the target thread to
+// Get the properties of a set thread or forward exception request. Fills in the provided 
+// context structure with the context from the message and returns the target thread to 
 // which the context should be applied.
 thread_act_t MachMessage::GetThreadContext(CONTEXT *pContext)
 {
@@ -711,7 +712,7 @@ void MachMessage::ForwardNotification(MachExceptionHandler *pHandler, MachMessag
 }
 
 // Initialize the message to represent a reply to the given exception notification message
-// and send that reply back to the original sender of the notification. This is used when
+// and send that reply back to the original sender of the notification. This is used when 
 // our handler handles the exception rather than forwarding it to a chain-back handler.
 // Clean up the message afterwards.
 void MachMessage::ReplyToNotification(MachMessage& message, kern_return_t eResult)
@@ -769,14 +770,14 @@ void MachMessage::ResetMessage()
     if (m_fPortsOwned)
     {
         kern_return_t machret;
-
+        
         GetPorts(false /* fCalculate */, false /* fValidThread */);
         if (m_hThread != MACH_PORT_NULL)
         {
             machret = mach_port_deallocate(mach_task_self(), m_hThread);
             CHECK_MACH("mach_port_deallocate(m_hThread)", machret);
         }
-
+        
         if (m_hTask != MACH_PORT_NULL)
         {
             machret = mach_port_deallocate(mach_task_self(), m_hTask);
@@ -887,7 +888,7 @@ void MachMessage::InitFixedFields()
     }
 
     m_pMessage->header.msgh_reserved = 0;
-
+    
     if (m_hTask)
     {
         kern_return_t machret;
@@ -997,7 +998,7 @@ thread_act_t MachMessage::GetThreadFromState(thread_state_flavor_t eFlavor, thre
     // thread).
     switch (eFlavor)
     {
-#ifdef HOST_X86
+#ifdef _X86_
     case x86_THREAD_STATE:
         targetSP = ((x86_thread_state_t*)pState)->uts.ts32.esp;
         break;
@@ -1005,17 +1006,13 @@ thread_act_t MachMessage::GetThreadFromState(thread_state_flavor_t eFlavor, thre
     case x86_THREAD_STATE32:
         targetSP = ((x86_thread_state32_t*)pState)->esp;
         break;
-#elif defined(HOST_AMD64)
+#elif defined(_AMD64_)
     case x86_THREAD_STATE:
         targetSP = ((x86_thread_state_t*)pState)->uts.ts64.__rsp;
         break;
 
     case x86_THREAD_STATE64:
         targetSP = ((x86_thread_state64_t*)pState)->__rsp;
-        break;
-#elif defined(HOST_ARM64)
-    case ARM_THREAD_STATE64:
-        targetSP = arm_thread_state64_get_sp(*(arm_thread_state64_t*)pState);
         break;
 #else
 #error Unexpected architecture.
@@ -1035,35 +1032,25 @@ thread_act_t MachMessage::GetThreadFromState(thread_state_flavor_t eFlavor, thre
     for (mach_msg_type_number_t i = 0; i < cThreads; i++)
     {
         // Get the general register state of each thread.
-#if defined(HOST_AMD64)
         x86_thread_state_t threadState;
         mach_msg_type_number_t count = x86_THREAD_STATE_COUNT;
         machret = thread_get_state(pThreads[i], x86_THREAD_STATE, (thread_state_t)&threadState, &count);
-#elif defined(HOST_ARM64)
-        arm_thread_state64_t threadState;
-        mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
-        machret = thread_get_state(pThreads[i], ARM_THREAD_STATE64, (thread_state_t)&threadState, &count);
-#else
-#error Unexpected architecture
-#endif
         if (machret == KERN_SUCCESS)
         {
             // If a thread has the same SP as our target it should be the same thread (otherwise we have two
             // threads sharing the same stack which is very bad). Conversely the thread we're looking for is
             // suspended in the kernel so its SP should not change. We should always be able to find an exact
             // match as a result.
-#ifdef HOST_X86
+#ifdef _X86_
             if (threadState.uts.ts32.esp == targetSP)
-#elif defined(HOST_AMD64)
+#elif defined(_AMD64_)
             if (threadState.uts.ts64.__rsp == targetSP)
-#elif defined(HOST_ARM64)
-            if (arm_thread_state64_get_sp(threadState) == targetSP)
 #else
 #error Unexpected architecture.
 #endif
             {
                 thread_act_t thread = pThreads[i];
-
+                
                 // Increment the refcount; the thread is a "send" right.
                 machret = mach_port_mod_refs(mach_task_self(), thread, MACH_PORT_RIGHT_SEND, 1);
                 CHECK_MACH("mach_port_mod_refs()", machret);
@@ -1177,7 +1164,7 @@ void MachMessage::SetThread(thread_act_t thread)
     default:
         NONPAL_RETAIL_ASSERT("Unsupported message type: %u", m_pMessage->header.msgh_id);
     }
-
+    
     if (fSet)
     {
         // Addref the thread port.

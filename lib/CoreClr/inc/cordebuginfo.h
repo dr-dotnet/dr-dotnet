@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 //
 // Keep in sync with https://github.com/dotnet/corert/blob/master/src/Native/ObjWriter/cordebuginfo.h
@@ -51,8 +52,8 @@ public:
 
     struct OffsetMapping
     {
-        uint32_t        nativeOffset;
-        uint32_t        ilOffset;
+        DWORD           nativeOffset;
+        DWORD           ilOffset;
         SourceTypes     source; // The debugger needs this so that
                                 // we don't put Edit and Continue breakpoints where
                                 // the stack isn't empty.  We can put regular breakpoints
@@ -68,7 +69,7 @@ public:
     // contained in debug/inc/DbgIPCEvents.h.
     enum RegNum
     {
-#ifdef TARGET_X86
+#ifdef _TARGET_X86_
         REGNUM_EAX,
         REGNUM_ECX,
         REGNUM_EDX,
@@ -77,7 +78,7 @@ public:
         REGNUM_EBP,
         REGNUM_ESI,
         REGNUM_EDI,
-#elif TARGET_ARM
+#elif _TARGET_ARM_
         REGNUM_R0,
         REGNUM_R1,
         REGNUM_R2,
@@ -94,7 +95,7 @@ public:
         REGNUM_SP,
         REGNUM_LR,
         REGNUM_PC,
-#elif TARGET_ARM64
+#elif _TARGET_ARM64_
         REGNUM_X0,
         REGNUM_X1,
         REGNUM_X2,
@@ -128,7 +129,7 @@ public:
         REGNUM_LR,
         REGNUM_SP,
         REGNUM_PC,
-#elif TARGET_AMD64
+#elif _TARGET_AMD64_
         REGNUM_RAX,
         REGNUM_RCX,
         REGNUM_RDX,
@@ -152,18 +153,18 @@ public:
         REGNUM_AMBIENT_SP, // ambient SP support. Ambient SP is the original SP in the non-BP based frame.
                            // Ambient SP should not change even if there are push/pop operations in the method.
 
-#ifdef TARGET_X86
+#ifdef _TARGET_X86_
         REGNUM_FP = REGNUM_EBP,
         REGNUM_SP = REGNUM_ESP,
-#elif TARGET_AMD64
+#elif _TARGET_AMD64_
         REGNUM_SP = REGNUM_RSP,
-#elif TARGET_ARM
+#elif _TARGET_ARM_
 #ifdef REDHAWK
         REGNUM_FP = REGNUM_R7,
 #else
         REGNUM_FP = REGNUM_R11,
 #endif //REDHAWK
-#elif TARGET_ARM64
+#elif _TARGET_ARM64_
         //Nothing to do here. FP is already alloted.
 #else
         // RegNum values should be properly defined for this platform
@@ -173,7 +174,7 @@ public:
 
     };
 
-    // VarLoc describes the location of a native variable.  Note that currently, VLT_REG_BYREF and VLT_STK_BYREF
+    // VarLoc describes the location of a native variable.  Note that currently, VLT_REG_BYREF and VLT_STK_BYREF 
     // are only used for value types on X64.
 
     enum VarLocType
@@ -215,7 +216,7 @@ public:
         signed      vlsOffset;
     };
 
-    // VLT_REG_REG -- TYP_LONG with both uint32_ts enregistred
+    // VLT_REG_REG -- TYP_LONG with both DWords enregistred
     // eg. RBM_EAXEDX
 
     struct vlRegReg
@@ -251,7 +252,7 @@ public:
     };
 
     // VLT_STK2 -- Any 64 bit value which is on the stack,
-    // in 2 successive DWords.
+    // in 2 successsive DWords.
     // eg 2 DWords at [ESP+0x10]
 
     struct vlStk2
@@ -321,16 +322,16 @@ public:
 
     struct ILVarInfo
     {
-        uint32_t        startOffset;
-        uint32_t        endOffset;
-        uint32_t        varNumber;
+        DWORD           startOffset;
+        DWORD           endOffset;
+        DWORD           varNumber;
     };
 
     struct NativeVarInfo
     {
-        uint32_t        startOffset;
-        uint32_t        endOffset;
-        uint32_t        varNumber;
+        DWORD           startOffset;
+        DWORD           endOffset;
+        DWORD           varNumber;
         VarLoc          loc;
     };
 };

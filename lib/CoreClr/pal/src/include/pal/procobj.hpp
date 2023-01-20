@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -65,11 +66,11 @@ namespace CorUnix
     class CProcProcessLocalData
     {
     public:
-        CProcProcessLocalData()
-            :
-            dwProcessId(0),
+        CProcProcessLocalData() 
+            : 
+            dwProcessId(0), 
             ps(PS_IDLE),
-            dwExitCode(0),
+            dwExitCode(0), 
             lAttachCount(0),
             pProcessModules(NULL),
             cProcessModules(0)
@@ -77,7 +78,7 @@ namespace CorUnix
         };
 
         ~CProcProcessLocalData();
-
+        
         DWORD dwProcessId;
         PROCESS_STATE ps;
         DWORD dwExitCode;
@@ -93,6 +94,7 @@ namespace CorUnix
         LPWSTR lpCommandLine,
         LPSECURITY_ATTRIBUTES lpProcessAttributes,
         LPSECURITY_ATTRIBUTES lpThreadAttributes,
+        BOOL bInheritHandles,
         DWORD dwCreationFlags,
         LPVOID lpEnvironment,
         LPCWSTR lpCurrentDirectory,

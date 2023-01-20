@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 //
 // switches.h switch configuration of common runtime features
 //
@@ -14,7 +15,7 @@
 
 #define GC_CONFIG_DRIVEN
 
-// define this to test data safety for the DAC. See code:DataTest::TestDataSafety.
+// define this to test data safety for the DAC. See code:DataTest::TestDataSafety. 
 #define TEST_DATA_CONSISTENCY
 
 #if !defined(STRESS_LOG) && !defined(FEATURE_UTILCODE_NO_DEPENDENCIES)
@@ -33,14 +34,20 @@
     #define LOGGING
 #endif
 
+#if !defined(_TARGET_X86_) || defined(FEATURE_PAL)
+#define WIN64EXCEPTIONS
+#endif
+
 #if !defined(FEATURE_UTILCODE_NO_DEPENDENCIES)
 // Failpoint support
-#if defined(_DEBUG) && !defined(DACCESS_COMPILE) && !defined(TARGET_UNIX)
+#if defined(_DEBUG) && !defined(DACCESS_COMPILE) && !defined(FEATURE_PAL)
 #define FAILPOINTS_ENABLED
 #endif
 #endif //!defined(FEATURE_UTILCODE_NO_DEPENDENCIES)
 
 #if 0
+    #define APPDOMAIN_STATE
+
     // Enable to track details of EESuspension
     #define TIME_SUSPEND
 #endif // 0
@@ -50,26 +57,26 @@
 #define GC_STATS
 #endif
 
-#if defined(TARGET_X86) || defined(TARGET_ARM)
+#if defined(_TARGET_X86_) || defined(_TARGET_ARM_)
     #define USE_UPPER_ADDRESS       0
 
-#elif defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_S390X)
+#elif defined(_TARGET_AMD64_) || defined(_TARGET_ARM64_)
     #define UPPER_ADDRESS_MAPPING_FACTOR 2
     #define CLR_UPPER_ADDRESS_MIN   0x64400000000
     #define CODEHEAP_START_ADDRESS  0x64480000000
     #define CLR_UPPER_ADDRESS_MAX   0x644FC000000
 
-#if !defined(HOST_UNIX)
+#if !defined(FEATURE_PAL)
     #define USE_UPPER_ADDRESS       1
 #else
     #define USE_UPPER_ADDRESS       0
-#endif // !HOST_UNIX
+#endif // !FEATURE_PAL
 
 #else
     #error Please add a new #elif clause and define all portability macros for the new platform
 #endif
 
-#if defined(HOST_64BIT)
+#if defined(BIT64)
 #define JIT_IS_ALIGNED
 #endif
 
@@ -79,13 +86,21 @@
 #define ALLOW_SXS_JIT
 #define ALLOW_SXS_JIT_NGEN
 
-#if !defined(TARGET_UNIX)
-// PLATFORM_SUPPORTS_THREADSUSPEND is defined for platforms where it is safe to call
-//   SuspendThread.  This API is dangerous on non-Windows platforms, as it can lead to
-//   deadlocks, due to low level OS resources that the PAL is not aware of, or due to
+//master switch for gc suspension not based on hijacking
+#define FEATURE_ENABLE_GCPOLL
+
+#if defined(_TARGET_X86_)
+//this enables a fast version of the GC Poll helper instead of the default portable one.
+#define ENABLE_FAST_GCPOLL_HELPER
+#endif // defined(FEATURE_ENABLE_GCPOLL) && defined(_TARGET_X86_)
+
+#if !defined(FEATURE_PAL)
+// PLATFORM_SUPPORTS_THREADSUSPEND is defined for platforms where it is safe to call 
+//   SuspendThread.  This API is dangerous on non-Windows platforms, as it can lead to 
+//   deadlocks, due to low level OS resources that the PAL is not aware of, or due to 
 //   the fact that PAL-unaware code in the process may hold onto some OS resources.
 #define PLATFORM_SUPPORTS_SAFE_THREADSUSPEND
-#endif // !TARGET_UNIX
+#endif // !FEATURE_PAL
 
 
 #if defined(STRESS_HEAP) && defined(_DEBUG) && defined(FEATURE_HIJACK)
@@ -94,7 +109,7 @@
 
 // Some platforms may see spurious AVs when GcCoverage is enabled because of races.
 // Enable further processing to see if they recur.
-#if defined(HAVE_GCCOVER) && (defined(TARGET_X86) || defined(TARGET_AMD64)) && !defined(TARGET_UNIX)
+#if defined(HAVE_GCCOVER) && (defined(_TARGET_X86_) || defined(_TARGET_AMD64_)) && !defined(FEATURE_PAL)
 #define GCCOVER_TOLERATE_SPURIOUS_AV
 #endif
 
@@ -145,25 +160,25 @@
 #endif
 
 // Enables a mode in which GC is completely conservative in stacks and registers: all stack slots and registers
-// are treated as potential pinned interior pointers. When enabled, the runtime flag COMPLUS_GCCONSERVATIVE
+// are treated as potential pinned interior pointers. When enabled, the runtime flag COMPLUS_GCCONSERVATIVE 
 // determines dynamically whether GC is conservative. Note that appdomain unload, LCG and unloadable assemblies
 // do not work reliably with conservative GC.
 #define FEATURE_CONSERVATIVE_GC 1
 
-#if (defined(TARGET_ARM) && (!defined(ARM_SOFTFP) || defined(CONFIGURABLE_ARM_ABI))) || defined(TARGET_ARM64)
+#if (defined(_TARGET_ARM_) && !defined(ARM_SOFTFP)) || defined(_TARGET_ARM64_)
 #define FEATURE_HFA
 #endif
 
 // ARM requires that 64-bit primitive types are aligned at 64-bit boundaries for interlocked-like operations.
 // Additionally the platform ABI requires these types and composite type containing them to be similarly
 // aligned when passed as arguments.
-#ifdef TARGET_ARM
+#ifdef _TARGET_ARM_
 #define FEATURE_64BIT_ALIGNMENT
 #endif
 
-// Prefer double alignment for structs and arrays with doubles. Put arrays of doubles more agressively
-// into large object heap for performance because large object heap is 8 byte aligned
-#if !defined(FEATURE_64BIT_ALIGNMENT) && !defined(HOST_64BIT)
+// Prefer double alignment for structs and arrays with doubles. Put arrays of doubles more agressively 
+// into large object heap for performance because large object heap is 8 byte aligned 
+#if !defined(FEATURE_64BIT_ALIGNMENT) && !defined(BIT64)
 #define FEATURE_DOUBLE_ALIGNMENT_HINT
 #endif
 
@@ -174,7 +189,7 @@
 // If defined, support interpretation.
 #if !defined(CROSSGEN_COMPILE)
 
-#if !defined(TARGET_UNIX)
+#if !defined(FEATURE_PAL)
 #define FEATURE_STACK_SAMPLING
 #endif // defined (ALLOW_SXS_JIT)
 

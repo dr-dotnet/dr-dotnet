@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -19,6 +20,8 @@
 
 using namespace CorUnix;
 
+#ifdef FEATURE_PAL_SXS
+
 SET_DEFAULT_DEBUG_CHANNEL(SXS);
 
 PAL_ERROR AllocatePalThread(CPalThread **ppThread);
@@ -28,9 +31,9 @@ Function:
   CreateCurrentThreadData
 
 Abstract:
-  This function is called by the InternalGetOrCreateCurrentThread inlined
+  This function is called by the InternalGetOrCreateCurrentThread inlined 
   function to create the thread data when it is null meaning the thread has
-  never been in this PAL.
+  never been in this PAL. 
 
 Warning:
   If the allocation fails, this function asserts and exits the process.
@@ -83,9 +86,9 @@ AllocatePalThread(CPalThread **ppThread)
         pThread->ReleaseThreadReference();
         goto exit;
     }
-
-    // Like CreateInitialProcessAndThreadObjects, we do not need this
-    // thread handle, since we're not returning it to anyone who will
+    
+    // Like CreateInitialProcessAndThreadObjects, we do not need this 
+    // thread handle, since we're not returning it to anyone who will 
     // possibly release it.
     (void)g_pObjectManager->RevokeHandle(pThread, hThread);
 
@@ -95,3 +98,5 @@ exit:
     *ppThread = pThread;
     return palError;
 }
+
+#endif // FEATURE_PAL_SXS

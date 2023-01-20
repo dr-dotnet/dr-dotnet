@@ -1,11 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*****************************************************************************
  *                                  GCDump.h
  *
- * Defines functions to display the GCInfo as defined by the GC-encoding
- * spec. The GC information may be either dynamically created by a
+ * Defines functions to display the GCInfo as defined by the GC-encoding 
+ * spec. The GC information may be either dynamically created by a 
  * Just-In-Time compiler conforming to the standard code-manager spec,
  * or may be persisted by a managed native code compiler conforming
  * to the standard code-manager spec.
@@ -19,7 +20,7 @@
 #include "gcinfotypes.h"     // For InfoHdr
 
 #ifndef FASTCALL
-#ifndef TARGET_UNIX
+#ifndef FEATURE_PAL
 #define FASTCALL __fastcall
 #else
 #define FASTCALL
@@ -32,11 +33,11 @@ class GCDump
 public:
 
     GCDump                          (UINT32         gcInfoVersion,
-                                     bool           encBytes     = true,
-                                     unsigned       maxEncBytes  = 5,
+                                     bool           encBytes     = true, 
+                                     unsigned       maxEncBytes  = 5, 
                                      bool           dumpCodeOffs = true);
 
-#ifdef TARGET_X86
+#ifdef _TARGET_X86_
     /*-------------------------------------------------------------------------
      * Dumps the InfoHdr to 'stdout'
      * table            : Start of the GC info block
@@ -44,10 +45,10 @@ public:
      * Return value     : Size in bytes of the header encoding
      */
 
-    size_t FASTCALL   DumpInfoHdr (PTR_CBYTE   gcInfoBlock,
-                                   InfoHdr    *   header,         /* OUT */
-                                   unsigned   *   methodSize,     /* OUT */
-                                   bool           verifyGCTables = false);
+    unsigned FASTCALL   DumpInfoHdr (PTR_CBYTE   gcInfoBlock,
+                                     InfoHdr    *   header,         /* OUT */
+                                     unsigned   *   methodSize,     /* OUT */
+                                     bool           verifyGCTables = false);
 #endif
 
     /*-------------------------------------------------------------------------
@@ -58,7 +59,7 @@ public:
      */
 
     size_t   FASTCALL   DumpGCTable (PTR_CBYTE      gcInfoBlock,
-#ifdef TARGET_X86
+#ifdef _TARGET_X86_
                                      const InfoHdr& header,
 #endif
                                      unsigned       methodSize,
@@ -77,7 +78,7 @@ public:
 
 public:
 	typedef void (*printfFtn)(const char* fmt, ...);
-	printfFtn gcPrintf;
+	printfFtn gcPrintf;	
     UINT32              gcInfoVersion;
     //-------------------------------------------------------------------------
 protected:
@@ -90,7 +91,7 @@ protected:
     /* Helper methods */
 
     PTR_CBYTE           DumpEncoding(PTR_CBYTE      gcInfoBlock,
-                                     size_t         cDumpBytes);
+                                     int            cDumpBytes);
     void                DumpOffset  (unsigned       o);
     void                DumpOffsetEx(unsigned       o);
 

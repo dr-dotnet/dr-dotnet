@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /***
 *strtok_s.c - tokenize a string with given delimiters
@@ -22,6 +23,6 @@
 #define _SECURE_ITOA
 
 #define _UNICODE
-#define TCHAR char16_t
+#define TCHAR wchar_t
 #define _T(x)       L##x
 #include "xtox_s.inl"

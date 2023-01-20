@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -27,7 +28,6 @@ Abstract:
 #include "pal/process.h"
 #include "pal/malloc.hpp"
 #include "pal/signal.hpp"
-#include "pal/virtual.h"
 
 #if HAVE_MACH_EXCEPTIONS
 #include "machexception.h"
@@ -108,6 +108,9 @@ SEHCleanup()
 {
     TRACE("Cleaning up SEH\n");
 
+#if HAVE_MACH_EXCEPTIONS
+    SEHCleanupExceptionPort();
+#endif
     SEHCleanupSignals();
 }
 
@@ -190,11 +193,11 @@ Parameters:
     PAL_SEHException* ex - the exception to throw.
 --*/
 extern "C"
-#ifdef HOST_X86
+#ifdef _X86_
 void __fastcall ThrowExceptionHelper(PAL_SEHException* ex)
-#else // HOST_X86
+#else // _X86_
 void ThrowExceptionHelper(PAL_SEHException* ex)
-#endif // !HOST_X86
+#endif // !_X86_
 {
     throw std::move(*ex);
 }
@@ -263,6 +266,22 @@ SEHProcessException(PAL_SEHException* exception)
             // or in a jitter helper or it is a debugger breakpoint)
             if (g_safeExceptionCheckFunction(contextRecord, exceptionRecord))
             {
+                if (exceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION)
+                {
+                    // Check if the failed access has hit a stack guard page. In such case, it
+                    // was a stack probe that detected that there is not enough stack left.
+                    void* stackLimit = CPalThread::GetStackLimit();
+                    void* stackGuard = (void*)((size_t)stackLimit - getpagesize());
+                    void* violationAddr = (void*)exceptionRecord->ExceptionInformation[1];
+                    if ((violationAddr >= stackGuard) && (violationAddr < stackLimit))
+                    {
+                        // The exception happened in the page right below the stack limit,
+                        // so it is a stack overflow
+                        (void)write(STDERR_FILENO, StackOverflowMessage, sizeof(StackOverflowMessage) - 1);
+                        PROCAbort();
+                    }
+                }
+
                 EnsureExceptionRecordsOnHeap(exception);
                 if (g_hardwareExceptionHandler(exception))
                 {
@@ -303,7 +322,9 @@ PAL_ERROR SEHEnable(CPalThread *pthrCurrent)
 {
 #if HAVE_MACH_EXCEPTIONS
     return pthrCurrent->EnableMachExceptions();
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__sun)
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
+    // TODO: This needs to be implemented. Cannot put an ASSERT here
+    // because it will make other parts of PAL fail.
     return NO_ERROR;
 #else// HAVE_MACH_EXCEPTIONS
 #error not yet implemented
@@ -328,7 +349,9 @@ PAL_ERROR SEHDisable(CPalThread *pthrCurrent)
 {
 #if HAVE_MACH_EXCEPTIONS
     return pthrCurrent->DisableMachExceptions();
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__sun)
+    // TODO: This needs to be implemented. Cannot put an ASSERT here
+    // because it will make other parts of PAL fail.
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
     return NO_ERROR;
 #else // HAVE_MACH_EXCEPTIONS
 #error not yet implemented

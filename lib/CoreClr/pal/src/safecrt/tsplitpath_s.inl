@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /***
 *tsplitpath_s.inl - general implementation of _tsplitpath_s
@@ -92,7 +93,7 @@ errno_t __cdecl _FUNC_NAME(
 
     /* extract path string, if any. _Path now points to the first character
      * of the path, if any, or the filename or extension, if no path was
-     * specified.  Scan ahead for the last occurrence, if any, of a '/' or
+     * specified.  Scan ahead for the last occurence, if any, of a '/' or
      * '\' path separator character.  If none is found, there is no path.
      * We will also note the last '.' character found, if any, to aid in
      * handling the extension.
@@ -102,14 +103,26 @@ errno_t __cdecl _FUNC_NAME(
     tmp = _Path;
     for (; *tmp != 0; ++tmp)
     {
-        if (*tmp == _T('/') || *tmp == _T('\\'))
+#if _MBS_SUPPORT
+#pragma warning(push)
+#pragma warning(disable:4127)
+        if (_ISMBBLEAD(*tmp))
+#pragma warning(pop)
         {
-            /* point to one beyond for later copy */
-            last_slash = tmp + 1;
+            tmp++;
         }
-        else if (*tmp == _T('.'))
+        else
+#endif  /* _MBS_SUPPORT */
         {
-            dot = tmp;
+            if (*tmp == _T('/') || *tmp == _T('\\'))
+            {
+                /* point to one beyond for later copy */
+                last_slash = tmp + 1;
+            }
+            else if (*tmp == _T('.'))
+            {
+                dot = tmp;
+            }
         }
     }
 

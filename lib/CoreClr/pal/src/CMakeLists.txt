@@ -1,13 +1,15 @@
-if(CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_FREEBSD)
+cmake_minimum_required(VERSION 2.8.12.2)
+
+if(CMAKE_SYSTEM_NAME STREQUAL Darwin OR CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
   # On OSX and *BSD, we use the libunwind that's part of the OS
   set(CLR_CMAKE_USE_SYSTEM_LIBUNWIND 1)
-endif(CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_FREEBSD)
+endif(CMAKE_SYSTEM_NAME STREQUAL Darwin OR CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
 
 if(NOT DEFINED ENV{ROOTFS_DIR})
   include_directories(SYSTEM /usr/local/include)
-elseif (CLR_CMAKE_TARGET_FREEBSD)
-  include_directories(SYSTEM $ENV{ROOTFS_DIR}/usr/local/include)
 endif()
+
+add_compile_options(-fPIC)
 
 if(NOT CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
   include_directories(libunwind/include)
@@ -16,12 +18,37 @@ if(NOT CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/libunwind/include/tdep)
 
   add_subdirectory(libunwind)
-elseif(NOT CLR_CMAKE_TARGET_OSX)
-  find_unwind_libs(UNWIND_LIBS)
-else()
-  add_subdirectory(libunwind)
-endif(NOT CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
+elseif(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+    if(PAL_CMAKE_PLATFORM_ARCH_ARM)
+      find_library(UNWIND_ARCH NAMES unwind-arm)
+    endif()
 
+    if(PAL_CMAKE_PLATFORM_ARCH_ARM64)
+      find_library(UNWIND_ARCH NAMES unwind-aarch64)
+    endif()
+
+    if(PAL_CMAKE_PLATFORM_ARCH_AMD64)
+      find_library(UNWIND_ARCH NAMES unwind-x86_64)
+    endif()
+
+    if(NOT UNWIND_ARCH STREQUAL UNWIND_ARCH-NOTFOUND)
+       set(UNWIND_LIBS ${UNWIND_ARCH})
+    endif()
+
+    find_library(UNWIND_GENERIC NAMES unwind-generic)
+
+    if(NOT UNWIND_GENERIC STREQUAL UNWIND_GENERIC-NOTFOUND)
+      set(UNWIND_LIBS ${UNWIND_LIBS} ${UNWIND_GENERIC})
+    endif()
+
+    find_library(UNWIND NAMES unwind)
+
+    if(UNWIND STREQUAL UNWIND-NOTFOUND)
+      message(FATAL_ERROR "Cannot find libunwind. Try installing libunwind8-dev or libunwind-devel.")
+    endif()
+
+    set(UNWIND_LIBS ${UNWIND_LIBS} ${UNWIND})
+endif(NOT CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
 include(configure.cmake)
 
 project(coreclrpal)
@@ -33,7 +60,9 @@ if(CORECLR_SET_RPATH)
     set(MACOSX_RPATH ON)
 endif(CORECLR_SET_RPATH)
 
-cmake_policy(SET CMP0042 NEW)
+if(CMAKE_VERSION VERSION_EQUAL 3.0 OR CMAKE_VERSION VERSION_GREATER 3.0)
+    cmake_policy(SET CMP0042 NEW)
+endif()
 
 # Include directories
 
@@ -41,55 +70,94 @@ include_directories(include)
 
 # Compile options
 
-if(CLR_CMAKE_HOST_ARCH_AMD64)
-  set(PAL_ARCH_SOURCES_DIR amd64)
-elseif(CLR_CMAKE_HOST_ARCH_ARM)
-  set(PAL_ARCH_SOURCES_DIR arm)
-elseif(CLR_CMAKE_HOST_ARCH_ARM64)
-  set(PAL_ARCH_SOURCES_DIR arm64)
-elseif(CLR_CMAKE_HOST_ARCH_I386)
-  set(PAL_ARCH_SOURCES_DIR i386)
-elseif(CLR_CMAKE_HOST_ARCH_S390X)
-  set(PAL_ARCH_SOURCES_DIR s390x)
+if(CLR_CROSS_COMPONENTS_BUILD)
+    if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL amd64)
+        if(CLR_CMAKE_TARGET_ARCH STREQUAL "arm" OR CLR_CMAKE_TARGET_ARCH STREQUAL "armel")
+            if($ENV{CROSSCOMPILE} STREQUAL "1")
+                set(PAL_CMAKE_PLATFORM_ARCH_I386 1)
+                add_definitions(-D_X86_)
+            else()
+                set(PAL_CMAKE_PLATFORM_ARCH_AMD64 1)
+                add_definitions(-D_AMD64_)
+            endif()
+        else()
+            set(PAL_CMAKE_PLATFORM_ARCH_AMD64 1)
+            add_definitions(-D_AMD64_)
+        endif()
+    elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL i686)
+        set(PAL_CMAKE_PLATFORM_ARCH_I386 1)
+        add_definitions(-D_X86_)
+    else()
+        message(FATAL_ERROR "Only AMD64, I386 host for cross-architecture component is supported")
+    endif()
+else()
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL AMD64)
+        set(PAL_CMAKE_PLATFORM_ARCH_AMD64 1)
+        add_definitions(-D_AMD64_)
+    elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL armv7l)
+        set(PAL_CMAKE_PLATFORM_ARCH_ARM 1)
+        add_definitions(-D_ARM_)
+    elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL arm)
+        set(PAL_CMAKE_PLATFORM_ARCH_ARM 1)
+        add_definitions(-D_ARM_)
+    elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL aarch64)
+        set(PAL_CMAKE_PLATFORM_ARCH_ARM64 1)
+        add_definitions(-D_ARM64_)
+    elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL i686)
+        set(PAL_CMAKE_PLATFORM_ARCH_I386 1)
+        add_definitions(-D_X86_)
+    else()
+        message(FATAL_ERROR "Only ARM, AMD64, ARM64 and I386 is supported")
+    endif()
 endif()
 
-if(CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
-  add_definitions(-DFEATURE_USE_SYSTEM_LIBUNWIND)
-endif(CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
-
-if(CLR_CMAKE_TARGET_OSX)
-  add_definitions(-DTARGET_OSX)
-  if(CLR_CMAKE_TARGET_ARCH_AMD64)
-    add_definitions(-DXSTATE_SUPPORTED)
-  endif()
+if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+  add_definitions(-D_TARGET_MAC64)
+  add_definitions(-DXSTATE_SUPPORTED)
   set(PLATFORM_SOURCES
-    arch/${PAL_ARCH_SOURCES_DIR}/context.S
-    arch/${PAL_ARCH_SOURCES_DIR}/dispatchexceptionwrapper.S
+    arch/amd64/activationhandlerwrapper.S
+    arch/amd64/context.S
+    arch/amd64/dispatchexceptionwrapper.S
     exception/machexception.cpp
     exception/machmessage.cpp
   )
-endif(CLR_CMAKE_TARGET_OSX)
+endif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 
 if (FEATURE_ENABLE_NO_ADDRESS_SPACE_RANDOMIZATION)
   add_definitions(-DFEATURE_ENABLE_NO_ADDRESS_SPACE_RANDOMIZATION)
 endif(FEATURE_ENABLE_NO_ADDRESS_SPACE_RANDOMIZATION)
+add_definitions(-DPLATFORM_UNIX)
 add_definitions(-DLP64COMPATIBLE)
+add_definitions(-DFEATURE_PAL)
 add_definitions(-DCORECLR)
 add_definitions(-DPIC)
 add_definitions(-D_FILE_OFFSET_BITS=64)
+if(PAL_CMAKE_PLATFORM_ARCH_AMD64)
+  add_definitions(-DBIT64)
+  set(PAL_ARCH_SOURCES_DIR amd64)
+elseif(PAL_CMAKE_PLATFORM_ARCH_ARM)
+  add_definitions(-DBIT32)
+  set(PAL_ARCH_SOURCES_DIR arm)
+elseif(PAL_CMAKE_PLATFORM_ARCH_ARM64)
+  add_definitions(-DBIT64)
+  set(PAL_ARCH_SOURCES_DIR arm64)
+elseif(PAL_CMAKE_PLATFORM_ARCH_I386)
+  add_definitions(-DBIT32)
+  set(PAL_ARCH_SOURCES_DIR i386)
+endif()
 
-if(CLR_CMAKE_HOST_ARCH_AMD64 AND CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_HOST_ALPINE_LINUX)
+if(PAL_CMAKE_PLATFORM_ARCH_AMD64 AND CMAKE_SYSTEM_NAME STREQUAL Linux AND NOT CLR_CMAKE_PLATFORM_ALPINE_LINUX)
   # Currently the _xstate is not available on Alpine Linux
   add_definitions(-DXSTATE_SUPPORTED)
-endif(CLR_CMAKE_HOST_ARCH_AMD64 AND CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_HOST_ALPINE_LINUX)
+endif(PAL_CMAKE_PLATFORM_ARCH_AMD64 AND CMAKE_SYSTEM_NAME STREQUAL Linux AND NOT CLR_CMAKE_PLATFORM_ALPINE_LINUX)
 
-if(CLR_CMAKE_HOST_ALPINE_LINUX)
+if(CLR_CMAKE_PLATFORM_ALPINE_LINUX)
   # Setting RLIMIT_NOFILE breaks debugging of coreclr on Alpine Linux for some reason
   add_definitions(-DDONT_SET_RLIMIT_NOFILE)
   # On Alpine Linux, we need to ensure that the reported stack range for the primary thread is
   # larger than the initial committed stack size.
   add_definitions(-DENSURE_PRIMARY_STACK_SIZE)
-endif(CLR_CMAKE_HOST_ALPINE_LINUX)
+endif(CLR_CMAKE_PLATFORM_ALPINE_LINUX)
 
 # turn off capability to remove unused functions (which was enabled in debug build with sanitizers)
 set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -Wl,--no-gc-sections")
@@ -101,30 +169,23 @@ set(ARCH_SOURCES
   arch/${PAL_ARCH_SOURCES_DIR}/processor.cpp
 )
 
-if(NOT CLR_CMAKE_TARGET_OSX)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
   list(APPEND PLATFORM_SOURCES
     arch/${PAL_ARCH_SOURCES_DIR}/callsignalhandlerwrapper.S
     arch/${PAL_ARCH_SOURCES_DIR}/signalhandlerhelper.cpp
   )
-endif(NOT CLR_CMAKE_TARGET_OSX)
+endif(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
 
-if(CLR_CMAKE_HOST_ARCH_ARM)
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set_source_files_properties(exception/seh.cpp PROPERTIES COMPILE_FLAGS -Wno-error=inline-asm)
-  endif()
-endif(CLR_CMAKE_HOST_ARCH_ARM)
-
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND (CLR_CMAKE_HOST_ARCH_AMD64 OR CLR_CMAKE_HOST_ARCH_I386))
-  add_compile_options(-Wa,--divide)
-endif()
-
-include_directories("${CLR_SRC_NATIVE_DIR}/common")
+if(PAL_CMAKE_PLATFORM_ARCH_ARM)
+  set_source_files_properties(exception/seh.cpp PROPERTIES COMPILE_FLAGS -Wno-error=inline-asm)
+endif(PAL_CMAKE_PLATFORM_ARCH_ARM)
 
 set(SOURCES
   cruntime/file.cpp
   cruntime/filecrt.cpp
   cruntime/malloc.cpp
   cruntime/math.cpp
+  cruntime/mbstring.cpp
   cruntime/misc.cpp
   cruntime/path.cpp
   cruntime/printf.cpp
@@ -138,6 +199,7 @@ set(SOURCES
   debug/debug.cpp
   exception/seh.cpp
   exception/signal.cpp
+  exception/remote-unwind.cpp
   file/directory.cpp
   file/file.cpp
   file/filetime.cpp
@@ -155,6 +217,7 @@ set(SOURCES
   map/common.cpp
   map/map.cpp
   map/virtual.cpp
+  memory/heap.cpp
   memory/local.cpp
   misc/cgroup.cpp
   misc/dbgmsg.cpp
@@ -165,7 +228,6 @@ set(SOURCES
   misc/jitsupport.cpp
   misc/miscpalapi.cpp
   misc/msgbox.cpp
-  misc/perfjitdump.cpp
   misc/strutil.cpp
   misc/sysinfo.cpp
   misc/time.cpp
@@ -198,7 +260,6 @@ set(SOURCES
   safecrt/wcscat_s.cpp
   safecrt/wcscpy_s.cpp
   safecrt/wcslen_s.cpp
-  safecrt/wcslwr_s.cpp
   safecrt/wcsncat_s.cpp
   safecrt/wcsncpy_s.cpp
   safecrt/wcstok_s.cpp
@@ -233,50 +294,20 @@ add_library(coreclrpal
   ${LIBUNWIND_OBJECTS}
 )
 
-# Build separate pal library for DAC (addition to regular pal library)
-if(CLR_CMAKE_TARGET_OSX)
-  set(LIBUNWIND_DAC_OBJECTS $<TARGET_OBJECTS:libunwind_dac>)
-
-  add_library(coreclrpal_dac STATIC
-    exception/remote-unwind.cpp
-    ${LIBUNWIND_DAC_OBJECTS}
-  )
-
-  target_compile_definitions(coreclrpal_dac PUBLIC -DUNW_REMOTE_ONLY)
-else()
-  if(NOT FEATURE_CROSSBITNESS)
-    add_library(coreclrpal_dac STATIC
-      exception/remote-unwind.cpp
-    )
-  endif(NOT FEATURE_CROSSBITNESS)
-endif(CLR_CMAKE_TARGET_OSX)
-
-if(NOT FEATURE_CROSSBITNESS)
-  target_include_directories(coreclrpal_dac PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include/tdep
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/libunwind/include
-    ${CMAKE_CURRENT_BINARY_DIR}/libunwind/include/tdep
-  )
-endif(NOT FEATURE_CROSSBITNESS)
-
 # There is only one function exported in 'tracepointprovider.cpp' namely 'PAL_InitializeTracing',
 # which is guarded with '#if defined(__linux__)'. On macOS, Xcode issues the following warning:
 #
 # > warning: /Applications/Xcode-9.4.1.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib:
 # > warning for library: libtracepointprovider.a the table of contents is empty (no object file members in the library define global symbols)
 #
-if(CLR_CMAKE_TARGET_LINUX)
-  add_library(tracepointprovider_obj
-    OBJECT
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  add_library(tracepointprovider
+    STATIC
     misc/tracepointprovider.cpp
   )
-  add_library(tracepointprovider INTERFACE)
-  target_sources(tracepointprovider INTERFACE $<TARGET_OBJECTS:tracepointprovider_obj>)
-endif(CLR_CMAKE_TARGET_LINUX)
+endif(CMAKE_SYSTEM_NAME STREQUAL Linux)
 
-if(CLR_CMAKE_TARGET_OSX)
+if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
   find_library(COREFOUNDATION CoreFoundation)
   find_library(CORESERVICES CoreServices)
   find_library(SECURITY Security)
@@ -287,64 +318,100 @@ if(CLR_CMAKE_TARGET_OSX)
     ${SECURITY}
     ${SYSTEM}
   )
-endif(CLR_CMAKE_TARGET_OSX)
+endif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 
-if(CLR_CMAKE_TARGET_FREEBSD)
+if(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
+  find_library(INTL intl)
   target_link_libraries(coreclrpal
     pthread
     rt
     ${UNWIND_LIBS}
+    ${INTL}
   )
-endif(CLR_CMAKE_TARGET_FREEBSD)
+endif(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
 
-if(CLR_CMAKE_TARGET_LINUX)
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  if(CLR_CMAKE_PLATFORM_ALPINE_LINUX OR CLR_CMAKE_PLATFORM_ANDROID)
+    find_library(INTL intl)
+  endif()
+
   # On Android, we don't need to link with gcc_s, pthread and rt
-  if(NOT CLR_CMAKE_TARGET_ANDROID)
+  if(NOT CLR_CMAKE_PLATFORM_ANDROID)
     target_link_libraries(coreclrpal
       gcc_s
       pthread
       rt
     )
-  else(NOT CLR_CMAKE_TARGET_ANDROID)
+  endif()
+
+  if(CLR_CMAKE_PLATFORM_ANDROID)
+    find_library(LZMA NAMES lzma)
+
+    if(LZMA STREQUAL LZMA-NOTFOUND)
+      message(FATAL_ERROR "Cannot find liblzma.")
+    endif(LZMA STREQUAL LZMA-NOTFOUND)
+
     target_link_libraries(coreclrpal
-      ${ANDROID_GLOB}
+      gnustl_shared
+      android-support
+      android-glob
       ${LZMA})
-  endif(NOT CLR_CMAKE_TARGET_ANDROID)
+  endif()
+
+  if(CLR_MAKE_PLATFORM_ANDROID)
+    find_library(ANDROID_SUPPORT NAMES android-support)
+    find_library(ANDROID_GLOB NAMES android-glob)
+    find_library(INTL NAMES intl)
+
+    if(ANDROID_SUPPORT STREQUAL ANDROID_SUPPORT-NOTFOUND)
+      message(FATAL_ERROR "Cannot find android-support.")
+    endif()
+
+    if(ANDROID_GLOB STREQUAL ANDROID_GLOB-NOTFOUND)
+      message(FATAL_ERROR "Cannot find android-glob.")
+    endif()
+
+    if(INTL STREQUAL INTL-NOTFOUND)
+      message(FATAL_ERROR "Cannot find libintl.")
+    endif()
+  endif()
 
   target_link_libraries(coreclrpal
     dl
   )
 
+  if(NOT INTL STREQUAL INTL-NOTFOUND)
+    target_link_libraries(coreclrpal ${INTL})
+  endif(NOT INTL STREQUAL INTL-NOTFOUND)
+
   if(CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
     target_link_libraries(coreclrpal ${UNWIND_LIBS})
   endif(CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
 
-endif(CLR_CMAKE_TARGET_LINUX)
+endif(CMAKE_SYSTEM_NAME STREQUAL Linux)
 
-if(CLR_CMAKE_TARGET_NETBSD)
+if(CMAKE_SYSTEM_NAME STREQUAL NetBSD)
   if (CLR_CMAKE_USE_SYSTEM_LIBUNWIND)
     find_library(UNWIND unwind)
   endif()
   add_definitions(-D_KMEMUSER)
+  find_library(INTL intl)
   find_library(KVM kvm)
   target_link_libraries(coreclrpal
     pthread
     rt
     ${UNWIND}
+    ${INTL}
     ${KVM}
   )
-endif(CLR_CMAKE_TARGET_NETBSD)
+endif(CMAKE_SYSTEM_NAME STREQUAL NetBSD)
 
-if(CLR_CMAKE_TARGET_SUNOS)
-  target_link_libraries(coreclrpal
-    pthread
-    rt
-  )
-endif(CLR_CMAKE_TARGET_SUNOS)
+add_subdirectory(examples)
 
 if(FEATURE_EVENT_TRACE)
   add_subdirectory(eventprovider)
 endif(FEATURE_EVENT_TRACE)
 
+
 # Install the static PAL library for VS
-install_clr (TARGETS coreclrpal DESTINATIONS lib)
+_install (TARGETS coreclrpal DESTINATION lib)

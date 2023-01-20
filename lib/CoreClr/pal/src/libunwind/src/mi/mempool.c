@@ -25,8 +25,6 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #include "libunwind_i.h"
-#include <stdalign.h>
-#include <stdatomic.h>
 
 /* From GCC docs: ``Gcc also provides a target specific macro
  * __BIGGEST_ALIGNMENT__, which is the largest alignment ever used for any data
@@ -41,8 +39,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 # define MAX_ALIGN      MAX_ALIGN_(sizeof (long double))
 #endif
 
-static alignas(MAX_ALIGN) char sos_memory[SOS_MEMORY_SIZE];
-static _Atomic size_t sos_memory_freepos = 0;
+static char sos_memory[SOS_MEMORY_SIZE] ALIGNED(MAX_ALIGN);
+static size_t sos_memory_freepos;
 static size_t pg_size;
 
 HIDDEN void *
@@ -52,10 +50,29 @@ sos_alloc (size_t size)
 
   size = UNW_ALIGN(size, MAX_ALIGN);
 
+#if defined(__GNUC__) && defined(HAVE_FETCH_AND_ADD)
   /* Assume `sos_memory' is suitably aligned. */
   assert(((uintptr_t) &sos_memory[0] & (MAX_ALIGN-1)) == 0);
 
-  pos = atomic_fetch_add (&sos_memory_freepos, size);
+  pos = fetch_and_add (&sos_memory_freepos, size);
+#else
+  static define_lock (sos_lock);
+  intrmask_t saved_mask;
+
+  lock_acquire (&sos_lock, saved_mask);
+  {
+    /* No assumptions about `sos_memory' alignment. */
+    if (sos_memory_freepos == 0)
+      {
+        unsigned align = UNW_ALIGN((uintptr_t) &sos_memory[0], MAX_ALIGN)
+                                - (uintptr_t) &sos_memory[0];
+        sos_memory_freepos = align;
+      }
+    pos = sos_memory_freepos;
+    sos_memory_freepos += size;
+  }
+  lock_release (&sos_lock, saved_mask);
+#endif
 
   assert (((uintptr_t) &sos_memory[pos] & (MAX_ALIGN-1)) == 0);
   assert ((pos+size) <= SOS_MEMORY_SIZE);

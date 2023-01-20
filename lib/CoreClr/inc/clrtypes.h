@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 // ================================================================================
 // Standard primitive types for CLR code
 //
@@ -22,10 +23,10 @@
 #include "staticcontract.h"
 #include "static_assert.h"
 
-#if HOST_64BIT
-    #define POINTER_BITS (64)
+#if BIT64
+    #define POINTER_BITS 64
 #else
-    #define POINTER_BITS (32)
+    #define POINTER_BITS 32
 #endif
 
 // ================================================================================
@@ -59,7 +60,7 @@
         #define INT16_MAX       32767i16
         #define INT32_MAX       2147483647i32
         #define INT64_MAX       9223372036854775807i64
-
+        
         #define UINT8_MAX       0xffui8
         #define UINT16_MAX      0xffffui16
         #define UINT32_MAX      0xffffffffui32
@@ -116,13 +117,13 @@
     #if POINTER_BITS == 64
         #define SIZE_T_MAX              UINT64_MAX
         #define SIZE_T_MIN              UINT64_MIN
-
+        
         #define SSIZE_T_MAX             INT64_MAX
         #define SSIZE_T_MIN             INT64_MIN
     #else
         #define SIZE_T_MAX              UINT32_MAX
         #define SIZE_T_MIN              UINT32_MIN
-
+        
         #define SSIZE_T_MAX             INT32_MAX
         #define SSIZE_T_MIN             INT32_MIN
     #endif
@@ -141,10 +142,10 @@
 #ifndef COUNT_T_MAX
     typedef UINT32                  COUNT_T;
     typedef INT32                   SCOUNT_T;
-
+    
     #define COUNT_T_MAX             UINT32_MAX
     #define COUNT_T_MIN             UINT32_MIN
-
+    
     #define SCOUNT_T_MAX            INT32_MAX
     #define SCOUNT_T_MIN            INT32_MIN
 #endif
@@ -158,15 +159,15 @@
     #if NEED_BOOL_TYPEDEF
         typedef bool                    BOOL;
     #endif
-
+    
     #define BOOL_MAX                1
     #define BOOL_MIN                0
-
+    
     #define TRUE                    1
     #define FALSE                   0
-
+    
     typedef UINT8                   BYTE;
-
+    
     #define BYTE_MAX                UINT8_MAX
     #define BYTE_MIN                UINT8_MIN
 #endif
@@ -179,6 +180,7 @@
 typedef char                    CHAR;
 typedef signed char             SCHAR;
 typedef unsigned char           UCHAR;
+typedef wchar_t                 WCHAR;
 
 typedef CHAR                    ASCII;
 typedef CHAR                    ANSI;
@@ -305,7 +307,7 @@ T Max(T v1, T v2)
 
 // --------------------------------------------------------------------------------
 // Alignment bit twiddling macros - "alignment" must be power of 2
-//
+// 
 // AlignUp - align value to given increment, rounding up
 // AlignmentPad - amount adjusted by AlignUp
 //       AlignUp(value, x) == value + AlignmentPad(value, x)
@@ -388,7 +390,7 @@ inline UINT AlignmentTrim(UINT value, UINT alignment)
     return value&(alignment-1);
 }
 
-#ifndef HOST_UNIX
+#ifndef PLATFORM_UNIX
 // For Unix this and the previous function get the same types.
 // So, exclude this one.
 inline UINT AlignmentTrim(ULONG value, UINT alignment)
@@ -397,7 +399,7 @@ inline UINT AlignmentTrim(ULONG value, UINT alignment)
     STATIC_CONTRACT_SUPPORTS_DAC;
     return value&(alignment-1);
 }
-#endif // HOST_UNIX
+#endif // PLATFORM_UNIX
 
 inline UINT AlignmentTrim(UINT64 value, UINT alignment)
 {

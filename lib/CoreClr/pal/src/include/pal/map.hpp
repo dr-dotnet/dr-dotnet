@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -39,7 +40,7 @@ extern "C"
 
     Return value:
         TRUE  if initialization succeeded
-        FALSE otherwise
+        FALSE otherwise        
     --*/
     BOOL MAPInitialize( void );
 
@@ -56,7 +57,7 @@ extern "C"
     Function :
         MAPGetRegionInfo
 
-        Parameters:
+        Parameters: 
         lpAddress: pointer to the starting memory location, not necessary
                    to be rounded to the page location
 
@@ -64,7 +65,7 @@ extern "C"
                   the information is stored in this struct
 
         Note: This function is to be used in virtual.c
-
+              
         Returns TRUE if this function finds information about the specified address
     --*/
 
@@ -78,14 +79,13 @@ extern "C"
 
     Parameters:
         IN hFile - file to map
-        IN offset - offset within hFile where the PE "file" is located
 
     Return value:
         non-NULL - the base address of the mapped image
         NULL - error, with last error set.
     --*/
 
-    void* MAPMapPEFile(HANDLE hFile, off_t offset);
+    void * MAPMapPEFile(HANDLE hFile);
 
     /*++
     Function :
@@ -94,13 +94,6 @@ extern "C"
         returns TRUE if successful, FALSE otherwise
     --*/
     BOOL MAPUnmapPEFile(LPCVOID lpAddress);
-
-    /*++
-    Function :
-        MAPMarkSectionAsNotNeeded - mark a section as NotNeeded
-        returns TRUE if successful, FALSE otherwise
-    --*/
-    BOOL MAPMarkSectionAsNotNeeded(LPCVOID lpAddress);
 }
 
 namespace CorUnix
@@ -117,26 +110,26 @@ namespace CorUnix
     } NativeMapHolder;
 #endif
 
-    /* Process specific information. This
+    /* Process specific information. This 
     structure is not stored in shared memory.*/
     typedef struct _MVL
     {
         LIST_ENTRY Link;
-
+        
         //
         // Each MVL entry holds a reference to its parent file
         // mapping object.
         //
-
+        
         IPalObject *pFileMapping;
-
+        
 #if ONE_SHARED_MAPPING_PER_FILEREGION_PER_PROCESS
         NativeMapHolder * pNMHolder; /* Ref-counted holder for memory mapping */
         dev_t   MappedFileDevNum;           /* ID of device containing the file to be mapped */
         ino_t   MappedFileInodeNum;         /* Inode number of file to be mapped.
-                                               These two fields are used used to uniquely
-                                               identify files on systems that do not allow
-                                               more than one shared mmapping per region of
+                                               These two fields are used used to uniquely 
+                                               identify files on systems that do not allow 
+                                               more than one shared mmapping per region of 
                                                physical file, per process */
 #endif
         LPVOID lpAddress;           /* The pointer to the mapped memory. */
@@ -158,17 +151,17 @@ namespace CorUnix
         DWORD dwDesiredAccessWhenOpened;  // FILE_MAP_WRITE etc
     };
 
-    class CFileMappingProcessLocalData
+    class CFileMappingProcessLocalData 
     {
     public:
         INT     UnixFd;                     /* File descriptor. */
-
+        
 #if ONE_SHARED_MAPPING_PER_FILEREGION_PER_PROCESS
         dev_t   MappedFileDevNum;           /* ID of device containing the file to be mapped */
         ino_t   MappedFileInodeNum;         /* Inode number of file to be mapped.
-                                               These two fields are used used to uniquely
-                                               identify files on systems that do not allow
-                                               more than one shared mmapping per region of
+                                               These two fields are used used to uniquely 
+                                               identify files on systems that do not allow 
+                                               more than one shared mmapping per region of 
                                                physical file, per process */
 #endif
     };

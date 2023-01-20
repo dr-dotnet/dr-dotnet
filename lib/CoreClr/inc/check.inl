@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef CHECK_INL_
 #define CHECK_INL_
@@ -9,13 +10,51 @@
 #include "debugmacros.h"
 #include "clrtypes.h"
 
+inline LONG *CHECK::InitTls()
+{
+#pragma push_macro("HeapAlloc")
+#pragma push_macro("GetProcessHeap")
+#undef HeapAlloc
+#undef GetProcessHeap
+
+    LONG *pCount = (LONG *)::HeapAlloc(GetProcessHeap(), 0, sizeof(LONG));
+    if (pCount)
+        *pCount = 0;
+
+#pragma pop_macro("HeapAlloc")
+#pragma pop_macro("GetProcessHeap")
+    ClrFlsSetValue(TlsIdx_Check, pCount);
+    ClrFlsAssociateCallback(TlsIdx_Check, ReleaseCheckTls);
+    return pCount;
+}
+
+inline void CHECK::ReleaseTls(void* pCountTLS)
+{
+#pragma push_macro("HeapFree")
+#pragma push_macro("GetProcessHeap")
+#undef HeapFree
+#undef GetProcessHeap
+        LONG* pCount = (LONG*) pCountTLS;
+        if (pCount)
+            ::HeapFree(GetProcessHeap(), 0, pCount);
+
+#pragma pop_macro("HeapFree")
+#pragma pop_macro("GetProcessHeap")
+}
+
 FORCEINLINE BOOL CHECK::EnterAssert()
 {
     if (s_neverEnforceAsserts)
         return FALSE;
 
 #ifdef _DEBUG_IMPL
-    m_pCount = &t_count;
+    m_pCount = (LONG *)ClrFlsGetValue(TlsIdx_Check);
+    if (!m_pCount)
+    {
+        m_pCount = InitTls();
+        if (!m_pCount)
+            return FALSE;
+    }
 
     if (!*m_pCount)
     {
@@ -42,9 +81,12 @@ FORCEINLINE BOOL CHECK::IsInAssert()
 {
 #ifdef _DEBUG_IMPL
     if (!m_pCount)
-        m_pCount = &t_count;
+        m_pCount = (LONG *)ClrFlsGetValue(TlsIdx_Check);
 
-    return *m_pCount;
+    if (!m_pCount)
+        return FALSE;
+    else
+        return *m_pCount;
 #else
     return FALSE;
 #endif
@@ -138,7 +180,7 @@ inline CHECK CheckAligned(UINT value, UINT alignment)
     CHECK_OK;
 }
 
-#ifndef HOST_UNIX
+#ifndef PLATFORM_UNIX
 // For Unix this and the previous function get the same types.
 // So, exclude this one.
 inline CHECK CheckAligned(ULONG value, UINT alignment)
@@ -147,7 +189,7 @@ inline CHECK CheckAligned(ULONG value, UINT alignment)
     CHECK(AlignmentTrim(value, alignment) == 0);
     CHECK_OK;
 }
-#endif // HOST_UNIX
+#endif // PLATFORM_UNIX
 
 inline CHECK CheckAligned(UINT64 value, UINT alignment)
 {
@@ -228,7 +270,7 @@ inline CHECK CheckUnderflow(UINT value1, UINT value2)
     CHECK_OK;
 }
 
-#ifndef HOST_UNIX
+#ifndef PLATFORM_UNIX
 // For Unix this and the previous function get the same types.
 // So, exclude this one.
 inline CHECK CheckUnderflow(ULONG value1, ULONG value2)
@@ -237,7 +279,7 @@ inline CHECK CheckUnderflow(ULONG value1, ULONG value2)
 
     CHECK_OK;
 }
-#endif // HOST_UNIX
+#endif // PLATFORM_UNIX
 
 inline CHECK CheckUnderflow(UINT64 value1, UINT64 value2)
 {

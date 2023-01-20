@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -52,7 +53,7 @@ extern "C" void CallSignalHandlerWrapper4();
 extern "C" void CallSignalHandlerWrapper8();
 extern "C" void CallSignalHandlerWrapper12();
 
-// Offset of the return address from the signal_handler_worker in the CallSignalHandlerWrapperX
+// Offset of the return address from the signal_handler_worker in the CallSignalHandlerWrapperX 
 // relative to the start of the function.
 // There are four offsets matching the stack alignments as described in the function header above.
 extern "C" int SignalHandlerWorkerReturnOffset0;
@@ -64,7 +65,7 @@ extern "C" int SignalHandlerWorkerReturnOffset12;
 Function :
     signal_handler_worker
 
-    Handles signal on the original stack where the signal occured.
+    Handles signal on the original stack where the signal occured. 
     Invoked via setcontext.
 
 Parameters :
@@ -77,11 +78,10 @@ extern "C" void signal_handler_worker(int code, siginfo_t *siginfo, void *contex
 
 /*++
 Function :
-    ExecuteHandlerOnCustomStack
+    ExecuteHandlerOnOriginalStack
 
-    Execute signal handler on a custom stack, the current stack pointer is specified by the customSp
-    If the customSp is 0, then the handler is executed on the original stack where the signal was fired.
-    It installs a fake stack frame to enable stack unwinding to the signal source location.
+    Executes signal_handler_worker on the original stack where the signal occured.
+    It installs fake stack frame to enable stack unwinding to the signal source location.
 
 Parameters :
     POSIX signal handler parameter list ("man sigaction" for details)
@@ -89,7 +89,7 @@ Parameters :
 
     (no return value)
 --*/
-void ExecuteHandlerOnCustomStack(int code, siginfo_t *siginfo, void *context, size_t sp, SignalHandlerWorkerReturnPoint* returnPoint);
+void ExecuteHandlerOnOriginalStack(int code, siginfo_t *siginfo, void *context, SignalHandlerWorkerReturnPoint* returnPoint);
 
 #endif // !HAVE_MACH_EXCEPTIONS
 
@@ -116,15 +116,5 @@ Function :
     (no parameters, no return value)
 --*/
 void SEHCleanupSignals();
-
-/*++
-Function :
-    SEHCleanupAbort()
-
-    Restore default SIGABORT signal handlers
-
-    (no parameters, no return value)
---*/
-void SEHCleanupAbort();
 
 #endif /* _PAL_SIGNAL_HPP_ */

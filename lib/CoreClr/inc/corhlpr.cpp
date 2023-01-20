@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /****************************************************************************
  **                                                                        **
@@ -33,7 +34,7 @@ extern "C" {
 void __stdcall DecoderInit(void *pThis, COR_ILMETHOD *header)
 {
     COR_ILMETHOD_DECODER *decoder = (COR_ILMETHOD_DECODER *)pThis;
-
+    
     memset(decoder, 0, sizeof(COR_ILMETHOD_DECODER));
     if (header->Tiny.IsTiny())
     {
@@ -45,7 +46,7 @@ void __stdcall DecoderInit(void *pThis, COR_ILMETHOD *header)
     }
     if (header->Fat.IsFat())
     {
-#ifdef HOST_64BIT
+#ifdef BIT64
         if((((size_t) header) & 3) == 0)        // header is aligned
 #else
         _ASSERTE((((size_t) header) & 3) == 0);        // header is aligned
@@ -74,10 +75,10 @@ void __stdcall DecoderInit(void *pThis, COR_ILMETHOD *header)
 int __stdcall DecoderGetOnDiskSize(void * pThis, COR_ILMETHOD* header)
 {
     COR_ILMETHOD_DECODER* decoder = (COR_ILMETHOD_DECODER*)pThis;
-
+    
     if (decoder->Code == NULL)
         return 0;
-
+    
     BYTE *lastAddr = (BYTE*)decoder->Code + decoder->GetCodeSize();    // addr of end of code
     const COR_ILMETHOD_SECT *sect = decoder->EH;
     if (sect != 0 && sect->Next() == 0)
@@ -118,7 +119,7 @@ unsigned __stdcall IlmethodSize(COR_ILMETHOD_FAT* header, BOOL moreSections)
 unsigned __stdcall IlmethodEmit(unsigned size, COR_ILMETHOD_FAT* header,
                   BOOL moreSections, BYTE* outBuff)
 {
-#ifndef SOS_INCLUDE
+#ifndef SOS_INCLUDE    
 #ifdef _DEBUG
     BYTE* origBuff = outBuff;
 #endif
@@ -139,7 +140,7 @@ unsigned __stdcall IlmethodEmit(unsigned size, COR_ILMETHOD_FAT* header,
             fatHeader->SetFlags(fatHeader->GetFlags() | CorILMethod_MoreSects);
         fatHeader->SetSize(sizeof(COR_ILMETHOD_FAT) / 4);
     }
-#ifndef SOS_INCLUDE
+#ifndef SOS_INCLUDE        
     _ASSERTE(&origBuff[size] == outBuff);
 #endif // !SOS_INCLUDE
     return(size);
@@ -253,7 +254,7 @@ unsigned __stdcall SectEH_Emit(unsigned size, unsigned ehCount,
             EHSect->Kind = CorILMethod_Sect_EHTable;
             if (moreSections)
                 EHSect->Kind |= CorILMethod_Sect_MoreSects;
-#ifndef SOS_INCLUDE
+#ifndef SOS_INCLUDE            
             EHSect->DataSize = EHSect->Size(ehCount);
 #else
             EHSect->DataSize = (BYTE) EHSect->Size(ehCount);

@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 //
 
@@ -28,14 +29,14 @@
 #define     DEBUG_ARG(x)  , x
 #define     DEBUG_ARG1(x)  x
 #else
-#define     DEBUG_ARG(x)
+#define     DEBUG_ARG(x) 
 #define     DEBUG_ARG1(x)
 #endif
 
 #ifdef DACCESS_COMPILE
 #define     DAC_ARG(x)  , x
 #else
-#define     DAC_ARG(x)
+#define     DAC_ARG(x) 
 #endif
 
 
@@ -43,7 +44,7 @@
 /*         Portability macros               */
 /********************************************/
 
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
 #define AMD64_FIRST_ARG(x)  x ,
 #define AMD64_ARG(x)        , x
 #define AMD64_ONLY(x)       x
@@ -57,7 +58,7 @@
 #define NOT_AMD64_ARG(x)    , x
 #endif
 
-#ifdef TARGET_X86
+#ifdef _TARGET_X86_
 #define X86_FIRST_ARG(x)    x ,
 #define X86_ARG(x)          , x
 #define X86_ONLY(x)         x
@@ -71,19 +72,19 @@
 #define NOT_X86_ARG(x)      , x
 #endif
 
-#ifdef HOST_64BIT
-#define BIT64_ARG(x)  , x
-#define BIT64_ONLY(x) x
+#ifdef BIT64
+#define BIT64_ARG(x)  , x 
+#define BIT64_ONLY(x) x 
 #define NOT_BIT64(x)
 #define NOT_BIT64_ARG(x)
 #else
 #define BIT64_ARG(x)
-#define BIT64_ONLY(x)
+#define BIT64_ONLY(x) 
 #define NOT_BIT64(x)    x
 #define NOT_BIT64_ARG(x)    , x
-#endif // HOST_64BIT
+#endif // BIT64
 
-#ifdef TARGET_ARM
+#ifdef _TARGET_ARM_
 #define ARM_FIRST_ARG(x)  x ,
 #define ARM_ARG(x)        , x
 #define ARM_ONLY(x)       x
@@ -97,7 +98,7 @@
 #define NOT_ARM_ARG(x)    , x
 #endif
 
-#ifdef TARGET_ARM64
+#ifdef _TARGET_ARM64_
 #define ARM64_FIRST_ARG(x)  x ,
 #define ARM64_ARG(x)        , x
 #define ARM64_ONLY(x)       x
@@ -111,27 +112,27 @@
 #define NOT_ARM64_ARG(x)    , x
 #endif
 
-#ifdef TARGET_64BIT
+#ifdef _TARGET_64BIT_
 #define LOG2_PTRSIZE 3
 #else
 #define LOG2_PTRSIZE 2
 #endif
 
-#ifdef HOST_64BIT
+#ifdef BIT64
     #define INVALID_POINTER_CC 0xcccccccccccccccc
     #define INVALID_POINTER_CD 0xcdcdcdcdcdcdcdcd
     #define FMT_ADDR           " %08x`%08x "
     #define LFMT_ADDR          W(" %08x`%08x ")
-    #define DBG_ADDR(ptr)      (DWORD)(((UINT_PTR) (ptr)) >> 32), (DWORD)(((UINT_PTR) (ptr)) & 0xffffffff)
-#else // HOST_64BIT
+    #define DBG_ADDR(ptr)      (((UINT_PTR) (ptr)) >> 32), (((UINT_PTR) (ptr)) & 0xffffffff)
+#else // BIT64
     #define INVALID_POINTER_CC 0xcccccccc
     #define INVALID_POINTER_CD 0xcdcdcdcd
     #define FMT_ADDR           " %08x "
     #define LFMT_ADDR          W(" %08x ")
-    #define DBG_ADDR(ptr)      (DWORD)((UINT_PTR)(ptr))
-#endif // HOST_64BIT
+    #define DBG_ADDR(ptr)      ((UINT_PTR)(ptr))
+#endif // BIT64
 
-#ifdef TARGET_ARM
+#ifdef _TARGET_ARM_
     #define ALIGN_ACCESS        ((1<<LOG2_PTRSIZE)-1)
 #endif
 
@@ -144,7 +145,7 @@
 inline void *GetTopMemoryAddress(void)
 {
     WRAPPER_NO_CONTRACT;
-
+    
     static void *result; // = NULL;
     if( NULL == result )
     {
@@ -157,7 +158,7 @@ inline void *GetTopMemoryAddress(void)
 inline void *GetBotMemoryAddress(void)
 {
     WRAPPER_NO_CONTRACT;
-
+    
     static void *result; // = NULL;
     if( NULL == result )
     {
@@ -178,24 +179,30 @@ inline void *GetBotMemoryAddress(void)
 inline size_t ALIGN_UP( size_t val, size_t alignment )
 {
     LIMITED_METHOD_DAC_CONTRACT;
-
+    
     // alignment must be a power of 2 for this implementation to work (need modulo otherwise)
-    _ASSERTE( 0 == (alignment & (alignment - 1)) );
+    _ASSERTE( 0 == (alignment & (alignment - 1)) ); 
     size_t result = (val + (alignment - 1)) & ~(alignment - 1);
     _ASSERTE( result >= val );      // check for overflow
     return result;
 }
-
-template <typename T> inline T ALIGN_UP(T val, size_t alignment)
+inline void* ALIGN_UP( void* val, size_t alignment )
 {
     WRAPPER_NO_CONTRACT;
-    return (T)ALIGN_UP((size_t)val, alignment);
+    
+    return (void*) ALIGN_UP( (size_t)val, alignment );
+}
+inline uint8_t* ALIGN_UP( uint8_t* val, size_t alignment )
+{
+    WRAPPER_NO_CONTRACT;
+    
+    return (uint8_t*) ALIGN_UP( (size_t)val, alignment );
 }
 
 inline size_t ALIGN_DOWN( size_t val, size_t alignment )
 {
     LIMITED_METHOD_CONTRACT;
-
+    
     // alignment must be a power of 2 for this implementation to work (need modulo otherwise)
     _ASSERTE( 0 == (alignment & (alignment - 1)) );
     size_t result = val & ~(alignment - 1);
@@ -216,9 +223,9 @@ inline BOOL IS_ALIGNED( size_t val, size_t alignment )
 {
     LIMITED_METHOD_CONTRACT;
     SUPPORTS_DAC;
-
+    
     // alignment must be a power of 2 for this implementation to work (need modulo otherwise)
-    _ASSERTE( 0 == (alignment & (alignment - 1)) );
+    _ASSERTE( 0 == (alignment & (alignment - 1)) ); 
     return 0 == (val & (alignment - 1));
 }
 inline BOOL IS_ALIGNED( const void* val, size_t alignment )
@@ -228,7 +235,7 @@ inline BOOL IS_ALIGNED( const void* val, size_t alignment )
 }
 
 // Rounds a ULONG up to the nearest power of two number.
-inline ULONG RoundUpToPower2(ULONG x)
+inline ULONG RoundUpToPower2(ULONG x) 
 {
     if (x == 0) return 1;
 
@@ -277,13 +284,13 @@ inline ULONG RoundUpToPower2(ULONG x)
         (((pMT) == NULL)  ? NULL : (pMT)->GetClass()->GetDebugClassName())
 
 #define DBG_CLASS_NAME_MT(pMT)         \
-        (DBG_GET_CLASS_NAME(pMT) == NULL) ? "<null-class>" : DBG_GET_CLASS_NAME(pMT)
+        (DBG_GET_CLASS_NAME(pMT) == NULL) ? "<null-class>" : DBG_GET_CLASS_NAME(pMT) 
 
 #define DBG_GET_MT_FROM_OBJ(obj)       \
-        (MethodTable*)((size_t)((Object*) (obj))->GetGCSafeMethodTable())
+        (MethodTable*)((size_t)((Object*) (obj))->GetGCSafeMethodTable()) 
 
 #define DBG_CLASS_NAME_OBJ(obj)        \
-        ((obj) == NULL)  ? "null" : DBG_CLASS_NAME_MT(DBG_GET_MT_FROM_OBJ(obj))
+        ((obj) == NULL)  ? "null" : DBG_CLASS_NAME_MT(DBG_GET_MT_FROM_OBJ(obj)) 
 
 #define DBG_CLASS_NAME_IPTR2(obj,iptr) \
         ((iptr) != 0)    ? ""     : DBG_CLASS_NAME_MT(DBG_GET_MT_FROM_OBJ(obj))
@@ -337,7 +344,7 @@ inline ULONG RoundUpToPower2(ULONG x)
 #endif
 
 
-// This is temporary.  LKG should provide these macros and we should then
+// This is temporary.  LKG should provide these macros and we should then 
 // remove STRUNCATE and _TRUNCATE from here.
 
 /* error codes */

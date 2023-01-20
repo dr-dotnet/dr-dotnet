@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 // From llvm-3.9/clang-3.9.1 emmintrin.h:
 
@@ -39,7 +40,7 @@ typedef char __v16qi __attribute__((__vector_size__(16)));
 
 
 /* Define the default attribute for the functions in this file. */
-#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, NODEBUG_ATTRIBUTE))
+#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, NODEBUG_ATTRIBUTE, __target__("sse2")))
 
 /// \brief Performs a bitwise OR of two 128-bit integer vectors.
 ///

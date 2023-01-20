@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -116,7 +117,7 @@ Parameters:
 
 Return Value:
 
-    BOOL -
+    BOOL - 
         TRUE <=> successful
 
 --*/
@@ -129,7 +130,7 @@ RemoveDirectoryHelper (
 )
 {
     BOOL  bRet = FALSE;
-    *dwLastError = 0;
+    *dwLastError = 0; 
 
     FILEDosToUnixPathA( lpPathName );
 
@@ -145,8 +146,8 @@ RemoveDirectoryHelper (
         case ENOENT:
         {
             struct stat stat_data;
-
-            if ( stat( lpPathName, &stat_data) == 0 &&
+            
+            if ( stat( lpPathName, &stat_data) == 0 && 
                  (stat_data.st_mode & S_IFMT) == S_IFREG )
             {
                 /* Not a directory, it is a file. */
@@ -175,6 +176,52 @@ RemoveDirectoryHelper (
 
 /*++
 Function:
+  RemoveDirectoryA
+
+See MSDN doc.
+--*/
+BOOL
+PALAPI
+RemoveDirectoryA(
+         IN LPCSTR lpPathName)
+{
+    DWORD dwLastError = 0;
+    BOOL  bRet = FALSE;
+    PathCharString mb_dirPathString;
+    
+    PERF_ENTRY(RemoveDirectoryA);
+    ENTRY("RemoveDirectoryA(lpPathName=%p (%s))\n",
+          lpPathName,
+          lpPathName);
+
+    if (lpPathName == NULL) 
+    {
+        dwLastError = ERROR_PATH_NOT_FOUND;
+        goto done;
+    }
+
+    if (!mb_dirPathString.Set(lpPathName, strlen(lpPathName)))
+    {
+        WARN("Set failed !\n");
+        dwLastError = ERROR_NOT_ENOUGH_MEMORY;
+        goto done;
+    }
+
+    bRet = RemoveDirectoryHelper (mb_dirPathString, &dwLastError);
+
+done:
+    if( dwLastError )
+    {
+        SetLastError( dwLastError );
+    }
+
+    LOGEXIT("RemoveDirectoryA returns BOOL %d\n", bRet);
+    PERF_EXIT(RemoveDirectoryA);
+    return bRet;
+}
+
+/*++
+Function:
   RemoveDirectoryW
 
 See MSDN doc.
@@ -196,7 +243,7 @@ RemoveDirectoryW(
           lpPathName?lpPathName:W16_NULLSTRING,
           lpPathName?lpPathName:W16_NULLSTRING);
 
-    if (lpPathName == NULL)
+    if (lpPathName == NULL) 
     {
         dwLastError = ERROR_PATH_NOT_FOUND;
         goto done;
@@ -207,7 +254,7 @@ RemoveDirectoryW(
     if (NULL == mb_dir)
     {
         dwLastError = ERROR_NOT_ENOUGH_MEMORY;
-        goto done;
+        goto done;        
     }
 
     mb_size = WideCharToMultiByte( CP_ACP, 0, lpPathName, -1, mb_dir, length,
@@ -220,7 +267,7 @@ RemoveDirectoryW(
         dwLastError = ERROR_INTERNAL_ERROR;
         goto done;
     }
-
+    
     mb_dirPathString.CloseBuffer(mb_size - 1);
 
     if ((bRet = RemoveDirectoryHelper (mb_dirPathString, &dwLastError)))
@@ -258,7 +305,7 @@ GetCurrentDirectoryA(PathCharString& lpBuffer)
 
     current_dir = lpBuffer.OpenStringBuffer(MAX_PATH);
     /* NULL first arg means getcwd will allocate the string */
-    current_dir = getcwd( current_dir, MAX_PATH);
+    current_dir = PAL__getcwd( current_dir, MAX_PATH);
 
     if (current_dir != NULL )
     {
@@ -269,7 +316,7 @@ GetCurrentDirectoryA(PathCharString& lpBuffer)
     else if ( errno == ERANGE )
     {
         lpBuffer.CloseBuffer(0);
-        current_dir = getcwd( NULL, 0);
+        current_dir = PAL__getcwd( NULL, 0);
     }
 
     if ( !current_dir )
@@ -406,7 +453,7 @@ SetCurrentDirectoryW(
     int  size;
     size_t length;
     char * dir = NULL;
-
+    
     PERF_ENTRY(SetCurrentDirectoryW);
     ENTRY("SetCurrentDirectoryW(lpPathName=%p (%S))\n",
           lpPathName?lpPathName:W16_NULLSTRING,
@@ -430,10 +477,10 @@ SetCurrentDirectoryW(
         bRet = FALSE;
         goto done;
     }
-
+    
     size = WideCharToMultiByte( CP_ACP, 0, lpPathName, -1, dir, length,
                                 NULL, NULL );
-
+    
     if( size == 0 )
     {
         dirPathString.CloseBuffer(0);
@@ -548,7 +595,7 @@ CreateDirectoryA(
         realPath.Append(unixPathName, pathLength);
         realPathBuf = realPath.OpenStringBuffer(realPath.GetCount());
     }
-
+   
     // Canonicalize the path so we can determine its length.
     FILECanonicalizePath(realPathBuf);
 

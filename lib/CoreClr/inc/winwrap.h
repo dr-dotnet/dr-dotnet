@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 //*****************************************************************************
 // WinWrap.h
 //
@@ -56,6 +57,7 @@
 // winbase.h
 #undef GetBinaryType
 #undef GetShortPathName
+#undef GetLongPathName
 #undef GetEnvironmentStrings
 #undef FreeEnvironmentStrings
 #undef FormatMessage
@@ -92,15 +94,20 @@
 #undef GetSystemDirectory
 #undef GetTempPath
 #undef GetTempFileName
+#undef SetCurrentDirectory
 #undef GetCurrentDirectory
+#undef CreateDirectory
+#undef RemoveDirectory
 #undef GetFullPathName
 #undef CreateFile
+#undef SetFileAttributes
 #undef GetFileAttributes
 #undef GetFileAttributesEx
 #undef DeleteFile
 #undef FindFirstFileEx
 #undef FindFirstFile
 #undef FindNextFile
+#undef SearchPath
 #undef CopyFile
 #undef CopyFileEx
 #undef MoveFile
@@ -118,6 +125,7 @@
 
 #undef SendMessage
 #undef CharLower
+#undef CharNext
 #undef MessageBox
 #undef GetClassName
 #undef LoadString
@@ -134,7 +142,13 @@
 //
 
 // winbase.h
+#define WszGetEnvironmentStrings   GetEnvironmentStringsW
+#define WszFreeEnvironmentStrings   FreeEnvironmentStringsW
+#ifndef USE_FORMATMESSAGE_WRAPPER
 #define WszFormatMessage   FormatMessageW
+#else
+#define WszFormatMessage   CCompRC::FormatMessage
+#endif
 #define Wszlstrcmp   lstrcmpW
 #define Wszlstrcmpi   lstrcmpiW
 #define WszCreateMutex CreateMutexW
@@ -167,6 +181,7 @@
 #define WszGetMessage GetMessageW
 #define WszSendMessage SendMessageW
 #define WszCharLower CharLowerW
+#define WszCharNext CharNextW
 #define WszMessageBox LateboundMessageBoxW
 #define WszGetClassName GetClassNameW
 #define WszLoadString LoadStringW
@@ -177,6 +192,7 @@
 #define WszRegQueryValueExTrue RegQueryValueExW
 #define WszRegQueryStringValueEx RegQueryValueExW
 
+
 #define WszRegQueryInfoKey RegQueryInfoKeyW
 #define WszRegEnumValue RegEnumValueW
 #define WszRegEnumKeyEx RegEnumKeyExW
@@ -186,11 +202,16 @@
 #define WszLCMapString LCMapStringW
 #define WszMultiByteToWideChar MultiByteToWideChar
 #define WszWideCharToMultiByte WideCharToMultiByte
-#define WszCreateSemaphore(_secattr, _count, _maxcount, _name) CreateSemaphoreExW((_secattr), (_count), (_maxcount), (_name), 0, MAXIMUM_ALLOWED | SYNCHRONIZE | SEMAPHORE_MODIFY_STATE)
+#define WszCreateSemaphore CreateSemaphoreW
+
 
 #ifdef FEATURE_CORESYSTEM
 
-// CoreSystem has GetFileVersionInfo{Size}Ex but not GetFileVersionInfoSize{Size}
+// CoreSystem has CreateSemaphoreExW but not CreateSemaphoreW.
+#undef WszCreateSemaphore
+#define WszCreateSemaphore(_secattr, _count, _maxcount, _name) CreateSemaphoreExW((_secattr), (_count), (_maxcount), (_name), 0, MAXIMUM_ALLOWED | SYNCHRONIZE | SEMAPHORE_MODIFY_STATE)
+
+// Same deal as above for GetFileVersionInfo/GetFileVersionInfoSize.
 #undef GetFileVersionInfo
 #define GetFileVersionInfo(_filename, _handle, _len, _data) GetFileVersionInfoEx(0, (_filename), (_handle), (_len), (_data))
 #undef GetFileVersionInfoSize
@@ -207,14 +228,21 @@
 #define WszLoadLibrary         LoadLibraryExWrapper
 #define WszLoadLibraryEx       LoadLibraryExWrapper
 #define WszCreateFile          CreateFileWrapper
+#define WszSetFileAttributes   SetFileAttributesWrapper  
 #define WszGetFileAttributes   GetFileAttributesWrapper
 #define WszGetFileAttributesEx GetFileAttributesExWrapper
 #define WszDeleteFile          DeleteFileWrapper
 #define WszFindFirstFileEx     FindFirstFileExWrapper
 #define WszFindNextFile        FindNextFileW
+#define WszCopyFile            CopyFileWrapper
+#define WszCopyFileEx          CopyFileExWrapper
 #define WszMoveFileEx          MoveFileExWrapper
+#define WszMoveFile(lpExistingFileName, lpNewFileName) WszMoveFileEx(lpExistingFileName, lpNewFileName, 0)
+#define WszCreateDirectory     CreateDirectoryWrapper 
+#define WszRemoveDirectory     RemoveDirectoryWrapper
+#define WszCreateHardLink      CreateHardLinkWrapper
 
-//Can not use extended syntax
+//Can not use extended syntax 
 #define WszGetFullPathName     GetFullPathNameW
 
 //Long Files will not work on these till redstone
@@ -225,18 +253,21 @@
 //APIS which have a buffer as an out parameter
 #define WszGetEnvironmentVariable GetEnvironmentVariableWrapper
 #define WszSearchPath          SearchPathWrapper
+#define WszGetShortPathName    GetShortPathNameWrapper
+#define WszGetLongPathName     GetLongPathNameWrapper
 #define WszGetModuleFileName   GetModuleFileNameWrapper
 
 //NOTE: IF the following API's are enabled ensure that they can work with LongFile Names
 //See the usage and implementation of above API's
 //
+//#define WszSetCurrentDirectory SetCurrentDirectoryW
 //#define WszGetBinaryType       GetBinaryTypeWrapper     //Coresys does not seem to have this API
 
-#if HOST_UNIX
+#if FEATURE_PAL
 #define WszFindFirstFile     FindFirstFileW
 #else
 #define WszFindFirstFile(_lpFileName_, _lpFindData_)       FindFirstFileExWrapper(_lpFileName_, FindExInfoStandard, _lpFindData_, FindExSearchNameMatch, NULL, 0)
-#endif // HOST_UNIX
+#endif //FEATURE_PAL
 //*****************************************************************************
 // Prototypes for API's.
 //*****************************************************************************
@@ -249,21 +280,21 @@ inline DWORD GetMaxDBCSCharByteSize()
 {
     // contract.h not visible here
     __annotation(W("WRAPPER ") W("GetMaxDBCSCharByteSize"));
-#ifndef HOST_UNIX
+#ifndef FEATURE_PAL
     EnsureCharSetInfoInitialized();
 
     _ASSERTE(g_dwMaxDBCSCharByteSize != 0);
     return (g_dwMaxDBCSCharByteSize);
-#else // HOST_UNIX
+#else // FEATURE_PAL
     return 3;
-#endif // HOST_UNIX
+#endif // FEATURE_PAL
 }
 
-#ifndef TARGET_UNIX
+#ifndef FEATURE_PAL
 BOOL RunningInteractive();
-#else // !TARGET_UNIX
+#else // !FEATURE_PAL
 #define RunningInteractive() FALSE
-#endif // !TARGET_UNIX
+#endif // !FEATURE_PAL
 
 #ifndef Wsz_mbstowcs
 #define Wsz_mbstowcs(szOut, szIn, iSize) WszMultiByteToWideChar(CP_ACP, 0, szIn, -1, szOut, iSize)
@@ -289,7 +320,7 @@ WszCreateProcess(
     LPPROCESS_INFORMATION lpProcessInformation
     );
 
-#if defined(HOST_X86) && defined(_MSC_VER)
+#if defined(_X86_) && defined(_MSC_VER)
 
 //
 // Windows SDK does not use intrinsics on x86. Redefine the interlocked operations to use intrinsics.
@@ -327,9 +358,20 @@ InterlockedCompareExchangePointer (
     return((PVOID)(LONG_PTR)_InterlockedCompareExchange((LONG volatile *)Destination, (LONG)(LONG_PTR)ExChange, (LONG)(LONG_PTR)Comperand));
 }
 
-#endif // HOST_X86 && _MSC_VER
+#endif // _X86_ && _MSC_VER
 
-#if defined(HOST_X86) & !defined(InterlockedIncrement64)
+#if defined(_ARM_) & !defined(FEATURE_PAL)
+//
+// InterlockedCompareExchangeAcquire/InterlockedCompareExchangeRelease is not mapped in SDK to the correct intrinsics. Remove once
+// the SDK definition is fixed (OS Bug #516255)
+//
+#undef InterlockedCompareExchangeAcquire
+#define InterlockedCompareExchangeAcquire _InterlockedCompareExchange_acq
+#undef InterlockedCompareExchangeRelease
+#define InterlockedCompareExchangeRelease _InterlockedCompareExchange_rel
+#endif
+
+#if defined(_X86_) & !defined(InterlockedIncrement64)
 
 // Interlockedxxx64 that do not have intrinsics are only supported on Windows Server 2003
 // or higher for X86 so define our own portable implementation
@@ -395,7 +437,7 @@ __forceinline LONGLONG __InterlockedExchangeAdd64(LONGLONG volatile * Addend, LO
     return Old;
 }
 
-#endif // HOST_X86
+#endif // _X86_
 
 // Output printf-style formatted text to the debugger if it's present or stdout otherwise.
 inline void DbgWPrintf(const LPCWSTR wszFormat, ...)
@@ -430,7 +472,7 @@ inline int LateboundMessageBoxW(HWND hWnd,
                                 LPCWSTR lpCaption,
                                 UINT uType)
 {
-#ifndef HOST_UNIX
+#ifndef FEATURE_PAL
     // User32 should exist on all systems where displaying a message box makes sense.
     HMODULE hGuiExtModule = WszLoadLibrary(W("user32"));
     if (hGuiExtModule)
@@ -443,7 +485,7 @@ inline int LateboundMessageBoxW(HWND hWnd,
         FreeLibrary(hGuiExtModule);
         return result;
     }
-#endif // !HOST_UNIX
+#endif // !FEATURE_PAL
 
     // No luck. Output the caption and text to the debugger if present or stdout otherwise.
     if (lpText == NULL)

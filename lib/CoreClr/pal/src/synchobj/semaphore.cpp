@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -11,7 +12,7 @@ Module Name:
 
 Abstract:
 
-    Implementation of the sempahore synchroniztion object as described in
+    Implementation of the sempahore synchroniztion object as described in 
     the WIN32 API
 
 Revision History:
@@ -54,7 +55,42 @@ CAllowedObjectTypes aotSempahore(otiSemaphore);
 
 /*++
 Function:
-  CreateSemaphoreW
+CreateSemaphoreExA
+
+Note:
+lpSemaphoreAttributes currently ignored:
+-- Win32 object security not supported
+-- handles to semaphore objects are not inheritable
+
+Parameters:
+See MSDN doc.
+--*/
+
+HANDLE
+PALAPI
+CreateSemaphoreExA(
+        IN LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
+        IN LONG lInitialCount,
+        IN LONG lMaximumCount,
+        IN LPCSTR lpName,
+        IN /*_Reserved_*/  DWORD dwFlags,
+        IN DWORD dwDesiredAccess)
+{
+    // dwFlags is reserved and unused, and dwDesiredAccess is currently
+    // only ever used as SEMAPHORE_ALL_ACCESS.  The other parameters
+    // all map to CreateSemaphoreA.
+    _ASSERTE(SEMAPHORE_ALL_ACCESS == dwDesiredAccess);
+
+    return CreateSemaphoreA(
+        lpSemaphoreAttributes,
+        lInitialCount,
+        lMaximumCount,
+        lpName);
+}
+
+/*++
+Function:
+  CreateSemaphoreA
 
 Note:
   lpSemaphoreAttributes currently ignored:
@@ -65,32 +101,41 @@ Parameters:
   See MSDN doc.
 --*/
 
-HANDLE CreateSemaphoreW(
+HANDLE
+PALAPI
+CreateSemaphoreA(
          IN LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
          IN LONG lInitialCount,
          IN LONG lMaximumCount,
-         IN LPCWSTR lpName)
+         IN LPCSTR lpName)
 {
     HANDLE hSemaphore = NULL;
-    PAL_ERROR palError;
     CPalThread *pthr = NULL;
+    PAL_ERROR palError;
 
-    PERF_ENTRY(CreateSemaphoreW);
-    ENTRY("CreateSemaphoreW(lpSemaphoreAttributes=%p, lInitialCount=%d, "
-          "lMaximumCount=%d, lpName=%p (%S))\n",
-          lpSemaphoreAttributes, lInitialCount, lMaximumCount,
-          lpName, lpName?lpName:W16_NULLSTRING);
+    PERF_ENTRY(CreateSemaphoreA);
+    ENTRY("CreateSemaphoreA(lpSemaphoreAttributes=%p, lInitialCount=%d, "
+          "lMaximumCount=%d, lpName=%p (%s))\n",
+          lpSemaphoreAttributes, lInitialCount, lMaximumCount, lpName, lpName?lpName:"NULL");
 
     pthr = InternalGetCurrentThread();
-
-    palError = InternalCreateSemaphore(
-        pthr,
-        lpSemaphoreAttributes,
-        lInitialCount,
-        lMaximumCount,
-        lpName,
-        &hSemaphore
-        );
+    
+    if (lpName != nullptr)
+    {
+        ASSERT("lpName: Cross-process named objects are not supported in PAL");
+        palError = ERROR_NOT_SUPPORTED;
+    }
+    else
+    {
+        palError = InternalCreateSemaphore(
+            pthr,
+            lpSemaphoreAttributes,
+            lInitialCount,
+            lMaximumCount,
+            NULL,
+            &hSemaphore
+            );
+    }
 
     //
     // We always need to set last error, even on success:
@@ -100,9 +145,9 @@ HANDLE CreateSemaphoreW(
     //
 
     pthr->SetLastError(palError);
-
-    LOGEXIT("CreateSemaphoreW returns HANDLE %p\n", hSemaphore);
-    PERF_EXIT(CreateSemaphoreW);
+    
+    LOGEXIT("CreateSemaphoreA returns HANDLE %p\n", hSemaphore);
+    PERF_EXIT(CreateSemaphoreA);
     return hSemaphore;
 }
 
@@ -111,7 +156,7 @@ Function:
 CreateSemaphoreExW
 
 Note:
-lpSemaphoreAttributes currently ignored:
+lpSemaphoreAttributes currentely ignored:
 -- Win32 object security not supported
 -- handles to semaphore objects are not inheritable
 
@@ -140,17 +185,73 @@ CreateSemaphoreExW(
 
 /*++
 Function:
+  CreateSemaphoreW
+
+Note:
+  lpSemaphoreAttributes currentely ignored:
+  -- Win32 object security not supported
+  -- handles to semaphore objects are not inheritable
+
+Parameters:
+  See MSDN doc.
+--*/
+
+HANDLE
+PALAPI
+CreateSemaphoreW(
+         IN LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
+         IN LONG lInitialCount,
+         IN LONG lMaximumCount,
+         IN LPCWSTR lpName)
+{
+    HANDLE hSemaphore = NULL;
+    PAL_ERROR palError;
+    CPalThread *pthr = NULL;
+
+    PERF_ENTRY(CreateSemaphoreW);
+    ENTRY("CreateSemaphoreW(lpSemaphoreAttributes=%p, lInitialCount=%d, "
+          "lMaximumCount=%d, lpName=%p (%S))\n",
+          lpSemaphoreAttributes, lInitialCount, lMaximumCount, 
+          lpName, lpName?lpName:W16_NULLSTRING);
+
+    pthr = InternalGetCurrentThread();
+
+    palError = InternalCreateSemaphore(
+        pthr,
+        lpSemaphoreAttributes, 
+        lInitialCount,
+        lMaximumCount,
+        lpName,
+        &hSemaphore
+        );
+
+    //
+    // We always need to set last error, even on success:
+    // we need to protect ourselves from the situation
+    // where last error is set to ERROR_ALREADY_EXISTS on
+    // entry to the function
+    //
+
+    pthr->SetLastError(palError);
+
+    LOGEXIT("CreateSemaphoreW returns HANDLE %p\n", hSemaphore);
+    PERF_EXIT(CreateSemaphoreW);
+    return hSemaphore;
+}
+
+/*++
+Function:
   InternalCreateSemaphore
 
 Note:
-  lpSemaphoreAttributes currently ignored:
+  lpSemaphoreAttributes currentely ignored:
   -- Win32 object security not supported
   -- handles to semaphore objects are not inheritable
 
 Parameters
   pthr -- thread data for calling thread
   phEvent -- on success, receives the allocated semaphore handle
-
+  
   See MSDN docs on CreateSemaphore for all other parameters.
 --*/
 
@@ -251,7 +352,8 @@ CorUnix::InternalCreateSemaphore(
     palError = g_pObjectManager->RegisterObject(
         pthr,
         pobjSemaphore,
-        &aotSempahore,
+        &aotSempahore, 
+        0, // Should be SEMAPHORE_ALL_ACCESS; currently ignored (no Win32 security)
         phSemaphore,
         &pobjRegisteredSemaphore
         );
@@ -261,7 +363,7 @@ CorUnix::InternalCreateSemaphore(
     // out here to ensure that we don't try to release a reference on
     // it down the line.
     //
-
+    
     pobjSemaphore = NULL;
 
 InternalCreateSemaphoreExit:
@@ -306,7 +408,7 @@ ReleaseSemaphore(
           hSemaphore, lReleaseCount, lpPreviousCount);
 
     pthr = InternalGetCurrentThread();
-
+    
     palError = InternalReleaseSemaphore(
         pthr,
         hSemaphore,
@@ -330,7 +432,7 @@ Function:
 
 Parameters:
   pthr -- thread data for calling thread
-
+  
   See MSDN docs on ReleaseSemaphore for all other parameters
 --*/
 
@@ -367,7 +469,8 @@ CorUnix::InternalReleaseSemaphore(
     palError = g_pObjectManager->ReferenceObjectByHandle(
         pthr,
         hSemaphore,
-        &aotSempahore,
+        &aotSempahore, 
+        0, // Should be SEMAPHORE_MODIFY_STATE; currently ignored (no Win32 security)
         &pobjSemaphore
         );
 
@@ -378,7 +481,7 @@ CorUnix::InternalReleaseSemaphore(
     }
 
     palError = pobjSemaphore->GetImmutableData(reinterpret_cast<void**>(&pSemaphoreData));
-
+    
     if (NO_ERROR != palError)
     {
         ASSERT("Error %d obtaining object data\n", palError);
@@ -412,7 +515,7 @@ CorUnix::InternalReleaseSemaphore(
     }
 
     palError = pssc->IncrementSignalCount(lReleaseCount);
-
+    
     if (NO_ERROR != palError)
     {
         ASSERT("Error %d incrementing signal count\n", palError);
@@ -467,7 +570,7 @@ OpenSemaphoreW(
     CPalThread *pthr = NULL;
 
     PERF_ENTRY(OpenSemaphoreW);
-    ENTRY("OpenSemaphoreW(dwDesiredAccess=%#x, bInheritHandle=%d, lpName=%p (%S))\n",
+    ENTRY("OpenSemaphoreW(dwDesiredAccess=%#x, bInheritHandle=%d, lpName=%p (%S))\n", 
           dwDesiredAccess, bInheritHandle, lpName, lpName?lpName:W16_NULLSTRING);
 
     pthr = InternalGetCurrentThread();

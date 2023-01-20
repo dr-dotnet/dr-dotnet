@@ -43,7 +43,6 @@
     <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
     <TargetLinuxPlatform>Generic</TargetLinuxPlatform>
     <LinuxProjectType>{2238F9CD-F817-4ECC-BD14-2524D2669B35}</LinuxProjectType>
-    <ProjectName>Profiler.Linux</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
@@ -107,21 +106,18 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <CppLanguageStandard>c++17</CppLanguageStandard>
-      <AdditionalIncludeDirectories>../../lib/coreclr/pal/inc/rt;../../lib/coreclr/pal/src/include;../../lib/coreclr/pal/prebuilt/inc;../../lib/coreclr/pal/inc;../../lib/coreclr/inc;%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../lib/coreclr/pal/inc/rt;../../../lib/coreclr/pal/src/include;../../../lib/coreclr/pal/prebuilt/inc;../../../lib/coreclr/pal/inc;../../../lib/coreclr/inc;%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>PLATFORM_UNIX;PAL_STDCPP_COMPAT;BIT64;_DEBUG;UNICODE</PreprocessorDefinitions>
       <AdditionalOptions>-fms-extensions %(AdditionalOptions)</AdditionalOptions>
       <Verbose>true</Verbose>
       <ShowIncludes>true</ShowIncludes>
     </ClCompile>
     <Link />
-    <PostBuildEvent>
-      <Command>copy $(TargetPath) $(SolutionDir)$(Platform)\$(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <CppLanguageStandard>c++17</CppLanguageStandard>
-      <AdditionalIncludeDirectories>../../lib/coreclr/pal/inc/rt;../../lib/coreclr/pal/src/include;../../lib/coreclr/pal/prebuilt/inc;../../lib/coreclr/pal/inc;../../lib/coreclr/inc;%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../lib/coreclr/pal/inc/rt;../../../lib/coreclr/pal/src/include;../../../lib/coreclr/pal/prebuilt/inc;../../../lib/coreclr/pal/inc;../../../lib/coreclr/inc;%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>UNICODE;PLATFORM_UNIX;PAL_STDCPP_COMPAT;BIT64;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>-fms-extensions %(AdditionalOptions)</AdditionalOptions>
       <Verbose>true</Verbose>

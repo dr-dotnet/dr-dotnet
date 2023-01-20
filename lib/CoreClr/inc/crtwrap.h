@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 //*****************************************************************************
 // CrtWrap.h
 //
@@ -20,7 +21,7 @@
 #include <wchar.h>
 #include <stdio.h>
 
-#ifdef HOST_WINDOWS
+#ifndef FEATURE_PAL
 // CoreCLR.dll uses linker .def files to control the exported symbols.
 // Define DLLEXPORT macro as empty on Windows.
 #define DLLEXPORT

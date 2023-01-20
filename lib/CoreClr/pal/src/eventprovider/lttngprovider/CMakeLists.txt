@@ -1,5 +1,7 @@
+cmake_minimum_required(VERSION 2.8.12)
+
 include(FindPythonInterp)
-set (GENERATE_SCRIPT ${CLR_DIR}/scripts/genLttngProvider.py)
+set (GENERATE_SCRIPT ${CLR_DIR}/src/scripts/genLttngProvider.py)
 
 set(GENERATE_COMMAND ${PYTHON_EXECUTABLE} ${GENERATE_SCRIPT} --man ${EVENT_MANIFEST} --intermediate ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -38,27 +40,18 @@ add_custom_command(OUTPUT ${LTTNG_PROVIDER_SOURCES} ${TRACEPOINT_PROVIDER_SOURCE
   COMMAND ${GENERATE_COMMAND}
   DEPENDS ${EVENT_MANIFEST} ${GENERATE_SCRIPT})
 
-set_source_files_properties(
-  ${LTTNG_PROVIDER_SOURCES} ${TRACEPOINT_PROVIDER_SOURCES} ${LTTNG_HEADERS}
-  PROPERTIES GENERATED TRUE)
-
-add_custom_target(
-  generated_eventing_headers
-  DEPENDS ${LTTNG_HEADERS})
-
 add_library(eventprovider
-  STATIC
-  ${LTTNG_PROVIDER_SOURCES}
-  eventproviderhelpers.cpp
+    STATIC
+    ${LTTNG_PROVIDER_SOURCES}
+    eventproviderhelpers.cpp
 )
 
-add_library_clr(coreclrtraceptprovider
-  SHARED
-  ${TRACEPOINT_PROVIDER_SOURCES}
-)
+add_compile_options(-fPIC)
 
-add_dependencies(eventprovider generated_eventing_headers)
-add_dependencies(coreclrtraceptprovider generated_eventing_headers)
+add_library(coreclrtraceptprovider
+    SHARED
+    ${TRACEPOINT_PROVIDER_SOURCES}
+)
 
 find_library(LTTNG NAMES lttng-ust)
 
@@ -69,8 +62,6 @@ target_link_libraries(coreclrtraceptprovider
 set_target_properties(coreclrtraceptprovider PROPERTIES LINKER_LANGUAGE CXX)
 
 # Install the static eventprovider library
-install_clr(TARGETS eventprovider DESTINATIONS lib COMPONENT runtime)
+_install(TARGETS eventprovider DESTINATION lib)
 # Install the static coreclrtraceptprovider library
-install_clr(TARGETS coreclrtraceptprovider DESTINATIONS . sharedFramework COMPONENT runtime)
-install(TARGETS coreclrtraceptprovider DESTINATION paltests COMPONENT paltests EXCLUDE_FROM_ALL)
-add_dependencies(paltests_install coreclrtraceptprovider)
+install_clr(coreclrtraceptprovider)

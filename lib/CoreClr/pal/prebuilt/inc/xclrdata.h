@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 
 
@@ -790,7 +791,7 @@ EXTERN_C const IID IID_IXCLRLibrarySupport;
 typedef SIZE_T ( __stdcall *CDSTranslateAddrCB )( 
     IXCLRDisassemblySupport *__MIDL____MIDL_itf_xclrdata_0000_00020000,
     CLRDATA_ADDRESS __MIDL____MIDL_itf_xclrdata_0000_00020001,
-    WCHAR *__MIDL____MIDL_itf_xclrdata_0000_00020002,
+    wchar_t *__MIDL____MIDL_itf_xclrdata_0000_00020002,
     SIZE_T __MIDL____MIDL_itf_xclrdata_0000_00020003,
     DWORDLONG *__MIDL____MIDL_itf_xclrdata_0000_00020004);
 
@@ -798,21 +799,21 @@ typedef SIZE_T ( __stdcall *CDSTranslateFixupCB )(
     IXCLRDisassemblySupport *__MIDL____MIDL_itf_xclrdata_0000_00020006,
     CLRDATA_ADDRESS __MIDL____MIDL_itf_xclrdata_0000_00020007,
     SIZE_T __MIDL____MIDL_itf_xclrdata_0000_00020008,
-    WCHAR *__MIDL____MIDL_itf_xclrdata_0000_00020009,
+    wchar_t *__MIDL____MIDL_itf_xclrdata_0000_00020009,
     SIZE_T __MIDL____MIDL_itf_xclrdata_0000_00020010,
     DWORDLONG *__MIDL____MIDL_itf_xclrdata_0000_00020011);
 
 typedef SIZE_T ( __stdcall *CDSTranslateConstCB )( 
     IXCLRDisassemblySupport *__MIDL____MIDL_itf_xclrdata_0000_00020013,
     DWORD __MIDL____MIDL_itf_xclrdata_0000_00020014,
-    WCHAR *__MIDL____MIDL_itf_xclrdata_0000_00020015,
+    wchar_t *__MIDL____MIDL_itf_xclrdata_0000_00020015,
     SIZE_T __MIDL____MIDL_itf_xclrdata_0000_00020016);
 
 typedef SIZE_T ( __stdcall *CDSTranslateRegrelCB )( 
     IXCLRDisassemblySupport *__MIDL____MIDL_itf_xclrdata_0000_00020018,
     unsigned int rega,
     CLRDATA_ADDRESS __MIDL____MIDL_itf_xclrdata_0000_00020019,
-    WCHAR *__MIDL____MIDL_itf_xclrdata_0000_00020020,
+    wchar_t *__MIDL____MIDL_itf_xclrdata_0000_00020020,
     SIZE_T __MIDL____MIDL_itf_xclrdata_0000_00020021,
     DWORD *__MIDL____MIDL_itf_xclrdata_0000_00020022);
 
@@ -853,7 +854,7 @@ EXTERN_C const IID IID_IXCLRDisassemblySupport;
             SIZE_T __MIDL__IXCLRDisassemblySupport0003) = 0;
         
         virtual SIZE_T STDMETHODCALLTYPE CchFormatInstr( 
-            WCHAR *__MIDL__IXCLRDisassemblySupport0004,
+            wchar_t *__MIDL__IXCLRDisassemblySupport0004,
             SIZE_T __MIDL__IXCLRDisassemblySupport0005) = 0;
         
         virtual void *STDMETHODCALLTYPE PvClient( void) = 0;
@@ -913,7 +914,7 @@ EXTERN_C const IID IID_IXCLRDisassemblySupport;
         
         SIZE_T ( STDMETHODCALLTYPE *CchFormatInstr )( 
             IXCLRDisassemblySupport * This,
-            WCHAR *__MIDL__IXCLRDisassemblySupport0004,
+            wchar_t *__MIDL__IXCLRDisassemblySupport0004,
             SIZE_T __MIDL__IXCLRDisassemblySupport0005);
         
         void *( STDMETHODCALLTYPE *PvClient )( 
@@ -3300,8 +3301,7 @@ enum __MIDL___MIDL_itf_xclrdata_0000_0008_0001
     {
         CLRDATA_MODULE_DEFAULT	= 0,
         CLRDATA_MODULE_IS_DYNAMIC	= 0x1,
-        CLRDATA_MODULE_IS_MEMORY_STREAM	= 0x2,
-        CLRDATA_MODULE_IS_MAIN_MODULE = 0x4
+        CLRDATA_MODULE_IS_MEMORY_STREAM	= 0x2
     } 	CLRDataModuleFlag;
 
 typedef /* [public][public][public] */ 

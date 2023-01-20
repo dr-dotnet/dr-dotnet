@@ -31,6 +31,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 #define COMPILER_H
 
 #ifdef __GNUC__
+# define ALIGNED(x)     __attribute__((aligned(x)))
 # define CONST_ATTR     __attribute__((__const__))
 # define UNUSED         __attribute__((unused))
 # define NOINLINE       __attribute__((noinline))
@@ -53,6 +54,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 #  define unlikely(x)   (x)
 # endif
 #else
+# define ALIGNED(x)
 # define ALWAYS_INLINE
 # define CONST_ATTR
 # define UNUSED

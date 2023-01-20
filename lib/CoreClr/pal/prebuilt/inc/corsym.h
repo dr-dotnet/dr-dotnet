@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 
 
@@ -5292,8 +5293,8 @@ EXTERN_C const IID IID_ISymNGenWriter2;
     {
     public:
         virtual HRESULT STDMETHODCALLTYPE OpenModW( 
-            /* [in] */ LPCWSTR wszModule,
-            /* [in] */ LPCWSTR wszObjFile,
+            /* [in] */ const wchar_t *wszModule,
+            /* [in] */ const wchar_t *wszObjFile,
             /* [out] */ BYTE **ppmod) = 0;
         
         virtual HRESULT STDMETHODCALLTYPE CloseMod( 
@@ -5314,7 +5315,7 @@ EXTERN_C const IID IID_ISymNGenWriter2;
             /* [in] */ DWORD dwRelocCrc) = 0;
         
         virtual HRESULT STDMETHODCALLTYPE QueryPDBNameExW( 
-            /* [size_is][out] */ WCHAR wszPDB[  ],
+            /* [size_is][out] */ wchar_t wszPDB[  ],
             /* [in] */ SIZE_T cchMax) = 0;
         
     };
@@ -5353,8 +5354,8 @@ EXTERN_C const IID IID_ISymNGenWriter2;
         
         HRESULT ( STDMETHODCALLTYPE *OpenModW )( 
             ISymNGenWriter2 * This,
-            /* [in] */ const WCHAR *wszModule,
-            /* [in] */ const WCHAR *wszObjFile,
+            /* [in] */ const wchar_t *wszModule,
+            /* [in] */ const wchar_t *wszObjFile,
             /* [out] */ BYTE **ppmod);
         
         HRESULT ( STDMETHODCALLTYPE *CloseMod )( 
@@ -5379,7 +5380,7 @@ EXTERN_C const IID IID_ISymNGenWriter2;
         
         HRESULT ( STDMETHODCALLTYPE *QueryPDBNameExW )( 
             ISymNGenWriter2 * This,
-            /* [size_is][out] */ WCHAR wszPDB[  ],
+            /* [size_is][out] */ wchar_t wszPDB[  ],
             /* [in] */ SIZE_T cchMax);
         
         END_INTERFACE

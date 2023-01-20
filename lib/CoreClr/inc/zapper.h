@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef ZAPPER_H_
 #define ZAPPER_H_
@@ -70,7 +71,7 @@ class Zapper
     ICorJitCompiler         *m_pJitCompiler;
     IMetaDataDispenserEx    *m_pMetaDataDispenser;
     HMODULE                  m_hJitLib;
-#ifdef TARGET_AMD64
+#ifdef _TARGET_AMD64_
     HMODULE                  m_hJitLegacy;
 #endif
 
@@ -116,6 +117,7 @@ class Zapper
     SString                 m_platformResourceRoots;
     SString                 m_appPaths;
     SString                 m_appNiPaths;
+    SString                 m_platformWinmdPaths;
 
 #if !defined(FEATURE_MERGE_JIT_AND_ENGINE)
     SString                 m_CLRJITPath;
@@ -285,7 +287,7 @@ class Zapper
 
     ~Zapper();
 
-    // The arguments control which native image of CoreLib to use.
+    // The arguments control which native image of mscorlib to use.
     // This matters for hardbinding.
     void InitEE(BOOL fForceDebug, BOOL fForceProfile, BOOL fForceInstrument);
     void LoadAndInitializeJITForNgen(LPCWSTR pwzJitName, OUT HINSTANCE* phJit, OUT ICorJitCompiler** ppICorJitCompiler);
@@ -302,8 +304,8 @@ class Zapper
     void DefineOutputAssembly(SString& strAssemblyName, ULONG * pHashAlgId);
 
     HRESULT Compile(LPCWSTR path, CORCOMPILE_NGEN_SIGNATURE * pNativeImageSig = NULL);
-    void    DontUseProfileData();
-    bool    HasProfileData();
+    void    DontUseProfileData();  
+    bool    HasProfileData();     
 
     void CompileAssembly(CORCOMPILE_NGEN_SIGNATURE * pNativeImageSig);
     ZapImage * CompileModule(CORINFO_MODULE_HANDLE hModule,
@@ -329,11 +331,11 @@ class Zapper
                                                   BOOL *pfHitMismatchedVersion,
                                                   BOOL *pfHitMismatchedDependencies,
                                                   BOOL useHardLink = FALSE);
-    void            CopyAndInstallFromRepository(LPCWSTR lpszNativeImageDir,
-                                                 LPCWSTR lpszNativeImageName,
+    void            CopyAndInstallFromRepository(LPCWSTR lpszNativeImageDir, 
+                                                 LPCWSTR lpszNativeImageName, 
                                                  CORCOMPILE_NGEN_SIGNATURE * pNativeImageSig,
                                                  BOOL useHardLink = FALSE);
-    void            InstallFromRepository(LPCWSTR lpszNativeImage,
+    void            InstallFromRepository(LPCWSTR lpszNativeImage, 
                                           CORCOMPILE_NGEN_SIGNATURE * pNativeImageSig);
 
     void            CopyDirectory(LPCWSTR srcPath, LPCWSTR dstPath);
@@ -348,6 +350,7 @@ class Zapper
     void SetPlatformResourceRoots(LPCWSTR pwzPlatformResourceRoots);
     void SetAppPaths(LPCWSTR pwzAppPaths);
     void SetAppNiPaths(LPCWSTR pwzAppNiPaths);
+    void SetPlatformWinmdPaths(LPCWSTR pwzPlatformWinmdPaths);
 
 #if !defined(FEATURE_MERGE_JIT_AND_ENGINE)
     void SetCLRJITPath(LPCWSTR pwszCLRJITPath);
@@ -422,7 +425,7 @@ class ZapperOptions
     bool        m_ignoreProfileData;    // Don't use profile data
     bool        m_noProcedureSplitting; // Don't do procedure splitting
 
-    bool        m_fHasAnyProfileData;   // true if we successfully loaded and used
+    bool        m_fHasAnyProfileData;   // true if we successfully loaded and used 
                                         //  any profile data when compiling this assembly
 
     bool        m_fPartialNGen;         // Generate partial NGen images using IBC data
@@ -436,6 +439,8 @@ class ZapperOptions
     bool        m_fNGenLastRetry;       // This is retry of the compilation
 
     CORJIT_FLAGS m_compilerFlags;
+
+    bool        m_fNoMetaData;          // Do not copy metadata and IL to native image
 
     void SetCompilerFlags(void);
 

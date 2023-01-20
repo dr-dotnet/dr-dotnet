@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef _BITPOSITION_H_
 #define _BITPOSITION_H_
@@ -24,11 +25,11 @@ inline
 unsigned            BitPosition(unsigned value)
 {
     _ASSERTE((value != 0) && ((value & (value-1)) == 0));
-#if defined(HOST_ARM) && defined(__llvm__)
+#if defined(_ARM_) && defined(__llvm__)
     // use intrinsic functions for arm32
     // this is applied for LLVM only but it may work for some compilers
     DWORD index = __builtin_clz(__builtin_arm_rbit(value));
-#elif !defined(HOST_AMD64)
+#elif !defined(_AMD64_)
     const unsigned PRIME = 37;
 
     static const char hashTable[PRIME] =

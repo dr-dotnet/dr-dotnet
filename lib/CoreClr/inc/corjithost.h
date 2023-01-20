@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 #ifndef __CORJITHOST_H__
 #define __CORJITHOST_H__
@@ -22,13 +23,13 @@ public:
 
     // Return an integer config value for the given key, if any exists.
     virtual int getIntConfigValue(
-        const WCHAR* name,
+        const wchar_t* name, 
         int defaultValue
         ) = 0;
 
     // Return a string config value for the given key, if any exists.
-    virtual const WCHAR* getStringConfigValue(
-        const WCHAR* name
+    virtual const wchar_t* getStringConfigValue(
+        const wchar_t* name
         ) = 0;
 
     // Free a string ConfigValue returned by the runtime.
@@ -36,7 +37,7 @@ public:
     // to return the string values to the runtime for deletion.
     // This avoids leaking the memory in the JIT.
     virtual void freeStringConfigValue(
-        const WCHAR* value
+        const wchar_t* value
         ) = 0;
 
     // Allocate memory slab of the given size in bytes. The host is expected to pool

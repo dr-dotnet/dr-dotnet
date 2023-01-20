@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -10,7 +11,7 @@ Module Name:
     unicode/utf8.c
 
 Abstract:
-    Functions to encode and decode UTF-8 strings. This is a port of the C# version from Utf8Encoding.cs.
+    Functions to encode and decode UTF-8 strings. This is a port of the C# version from mscorlib.
 
 Revision History:
 
@@ -51,7 +52,7 @@ struct Char
         return (c & 0xFC00) == CharUnicodeInfo::LOW_SURROGATE_START;
     }
 
-    // Test if the wide character is a surrogate half
+    // Test if the wide character is a low surrogate
     static bool IsSurrogate(const WCHAR c)
     {
         return (c & 0xF800) == CharUnicodeInfo::HIGH_SURROGATE_START;
@@ -69,7 +70,7 @@ struct Char
         return IsLowSurrogate(s[index]);
     }
 
-    // Test if the wide character is a surrogate half
+    // Test if the wide character is a low surrogate
     static bool IsSurrogate(const WCHAR* s, int index)
     {
         return IsSurrogate(s[index]);
@@ -334,7 +335,7 @@ protected:
                     else
                     {
                         // Low surrogate
-                        if (!bHighSurrogate)
+                        if (bHighSurrogate == false)
                             throw ArgumentException("String 'chars' contains invalid Unicode code points.");
                         bHighSurrogate = false;
                     }
@@ -390,7 +391,7 @@ protected:
                     else
                     {
                         // Low surrogate
-                        if (!bHighSurrogate)
+                        if (bHighSurrogate == false)
                             throw ArgumentException("String 'chars' contains invalid Unicode code points.");
                         bHighSurrogate = false;
                     }
@@ -618,7 +619,7 @@ public:
     WCHAR GetCharUnknownHigh()
     {
         return (charUnknownHigh);
-    }
+    }   
 
     WCHAR GetCharUnknownLow()
     {
@@ -1281,7 +1282,7 @@ public:
         int ch = 0;
         DecoderFallbackBuffer *fallback = nullptr;
 
-        while (true)
+        for (;;)
         {
             // SLOWLOOP: does all range checks, handles all special cases, but it is slow
             if (pSrc >= pEnd) {
@@ -1651,7 +1652,7 @@ public:
 
         DecoderFallbackBuffer *fallback = nullptr;
 
-        while (true)
+        for (;;)
         {
             // SLOWLOOP: does all range checks, handles all special cases, but it is slow
 
@@ -1738,7 +1739,7 @@ public:
                 fallback = decoderFallback->CreateFallbackBuffer();
                 fallback->InternalInitialize(bytes, pAllocatedBufferEnd);
             }
-
+            
             // That'll back us up the appropriate # of bytes if we didn't get anywhere
             if (!FallbackInvalidByteSequence(&pSrc, ch, fallback, &pTarget))
             {
@@ -1836,7 +1837,7 @@ public:
                 pSrc--;
 
                 // Throw that we don't have enough room (pSrc could be < chars if we had started to process
-                // a 4 byte sequence already)
+                // a 4 byte sequence alredy)
                 Contract::Assert(pSrc >= bytes || pTarget == chars,
                     "[UTF8Encoding.GetChars]Expected pSrc to be within input buffer or throw due to no output]");
                 ThrowCharsOverflow(pTarget == chars);
@@ -2041,7 +2042,7 @@ public:
 
                         // extra byte, we're already planning 2 chars for 2 of these bytes,
                         // but the big loop is testing the target against pStop, so we need
-                        // to subtract 2 more or we risk overrunning the input.  Subtract
+                        // to subtract 2 more or we risk overrunning the input.  Subtract 
                         // one here and one below.
                         pStop--;
                     }
@@ -2158,7 +2159,7 @@ public:
 
         // assume that JIT will enregister pSrc, pTarget and ch
 
-        while (true) {
+        for (;;) {
             // SLOWLOOP: does all range checks, handles all special cases, but it is slow
 
             if (pSrc >= pEnd) {
@@ -2523,7 +2524,7 @@ public:
             ch = 0;
         }
 
-        InternalDelete(fallbackBuffer);
+        InternalDelete(fallbackBuffer); 
 
         return (int)(pTarget - bytes);
     }
@@ -2541,7 +2542,7 @@ public:
 
         int ch = 0;
 
-        while (true) {
+        for (;;) {
             // SLOWLOOP: does all range checks, handles all special cases, but it is slow
             if (pSrc >= pEnd) {
 

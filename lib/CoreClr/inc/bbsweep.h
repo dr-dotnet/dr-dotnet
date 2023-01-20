@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*****************************************************************************\
 *                                                                             *
@@ -18,13 +19,9 @@
 #ifndef _BBSWEEP_H_
 #define _BBSWEEP_H_
 
-#ifndef TARGET_UNIX
+#ifndef FEATURE_PAL
 #include <aclapi.h>
-#endif // !TARGET_UNIX
-
-#ifndef ARRAYSIZE
-#define ARRAYSIZE(x)    (sizeof(x)/sizeof(x[0]))
-#endif // !ARRAYSIZE
+#endif // !FEATURE_PAL
 
 // The CLR headers don't allow us to use methods like SetEvent directly (instead
 // we need to use the host APIs).  However, this file is included both in the CLR
@@ -58,7 +55,7 @@ public:
 
 /* BBSweep is used by both the CLR and the BBSweep utility.
  * BBSweep: calls the PerformSweep method which returns after all the CLR processes
- *          have written their profile data to disk.
+ *          have written their profile data to disk. 
  * CLR:     starts up a sweeper thread which calls WatchForSweepEvents and waits until the
  *          sweeper program is invoked.  At that point, all the CLR processes will synchronize
  *          and write their profile data to disk one at a time.  The sweeper threads will then
@@ -69,7 +66,7 @@ public:
 class BBSweep
 {
 public:
-    BBSweep()
+    BBSweep() 
     {
         // The BBSweep constructor could be called even the the object is not used, so
         // don't do any work here.
@@ -102,12 +99,12 @@ public:
         {
             success = success && ::SetEvent(hSweepEvent);
             {
-                for (int i=0; i<MAX_COUNT; i++)
+                for (int i=0; i<MAX_COUNT; i++) 
                 {
                     ::WaitForSingleObject(hProfWriterSemaphore, INFINITE);
                 }
 
-                ::ReleaseSemaphore(hProfWriterSemaphore, MAX_COUNT, NULL);
+                ::ReleaseSemaphore(hProfWriterSemaphore, MAX_COUNT, NULL);            
 
             }
             success = success && ::ResetEvent(hSweepEvent);
@@ -126,7 +123,7 @@ public:
 
         bool success = true;
 
-        while (!bTerminate)
+        while (!bTerminate) 
         {
             ::WaitForSingleObject(hSweepMutex, INFINITE);
             {
@@ -161,7 +158,7 @@ public:
     {
         // Set the termination event and wait for the BBSweep thread to terminate on its own.
         // Note that this is called by the shutdown thread (and never called by the BBSweep thread).
-        if (hBBSweepThread && bInitialized)
+        if (hBBSweepThread && bInitialized) 
         {
             bTerminate = true;
             ::SetEvent(hTerminationEvent);
@@ -185,7 +182,7 @@ private:
     // IF YOU CHANGE THIS CODE, YOU MUST ALSO CHANGE THAT TO MATCH!
     bool Initialize(DWORD processID = INVALID_PID, BOOL fromRuntime = TRUE)
     {
-        if (!bInitialized)
+        if (!bInitialized) 
         {
             SECURITY_ATTRIBUTES * pSecurityAttributes = NULL;
 
@@ -199,7 +196,7 @@ private:
             if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
                 goto cleanup;
 
-            // don't set pSecurityAttributes for AppContainer processes
+            // don't set pSecurityAttributes for Metro processes
             if(!IsAppContainerProcess(hToken))
             {
                 SECURITY_ATTRIBUTES securityAttributes;
@@ -209,7 +206,7 @@ private:
 
 #ifdef _PREFAST_
 #pragma warning(push)
-#pragma warning(disable:6211) // PREfast warning: Leaking memory 'pSD' due to an exception.
+#pragma warning(disable:6211) // PREfast warning: Leaking memory 'pSD' due to an exception. 
 #endif /*_PREFAST_ */
                 pSD = (PSECURITY_DESCRIPTOR) new char[SECURITY_DESCRIPTOR_MIN_LENGTH];
                 if (!pSD)
@@ -261,7 +258,7 @@ private:
                 ea[1].Trustee.TrusteeType = TRUSTEE_IS_GROUP;
                 ea[1].Trustee.ptstrName  = (LPTSTR) pAdminSid;
 
-                if (SetEntriesInAcl(2, ea, NULL, &pACL) != ERROR_SUCCESS)
+                if (SetEntriesInAcl(2, ea, NULL, &pACL) != ERROR_SUCCESS) 
                     goto cleanup;
 
                 if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION))
@@ -308,7 +305,7 @@ cleanup:
 #endif
         }
 
-        bInitialized = hSweepMutex          &&
+        bInitialized = hSweepMutex          && 
             hProfDataWriterMutex &&
             hSweepEvent          &&
             hTerminationEvent    &&
@@ -318,7 +315,7 @@ cleanup:
         return bInitialized;
     }
 
-#ifndef TARGET_UNIX
+#ifndef FEATURE_PAL
     BOOL IsAppContainerProcess(HANDLE hToken)
     {
 #ifndef TokenIsAppContainer
@@ -333,37 +330,37 @@ cleanup:
         }
         return fIsAppContainerProcess;
     }
-#endif // !TARGET_UNIX
+#endif // !FEATURE_PAL
 
     // helper to get the correct object name prefix
     void GetObjectNamePrefix(DWORD processID, BOOL fromRuntime, __inout_z WCHAR* objectNamePrefix)
     {
         // default prefix
         swprintf_s(objectNamePrefix, MAX_LONGPATH, W("Global"));
-#ifndef TARGET_UNIX
+#ifndef FEATURE_PAL
         //
         // This method can be called:
         // 1. From process init code
         // 2. From bbsweepclr.exe
         //
         // When called from process init code, processID is always INVALID_PID.
-        // In case it is a AppContainer process, we need to add the AppContainerNamedObjectPath to prefix.
-        // And if it is a non-AppContainer process, we will continue to use the default prefix (Global).
+        // In case it is a Win8-Metro/WP8 process, we need to add the AppContainerNamedObjectPath to prefix.
+        // And if it is a non-Metro process, we will continue to use the default prefix (Global).
         // We use IsAppContainerProcess(CurrentProcessId) to make this decision.
         //
         //
-        // When called from bbsweepclr, processID is valid when sweeping a AppContainer process.
-        // We use this valid processID to determine if the process being swept is AppContainer indeed and then
+        // When called from bbsweepclr, processID is valid when sweeping a Metro or WP8 process.
+        // We use this valid processID to determine if the process being swept is Metro/WP8 indeed and then
         // add AppContainerNamedObjectPath to prefix. This is done by IsAppContainerProcess(processID).
         //
-        // In case INVALID_PID is passed(non-AppContainer process), we have to use default prefix. To handle this
-        // case we use IsAppContainerProcess(CurrentProcessId) and since bbsweepclr is a non-AppContainer process,
+        // In case INVALID_PID is passed(non-Metro process), we have to use default prefix. To handle this
+        // case we use IsAppContainerProcess(CurrentProcessId) and since bbsweepclr is a non-Metro process,
         // this check always returns false and we end up using the intended(default) prefix.
         //
         if(processID == INVALID_PID) {
             // we reach here when:
             // * called from process init code:
-            // * called from bbsweepclr.exe and no processID has been passed as argument, that is, when sweeping a non-AppContainer process
+            // * called from bbsweepclr.exe and no processID has been passed as argument, that is, when sweeping a non-Metro process
             processID = GetCurrentProcessId();
         }
 
@@ -371,7 +368,7 @@ cleanup:
         if (hProcess  != INVALID_HANDLE_VALUE)
         {
             HandleHolder hToken = NULL;
-            // if in the process init code of a AppContainer app or if bbsweepclr is used to sweep a AppContainer app,
+            // if in the process init code of a Metro app or if bbsweepclr is used to sweep a Metro app,
             // construct the object name prefix using AppContainerNamedObjectPath
             if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken) && IsAppContainerProcess(hToken))
             {
@@ -380,7 +377,7 @@ cleanup:
 
                 if (fromRuntime)
                 {
-                    // for AppContainer apps, create the object in the "default" object path, i.e. do not provide any prefix
+                    // for Metro apps, create the object in the "default" object path, i.e. do not provide any prefix
                     objectNamePrefix[0] = W('\0');
                 }
                 else
@@ -397,7 +394,7 @@ cleanup:
                         GetProcAddress(WszGetModuleHandle(MODULE_NAME), "GetAppContainerNamedObjectPath");
                     if (pfnGetAppContainerNamedObjectPath)
                     {
-                        // for bbsweepclr sweeping a AppContainer app, create the object specifying the AppContainer's path
+                        // for bbsweepclr sweeping a Metro app, create the object specifying the AppContainer's path
                         DWORD sessionId = 0;
                         ProcessIdToSessionId(processID, &sessionId);
                         pfnGetAppContainerNamedObjectPath(hToken, NULL, sizeof (appxNamedObjPath) / sizeof (WCHAR), appxNamedObjPath, &appxNamedObjPathBufLen);
@@ -406,7 +403,7 @@ cleanup:
                 }
             }
         }
-#endif // TARGET_UNIX
+#endif // FEATURE_PAL        
     }
 private:
 

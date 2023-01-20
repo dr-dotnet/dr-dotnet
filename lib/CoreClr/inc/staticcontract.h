@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 // ---------------------------------------------------------------------------
 // StaticContract.h
 // ---------------------------------------------------------------------------
@@ -27,7 +28,7 @@
 // from Contract.h to allow their inclusion in any part of the system.
 //
 
-#if defined(_DEBUG) && defined(TARGET_X86)
+#if defined(_DEBUG) && defined(_TARGET_X86_)
 #define METHOD_CANNOT_BE_FOLDED_DEBUG                               \
     static int _noFold = 0;                                         \
     _noFold++;
@@ -35,7 +36,7 @@
 #define METHOD_CANNOT_BE_FOLDED_DEBUG
 #endif
 
-#ifdef TARGET_X86
+#ifdef _TARGET_X86_
 
 //
 // currently, only x86 has a static contract analysis tool, so let's not
@@ -67,7 +68,7 @@
 
 // here is the plan:
 //
-//  a special holder which implements a violation
+//  a special holder which implements a violation 
 //
 
 #define ANNOTATION_FN_SPECIAL_HOLDER_BEGIN  __annotation(W("SPECIAL_HOLDER_BEGIN ") SCAN_WIDEN(__FUNCTION__))
@@ -96,7 +97,7 @@
 #define ANNOTATION_FN_HOST_NOCALLS          __annotation(W("HOST_NOCALLS ") SCAN_WIDEN(__FUNCTION__))
 #define ANNOTATION_FN_HOST_CALLS            __annotation(W("HOST_CALLS ") SCAN_WIDEN(__FUNCTION__))
 
-#define ANNOTATION_ENTRY_POINT              __annotation(W("SO_EP ") SCAN_WIDEN(__FUNCTION__))
+#define ANNOTATION_ENTRY_POINT              __annotation(W("SO_EP ") SCAN_WIDEN(__FUNCTION__))  
 
 
 // for DacCop
@@ -110,7 +111,7 @@
 
 #endif
 
-#else // TARGET_X86
+#else // _TARGET_X86_
 
 #define ANNOTATION_TRY_BEGIN                { }
 #define ANNOTATION_TRY_END                  { }
@@ -169,7 +170,7 @@
 #define ANNOTATION_DEBUG_ONLY               { }
 #endif
 
-#endif // TARGET_X86
+#endif // _TARGET_X86_
 
 #define STATIC_CONTRACT_THROWS              ANNOTATION_FN_THROWS
 #define STATIC_CONTRACT_NOTHROW             ANNOTATION_FN_NOTHROW
@@ -180,7 +181,7 @@
 #define STATIC_CONTRACT_GC_TRIGGERS         ANNOTATION_FN_GC_TRIGGERS
 #define STATIC_CONTRACT_GC_NOTRIGGER        ANNOTATION_FN_GC_NOTRIGGER
 #define STATIC_CONTRACT_HOST_NOCALLS        ANNOTATION_FN_HOST_NOCALLS
-#define STATIC_CONTRACT_HOST_CALLS          ANNOTATION_FN_HOST_CALLS
+#define STATIC_CONTRACT_HOST_CALLS          ANNOTATION_FN_HOST_CALLS 
 
 #define STATIC_CONTRACT_SUPPORTS_DAC        ANNOTATION_SUPPORTS_DAC
 #define STATIC_CONTRACT_SUPPORTS_DAC_HOST_ONLY ANNOTATION_SUPPORTS_DAC_HOST_ONLY
@@ -200,7 +201,7 @@
     STATIC_CONTRACT_CANNOT_TAKE_LOCK;                               \
     ANNOTATION_VIOLATION(TakesLockViolation);
 #else
-#define STATIC_CONTRACT_DEBUG_ONLY
+#define STATIC_CONTRACT_DEBUG_ONLY 
 #endif
 
 #define STATIC_CONTRACT_VIOLATION(mask)                             \
@@ -284,7 +285,7 @@ typedef StaticContract::ScanThrowMarkerStandard ScanThrowMarker;
 
 
 // we use BlockMarker's only for SCAN
-#if defined(_DEBUG) && defined(TARGET_X86) && !defined(DACCESS_COMPILE)
+#if defined(_DEBUG) && defined(_TARGET_X86_) && !defined(DACCESS_COMPILE)
 
 template <UINT COUNT>
 class BlockMarker

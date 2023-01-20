@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 /*++
 
@@ -35,7 +36,9 @@ static
 PAL_ERROR
 CheckObjectTypeAndRights(
     IPalObject *pobj,
-    CAllowedObjectTypes *paot
+    CAllowedObjectTypes *paot,
+    DWORD dwRightsGranted,
+    DWORD dwRightsRequired
     );
 
 /*++
@@ -56,7 +59,7 @@ CSharedMemoryObjectManager::Initialize(
     PAL_ERROR palError = NO_ERROR;
 
     ENTRY("CSharedMemoryObjectManager::Initialize (this=%p)\n", this);
-
+    
     InitializeListHead(&m_leNamedObjects);
     InitializeListHead(&m_leAnonymousObjects);
 
@@ -66,7 +69,7 @@ CSharedMemoryObjectManager::Initialize(
     palError = m_HandleManager.Initialize();
 
     LOGEXIT("CSharedMemoryObjectManager::Initialize returns %d", palError);
-
+    
     return palError;
 }
 
@@ -91,7 +94,7 @@ CSharedMemoryObjectManager::Shutdown(
     CSharedMemoryObject *pshmobj;
 
     _ASSERTE(NULL != pthr);
-
+    
     ENTRY("CSharedMemoryObjectManager::Shutdown (this=%p, pthr=%p)\n",
         this,
         pthr
@@ -118,7 +121,7 @@ CSharedMemoryObjectManager::Shutdown(
     InternalLeaveCriticalSection(pthr, &m_csListLock);
 
     LOGEXIT("CSharedMemoryObjectManager::Shutdown returns %d\n", NO_ERROR);
-
+    
     return NO_ERROR;
 }
 
@@ -206,6 +209,7 @@ Parameters:
   pobjToRegister -- the object instance to register. This routine will always
     call ReleaseReference on this instance
   paot -- object types that are compatible with the new object instance
+  dwRightsRequested -- requested access rights for the returned handle (ignored)
   pHandle -- on success, receives a handle to the registered object
   ppobjRegistered -- on success, receives a reference to the registered object
     instance.
@@ -216,6 +220,7 @@ CSharedMemoryObjectManager::RegisterObject(
     CPalThread *pthr,
     IPalObject *pobjToRegister,
     CAllowedObjectTypes *paot,
+    DWORD dwRightsRequested,
     HANDLE *pHandle,                 // OUT
     IPalObject **ppobjRegistered     // OUT
     )
@@ -226,6 +231,7 @@ CSharedMemoryObjectManager::RegisterObject(
     CObjectAttributes *poa;
     CObjectType *potObj;
     IPalObject *pobjExisting;
+    BOOL fInherit = FALSE;
     BOOL fShared = FALSE;
 
     _ASSERTE(NULL != pthr);
@@ -236,11 +242,12 @@ CSharedMemoryObjectManager::RegisterObject(
 
     ENTRY("CSharedMemoryObjectManager::RegisterObject "
         "(this=%p, pthr=%p, pobjToRegister=%p, paot=%p, "
-        "pHandle=%p, ppobjRegistered=%p)\n",
+        "dwRightsRequested=%d, pHandle=%p, ppobjRegistered=%p)\n",
         this,
         pthr,
         pobjToRegister,
         paot,
+        dwRightsRequested,
         pHandle,
         ppobjRegistered
         );
@@ -248,9 +255,14 @@ CSharedMemoryObjectManager::RegisterObject(
     poa = pobjToRegister->GetObjectAttributes();
     _ASSERTE(NULL != poa);
 
+    if (NULL != poa->pSecurityAttributes)
+    {
+        fInherit = poa->pSecurityAttributes->bInheritHandle;
+    }
+
     potObj = pobjToRegister->GetObjectType();
     fShared = (SharedObject == pshmobj->GetObjectDomain());
-
+    
     InternalEnterCriticalSection(pthr, &m_csListLock);
 
     if (fShared)
@@ -259,7 +271,7 @@ CSharedMemoryObjectManager::RegisterObject(
         // We only need to acquire the shared memory lock if this
         // object is actually shared.
         //
-
+        
         SHMLock();
     }
 
@@ -272,9 +284,9 @@ CSharedMemoryObjectManager::RegisterObject(
         //
 
         _ASSERTE(fShared);
-
+        
         //
-        // Check if an object by this name already exists
+        // Check if an object by this name alredy exists
         //
 
         palError = LocateObject(
@@ -293,6 +305,9 @@ CSharedMemoryObjectManager::RegisterObject(
             palError = ObtainHandleForObject(
                 pthr,
                 pobjExisting,
+                dwRightsRequested,
+                fInherit,
+                NULL, 
                 pHandle
                 );
 
@@ -340,7 +355,7 @@ CSharedMemoryObjectManager::RegisterObject(
         if (NULL != shmObjectListHead)
         {
             SHMObjData *psmodListHead;
-
+            
             psmodListHead = SHMPTR_TO_TYPED_PTR(SHMObjData, shmObjectListHead);
             if (NULL != psmodListHead)
             {
@@ -395,7 +410,7 @@ CSharedMemoryObjectManager::RegisterObject(
         {
             VOID *pvSharedImmutableData =
                 SHMPTR_TO_TYPED_PTR(VOID, psmod->shmObjImmutableData);
-
+            
             if (NULL != pvSharedImmutableData)
             {
                 CopyMemory(
@@ -434,6 +449,9 @@ CSharedMemoryObjectManager::RegisterObject(
     palError = ObtainHandleForObject(
         pthr,
         pobjToRegister,
+        dwRightsRequested,
+        fInherit,
+        NULL, 
         pHandle
         );
 
@@ -446,14 +464,14 @@ CSharedMemoryObjectManager::RegisterObject(
         *ppobjRegistered = pobjToRegister;
         pobjToRegister = NULL;
     }
-
+        
 RegisterObjectExit:
 
     if (fShared)
     {
         SHMRelease();
     }
-
+    
     InternalLeaveCriticalSection(pthr, &m_csListLock);
 
     if (NULL != pobjToRegister)
@@ -550,8 +568,8 @@ CSharedMemoryObjectManager::LocateObject(
         //
 
         pobjExisting = static_cast<IPalObject*>(pshmobj);
-        break;
-    }
+        break;        
+    } 
 
     if (NULL != pobjExisting)
     {
@@ -564,7 +582,7 @@ CSharedMemoryObjectManager::LocateObject(
                 ))
         {
             TRACE("Local object exists with compatible type\n");
-
+            
             //
             // Add a reference to the found object
             //
@@ -574,19 +592,19 @@ CSharedMemoryObjectManager::LocateObject(
         }
         else
         {
-            TRACE("Local object exists w/ incompatible type\n");
+            TRACE("Local object exists w/ incompatible type\n");            
             palError = ERROR_INVALID_HANDLE;
         }
-
+        
         goto LocateObjectExit;
     }
 
     //
     // Search the shared memory named object list for a matching object
     //
-
+    
     SHMLock();
-
+    
     shmObjectListEntry = SHMGetInfo(SIID_NAMED_OBJECTS);
     while (NULL != shmObjectListEntry)
     {
@@ -612,7 +630,7 @@ CSharedMemoryObjectManager::LocateObject(
                 {
                     ASSERT("Unable to map psmod->shmObjName\n");
                     break;
-                }
+                }                
             }
 
             shmObjectListEntry = psmod->shmNextObj;
@@ -639,11 +657,11 @@ CSharedMemoryObjectManager::LocateObject(
             palError = ERROR_INVALID_HANDLE;
             goto LocateObjectExitSHMRelease;
         }
-
+        
         //
         // Get the local instance of the CObjectType
         //
-
+        
         CObjectType *pot = CObjectType::GetObjectTypeById(psmod->eTypeId);
         if (NULL == pot)
         {
@@ -652,7 +670,7 @@ CSharedMemoryObjectManager::LocateObject(
         }
 
         TRACE("Remote object exists compatible type -- importing\n");
-
+        
         //
         // Create the local state for the shared object
         //
@@ -668,7 +686,7 @@ CSharedMemoryObjectManager::LocateObject(
             );
 
         if (NO_ERROR == palError)
-        {
+        {   
             *ppobj = static_cast<IPalObject*>(pshmobj);
         }
         else
@@ -676,7 +694,7 @@ CSharedMemoryObjectManager::LocateObject(
             ERROR("Failure initializing object from shared data\n");
             goto LocateObjectExitSHMRelease;
         }
-
+        
     }
     else
     {
@@ -709,13 +727,21 @@ Function:
 Parameters:
   pthr -- thread data for calling thread
   pobj -- the object to allocate a handle for
+  dwRightsRequired -- the access rights to grant the handle; currently ignored
+  fInheritHandle -- true if the handle is inheritable; ignored for all but file
+    objects that represent pipes
+  pProcessForHandle -- the process the handle is to be used from; currently
+    must be NULL
   pNewHandle -- on success, receives the newly allocated handle
 --*/
 
-PAL_ERROR
+PAL_ERROR   
 CSharedMemoryObjectManager::ObtainHandleForObject(
     CPalThread *pthr,
     IPalObject *pobj,
+    DWORD dwRightsRequested,
+    bool fInheritHandle,
+    IPalProcess *pProcessForHandle,     // IN, OPTIONAL
     HANDLE *pNewHandle                  // OUT
     )
 {
@@ -726,23 +752,38 @@ CSharedMemoryObjectManager::ObtainHandleForObject(
     _ASSERTE(NULL != pNewHandle);
 
     ENTRY("CSharedMemoryObjectManager::ObtainHandleForObject "
-        "(this=%p, pthr=%p, pobj=%p, "
-        "pNewHandle=%p)\n",
+        "(this=%p, pthr=%p, pobj=%p, dwRightsRequested=%d, "
+        "fInheritHandle=%p, pProcessForHandle=%p, pNewHandle=%p)\n",
         this,
         pthr,
         pobj,
+        dwRightsRequested,
+        fInheritHandle,
+        pProcessForHandle,
         pNewHandle
         );
+
+    if (NULL != pProcessForHandle)
+    {
+        //
+        // Not yet supported
+        //
+
+        ASSERT("Caller to ObtainHandleForObject provided a process\n");
+        return ERROR_CALL_NOT_IMPLEMENTED;
+    }
 
     palError = m_HandleManager.AllocateHandle(
         pthr,
         pobj,
+        dwRightsRequested,
+        fInheritHandle,
         pNewHandle
         );
 
     LOGEXIT("CSharedMemoryObjectManager::ObtainHandleForObject return %d\n", palError);
 
-    return palError;
+    return palError;    
 }
 
 /*++
@@ -773,7 +814,7 @@ CSharedMemoryObjectManager::RevokeHandle(
         pthr,
         hHandleToRevoke
         );
-
+    
     palError = m_HandleManager.FreeHandle(pthr, hHandleToRevoke);
 
     LOGEXIT("CSharedMemoryObjectManager::RevokeHandle returns %d\n", palError);
@@ -791,6 +832,7 @@ Parameters:
   pthr -- thread data for calling thread
   hHandleToReference -- the handle to reference
   paot -- acceptable types for the underlying object
+  dwRightsRequired -- the access rights that the handle must have been
     granted; currently ignored
   ppobj -- on success, receives a reference to the object instance
 --*/
@@ -800,10 +842,12 @@ CSharedMemoryObjectManager::ReferenceObjectByHandle(
     CPalThread *pthr,
     HANDLE hHandleToReference,
     CAllowedObjectTypes *paot,
+    DWORD dwRightsRequired,
     IPalObject **ppobj               // OUT
     )
 {
     PAL_ERROR palError;
+    DWORD dwRightsGranted;
     IPalObject *pobj;
 
     _ASSERTE(NULL != pthr);
@@ -811,17 +855,20 @@ CSharedMemoryObjectManager::ReferenceObjectByHandle(
     _ASSERTE(NULL != ppobj);
 
     ENTRY("CSharedMemoryObjectManager::ReferenceObjectByHandle "
-        "(this=%p, pthr=%p, hHandleToReference=%p, paot=%p, ppobj=%p)\n",
+        "(this=%p, pthr=%p, hHandleToReference=%p, paot=%p, "
+        "dwRightsRequired=%d, ppobj=%p)\n",
         this,
         pthr,
         hHandleToReference,
         paot,
+        dwRightsRequired,
         ppobj
         );
 
     palError = m_HandleManager.GetObjectFromHandle(
         pthr,
         hHandleToReference,
+        &dwRightsGranted,
         &pobj
         );
 
@@ -829,7 +876,9 @@ CSharedMemoryObjectManager::ReferenceObjectByHandle(
     {
         palError = CheckObjectTypeAndRights(
             pobj,
-            paot
+            paot,
+            dwRightsGranted,
+            dwRightsRequired
             );
 
         if (NO_ERROR == palError)
@@ -850,7 +899,7 @@ CSharedMemoryObjectManager::ReferenceObjectByHandle(
         palError
         );
 
-    return palError;
+    return palError;    
 }
 
 /*++
@@ -865,6 +914,8 @@ Parameters:
   rgHandlesToReference -- the array of handles to reference
   dwHandleCount -- the number of handles in the arrayu
   paot -- acceptable types for the underlying objects
+  dwRightsRequired -- the access rights that the handles must have been
+    granted; currently ignored
   rgpobjs -- on success, receives references to the object instances; will
     be empty on failures
 --*/
@@ -875,11 +926,13 @@ CSharedMemoryObjectManager::ReferenceMultipleObjectsByHandleArray(
     HANDLE rghHandlesToReference[],
     DWORD dwHandleCount,
     CAllowedObjectTypes *paot,
+    DWORD dwRightsRequired,
     IPalObject *rgpobjs[]            // OUT (caller allocated)
     )
 {
     PAL_ERROR palError = NO_ERROR;
     IPalObject *pobj = NULL;
+    DWORD dwRightsGranted;
     DWORD dw;
 
     _ASSERTE(NULL != pthr);
@@ -890,22 +943,24 @@ CSharedMemoryObjectManager::ReferenceMultipleObjectsByHandleArray(
 
     ENTRY("CSharedMemoryObjectManager::ReferenceMultipleObjectsByHandleArray "
         "(this=%p, pthr=%p, rghHandlesToReference=%p, dwHandleCount=%d, "
-        "pAllowedTyped=%d, rgpobjs=%p)\n",
+        "pAllowedTyped=%d, dwRightsRequired=%d, rgpobjs=%p)\n",
         this,
         pthr,
         rghHandlesToReference,
         dwHandleCount,
         paot,
+        dwRightsRequired,
         rgpobjs
         );
 
     m_HandleManager.Lock(pthr);
 
     for (dw = 0; dw < dwHandleCount; dw += 1)
-    {
+    {        
         palError = m_HandleManager.GetObjectFromHandle(
             pthr,
             rghHandlesToReference[dw],
+            &dwRightsGranted,
             &pobj
             );
 
@@ -913,7 +968,9 @@ CSharedMemoryObjectManager::ReferenceMultipleObjectsByHandleArray(
         {
             palError = CheckObjectTypeAndRights(
                 pobj,
-                paot
+                paot,
+                dwRightsGranted,
+                dwRightsRequired
                 );
 
             if (NO_ERROR == palError)
@@ -948,7 +1005,7 @@ CSharedMemoryObjectManager::ReferenceMultipleObjectsByHandleArray(
         // dw's current value is the failing index, so we want
         // to free from dw - 1.
         //
-
+        
         while (dw > 0)
         {
             rgpobjs[--dw]->ReleaseReference(pthr);
@@ -966,6 +1023,44 @@ CSharedMemoryObjectManager::ReferenceMultipleObjectsByHandleArray(
         );
 
     return palError;
+}
+
+/*++
+Function:
+  CSharedMemoryObjectManager::ReferenceObjectByForeignHandle
+
+  Returns a referenced object instance that a handle belongin to
+  another process refers to; currently unimplemented
+
+Parameters:
+  pthr -- thread data for calling thread
+  hForeignHandle -- the handle to reference
+  pForeignProcess -- the process that hForeignHandle belongs to
+  paot -- acceptable types for the underlying object
+  dwRightsRequired -- the access rights that the handle must have been
+    granted; currently ignored
+  ppobj -- on success, receives a reference to the object instance
+--*/
+
+PAL_ERROR
+CSharedMemoryObjectManager::ReferenceObjectByForeignHandle(
+    CPalThread *pthr,
+    HANDLE hForeignHandle,
+    IPalProcess *pForeignProcess,
+    CAllowedObjectTypes *paot,
+    DWORD dwRightsRequired,
+    IPalObject **ppobj               // OUT
+    )
+{
+    //
+    // Not implemented for basic shared memory object manager --
+    // requires an IPC channel. (For the shared memory object manager
+    // PAL_LocalHandleToRemote and PAL_RemoteHandleToLocal must still
+    // be used...)
+    //
+
+    ASSERT("ReferenceObjectByForeignHandle not yet supported\n");
+    return ERROR_CALL_NOT_IMPLEMENTED;
 }
 
 /*++
@@ -1022,7 +1117,7 @@ CSharedMemoryObjectManager::ImportSharedObjectIntoProcess(
         fAddRefSharedData,
         ppshmobj
         );
-
+    
     if (CObjectType::WaitableObject == pot->GetSynchronizationSupport())
     {
         pshmobj = InternalNew<CSharedMemoryWaitableObject>(pot,
@@ -1053,7 +1148,7 @@ CSharedMemoryObjectManager::ImportSharedObjectIntoProcess(
             {
                 pleObjectList = &m_leAnonymousObjects;
             }
-
+            
             InsertTailList(pleObjectList, pshmobj->GetObjectListLink());
         }
         else
@@ -1079,7 +1174,7 @@ ImportSharedObjectIntoProcessExit:
 
 static PalObjectTypeId RemotableObjectTypes[] =
     {otiManualResetEvent, otiAutoResetEvent, otiMutex, otiProcess};
-
+    
 static CAllowedObjectTypes aotRemotable(
     RemotableObjectTypes,
     sizeof(RemotableObjectTypes) / sizeof(RemotableObjectTypes[0])
@@ -1097,13 +1192,17 @@ Function:
 Parameters:
   pobj -- the object instance whose type is to be checked
   paot -- the acceptable type for the object instance
+  dwRightsGranted -- the granted access rights (ignored)
+  dwRightsRequired -- the required access rights (ignored)
 --*/
 
 static
 PAL_ERROR
 CheckObjectTypeAndRights(
     IPalObject *pobj,
-    CAllowedObjectTypes *paot
+    CAllowedObjectTypes *paot,
+    DWORD dwRightsGranted,
+    DWORD dwRightsRequired
     )
 {
     PAL_ERROR palError = NO_ERROR;
@@ -1111,12 +1210,30 @@ CheckObjectTypeAndRights(
     _ASSERTE(NULL != pobj);
     _ASSERTE(NULL != paot);
 
-    ENTRY("CheckObjectTypeAndRights (pobj=%p, paot=%p)\n",
+    ENTRY("CheckObjectTypeAndRights (pobj=%p, paot=%p, "
+        "dwRightsGranted=%d, dwRightsRequired=%d)\n",
         pobj,
-        paot
+        paot,
+        dwRightsGranted,
+        dwRightsRequired
         );
 
-    if (!paot->IsTypeAllowed(pobj->GetObjectType()->GetId()))
+    if (paot->IsTypeAllowed(pobj->GetObjectType()->GetId()))
+    {
+#ifdef ENFORCE_OBJECT_ACCESS_RIGHTS
+
+        //
+        // This is where the access right check would occur if Win32 object
+        // security were supported.
+        //
+        
+        if ((dwRightsRequired & dwRightsGranted) != dwRightsRequired)
+        {
+            palError = ERROR_ACCESS_DENIED;
+        }
+#endif
+    }
+    else
     {
         palError = ERROR_INVALID_HANDLE;
     }
@@ -1125,5 +1242,5 @@ CheckObjectTypeAndRights(
 
     return palError;
 }
-
+    
 
