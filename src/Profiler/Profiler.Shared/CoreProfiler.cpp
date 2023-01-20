@@ -30,8 +30,7 @@ HRESULT __stdcall CoreProfiler::QueryInterface(REFIID riid, void** ppvObject) {
 		riid == __uuidof(ICorProfilerCallback6) ||
 		riid == __uuidof(ICorProfilerCallback7) ||
 		riid == __uuidof(ICorProfilerCallback8) ||
-		riid == __uuidof(ICorProfilerCallback9) ||
-		riid == __uuidof(ICorProfilerCallback10)) {
+		riid == __uuidof(ICorProfilerCallback9)) {
 		AddRef();
 		*ppvObject = static_cast<ICorProfilerCallback3*>(this);
 
@@ -449,14 +448,7 @@ HRESULT CoreProfiler::InitializeForAttach(IUnknown* pICorProfilerInfoUnk, void* 
 	pICorProfilerInfoUnk->QueryInterface(&_info);
 	assert(_info);
 
-	TRY(_info->SetEventMask(
-		COR_PRF_MONITOR_MODULE_LOADS |
-		COR_PRF_MONITOR_ASSEMBLY_LOADS |
-		COR_PRF_MONITOR_GC |
-		COR_PRF_MONITOR_CLASS_LOADS |
-		COR_PRF_MONITOR_THREADS |
-		COR_PRF_MONITOR_EXCEPTIONS |
-		COR_PRF_MONITOR_JIT_COMPILATION));
+	TRY(_info->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS));
 
 	Logger::Info("Successfully attached!");
 
@@ -465,6 +457,9 @@ HRESULT CoreProfiler::InitializeForAttach(IUnknown* pICorProfilerInfoUnk, void* 
 
 HRESULT CoreProfiler::ProfilerAttachComplete() {
 	Logger::Info(__FUNCTION__);
+
+	_info->RequestProfilerDetach(3000);
+
 	return S_OK;
 }
 
