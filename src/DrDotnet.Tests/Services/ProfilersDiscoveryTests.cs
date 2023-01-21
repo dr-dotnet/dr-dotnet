@@ -35,15 +35,23 @@ public class ProfilersDiscoveryTests
     }
 
     [Test]
-    public void Can_Load_Library()
-    {
-        if (NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out IntPtr handle))
-        {
+    public void Can_Load_Library() {
+        LoadUnloadProfilers();
+    }
+
+    private static void LoadUnloadProfilers() {
+        Console.WriteLine($"[SegfaultRepro] Start");
+        if (NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out IntPtr handle)) {
+            Console.WriteLine($"[SegfaultRepro] Lib handle: {handle}");
+            nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
+            Console.WriteLine($"[SegfaultRepro] Method handle: {methodHandle}");
+            DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(methodHandle, typeof(DllGetClassObject)) as DllGetClassObject;
+            Console.WriteLine($"[SegfaultRepro] Casted delegate: {func}");
             NativeLibrary.Free(handle);
+            Console.WriteLine($"[SegfaultRepro] Freed");
         }
-        else
-        {
-            Assert.Fail();
+        else {
+            Assert.Fail("Failed loading profilers DLL");
         }
     }
 
@@ -61,18 +69,18 @@ public class ProfilersDiscoveryTests
     [DllImport("libdl")]
     protected static extern IntPtr dlsym(IntPtr handle, string symbol);
 
-    [Test]
-    [Platform("Linux")]
-    public void Segfault_Repro() {
-        Console.WriteLine($"[SegfaultRepro] Start");
-        const int RTLD_NOW = 2; // for dlopen's flags 
-        IntPtr moduleHandle = dlopen("profiler", RTLD_NOW);
-        Console.WriteLine($"[SegfaultRepro] Module Handle: {moduleHandle}");
-        IntPtr ptr = dlsym(moduleHandle, "DllGetClassObject");
-        Console.WriteLine($"[SegfaultRepro] MethodHandle: {ptr}");
-        DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(ptr, typeof(DllGetClassObject)) as DllGetClassObject;
-        Console.WriteLine($"[SegfaultRepro] DllGetClassObject: {func}");
-    }
+    //[Test]
+    //[Platform("Linux")]
+    //public void Segfault_Repro() {
+    //    Console.WriteLine($"[SegfaultRepro] Start");
+    //    const int RTLD_NOW = 2; // for dlopen's flags 
+    //    IntPtr moduleHandle = dlopen("profiler", RTLD_NOW);
+    //    Console.WriteLine($"[SegfaultRepro] Module Handle: {moduleHandle}");
+    //    IntPtr ptr = dlsym(moduleHandle, "DllGetClassObject");
+    //    Console.WriteLine($"[SegfaultRepro] MethodHandle: {ptr}");
+    //    DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(ptr, typeof(DllGetClassObject)) as DllGetClassObject;
+    //    Console.WriteLine($"[SegfaultRepro] DllGetClassObject: {func}");
+    //}
 
     private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory classFactory);
 
