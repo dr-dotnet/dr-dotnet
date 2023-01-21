@@ -36,7 +36,9 @@ public class ProfilersDiscoveryTests
 
     [Test]
     public void Can_Load_Library() {
-        LoadUnloadProfilers();
+        for (int i = 0; i < 5; i++) {
+            LoadUnloadProfilers();
+        }
     }
 
     private static void LoadUnloadProfilers() {
@@ -45,8 +47,8 @@ public class ProfilersDiscoveryTests
             Console.WriteLine($"[SegfaultRepro] Lib handle: {handle}");
             nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
             Console.WriteLine($"[SegfaultRepro] Method handle: {methodHandle}");
-            DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(methodHandle, typeof(DllGetClassObject)) as DllGetClassObject;
-            Console.WriteLine($"[SegfaultRepro] Casted delegate: {func}");
+            //DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(methodHandle, typeof(DllGetClassObject)) as DllGetClassObject;
+            //Console.WriteLine($"[SegfaultRepro] Casted delegate: {func}");
             NativeLibrary.Free(handle);
             Console.WriteLine($"[SegfaultRepro] Freed");
         }
