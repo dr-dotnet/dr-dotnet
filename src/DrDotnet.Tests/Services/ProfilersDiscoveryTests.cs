@@ -36,53 +36,56 @@ public class ProfilersDiscoveryTests
 
     [Test]
     public void Can_Load_Library() {
-        for (int i = 0; i < 5; i++) {
-            LoadUnloadProfilers();
-        }
-    }
-
-    private static void LoadUnloadProfilers() {
-        Console.WriteLine($"[SegfaultRepro] Start");
-        if (NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out IntPtr handle)) {
-            Console.WriteLine($"[SegfaultRepro] Lib handle: {handle}");
-            nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
-            Console.WriteLine($"[SegfaultRepro] Method handle: {methodHandle}");
-            //DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(methodHandle, typeof(DllGetClassObject)) as DllGetClassObject;
-            //Console.WriteLine($"[SegfaultRepro] Casted delegate: {func}");
-            NativeLibrary.Free(handle);
-            Console.WriteLine($"[SegfaultRepro] Freed");
-        }
-        else {
-            Assert.Fail("Failed loading profilers DLL");
+        for (int i = 0; i < 3; i++) {
+            Assert.True(NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
+            Assert.AreNotEqual(nint.Zero, handle);
+            Assert.AreNotEqual(nint.Zero, NativeLibrary.GetExport(handle, "DllGetClassObject"));
         }
     }
 
     [Test]
-    public void Profilers_Are_Discovered()
-    {
-        ProfilersDiscovery profilersDiscovery = new (Mock.Of<ILogger>());
-        List<Profiler> profilers = profilersDiscovery.GetProfilers(true);
-        Assert.IsNotEmpty(profilers);
+    public void Can_Load_And_Free_Library() {
+        for (int i = 0; i < 3; i++) {
+            Assert.True(NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
+            Assert.AreNotEqual(nint.Zero, handle);
+            Assert.AreNotEqual(nint.Zero, NativeLibrary.GetExport(handle, "DllGetClassObject"));
+            NativeLibrary.Free(handle);
+        }
     }
 
-    [DllImport("libdl")]
-    protected static extern IntPtr dlopen(string filename, int flags);
+    [Test]
+    public void Can_Load_CreateInstance_And_Free_Library() {
+        for (int i = 0; i < 3; i++) {
+            Assert.True(NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
+            Assert.AreNotEqual(nint.Zero, handle);
+            nint methodHandle;
+            Assert.AreNotEqual(nint.Zero, methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject"));
+            DllGetClassObject dllGetClassObject = Marshal.GetDelegateForFunctionPointer<DllGetClassObject>(methodHandle);
+            Assert.NotNull(dllGetClassObject);
+            Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
+            Guid iclassFactoryGuid = new Guid("00000001-0000-0000-c000-000000000046");
+            Guid iCorProfilerCallback8Guid = new Guid("5BED9B15-C079-4D47-BFE2-215A140C07E0");
+            // Get IClassFactory that can create instances of Exception Profiler
+            dllGetClassObject(ref exceptionProfilerGuid, ref iclassFactoryGuid, out IClassFactory classFactory);
+            // Create instance of profiler, which implements ICoreProfilerCallback8 interface
+            classFactory.CreateInstance(null, ref iCorProfilerCallback8Guid, out object ppvObject);
+            Assert.NotNull(ppvObject);
+            NativeLibrary.Free(handle);
+        }
+    }
 
-    [DllImport("libdl")]
-    protected static extern IntPtr dlsym(IntPtr handle, string symbol);
-
-    //[Test]
-    //[Platform("Linux")]
-    //public void Segfault_Repro() {
-    //    Console.WriteLine($"[SegfaultRepro] Start");
-    //    const int RTLD_NOW = 2; // for dlopen's flags 
-    //    IntPtr moduleHandle = dlopen("profiler", RTLD_NOW);
-    //    Console.WriteLine($"[SegfaultRepro] Module Handle: {moduleHandle}");
-    //    IntPtr ptr = dlsym(moduleHandle, "DllGetClassObject");
-    //    Console.WriteLine($"[SegfaultRepro] MethodHandle: {ptr}");
-    //    DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(ptr, typeof(DllGetClassObject)) as DllGetClassObject;
-    //    Console.WriteLine($"[SegfaultRepro] DllGetClassObject: {func}");
-    //}
+    [Test]
+    [Platform("Linux")]
+    public void Can_Load_More_Than_Once_Different_Path() {
+        Directory.CreateDirectory("tmp");
+        File.Copy("libprofilers.so", "tmp/libprofilers.so");
+        for (int i = 0; i < 3; i++) {
+            Assert.True(NativeLibrary.TryLoad("tmp/libprofilers.so", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
+            Assert.AreNotEqual(nint.Zero, handle);
+            Assert.AreNotEqual(nint.Zero, NativeLibrary.GetExport(handle, "DllGetClassObject"));
+            NativeLibrary.Free(handle);
+        }
+    }
 
     private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory classFactory);
 
@@ -93,5 +96,13 @@ public class ProfilersDiscoveryTests
     {
         void CreateInstance([MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
         void LockServer(bool fLock);
+    }
+
+    [Test]
+    public void Profilers_Are_Discovered()
+    {
+        ProfilersDiscovery profilersDiscovery = new (Mock.Of<ILogger>());
+        List<Profiler> profilers = profilersDiscovery.GetProfilers(true);
+        Assert.IsNotEmpty(profilers);
     }
 }

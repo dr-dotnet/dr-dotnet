@@ -29,6 +29,7 @@ unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::RE
 
     profilers::init_logging();
 
+    debug!("[DEBUG] DllGetClassObject. rclsid: {:?}, riid: {:?}", rclsid, riid);
     debug!("Entered DllGetClassObject. Invokations: {}", INVOKATIONS);
 
     if ppv.is_null() {
