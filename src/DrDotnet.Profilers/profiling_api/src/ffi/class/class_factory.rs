@@ -54,7 +54,7 @@ where
         riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
-
+        info!("IClassFactory::QueryInterface");
         if ppvObject.is_null() {
             return E_POINTER;
         }
@@ -70,6 +70,7 @@ where
     }
 
     pub unsafe extern "system" fn AddRef(&mut self) -> ULONG {
+        info!("IClassFactory::AddRef");
         // let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
         // 
         // println!("ClassFactory addref. Ref count: {}", ref_count);
@@ -79,6 +80,7 @@ where
     }
 
     pub unsafe extern "system" fn Release(&mut self) -> ULONG {
+        info!("IClassFactory::Release");
         // let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
         // 
         // println!("ClassFactory release. Ref count: {}", ref_count);
@@ -97,6 +99,7 @@ where
         _riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
+        info!("IClassFactory::CreateInstance");
         let b = CorProfilerCallback::new(T::default());
         let hr = b.query_interface(_riid, ppvObject);
         b.release();
@@ -107,6 +110,7 @@ where
     }
 
     pub extern "system" fn LockServer(&mut self, _fLock: BOOL) -> HRESULT {
+        info!("IClassFactory::LockServer");
         S_OK
     }
 }

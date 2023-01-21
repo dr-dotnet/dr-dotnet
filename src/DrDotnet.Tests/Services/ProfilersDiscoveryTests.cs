@@ -54,22 +54,40 @@ public class ProfilersDiscoveryTests
     }
 
     [Test]
-    public void Can_Load_CreateInstance_And_Free_Library() {
-        for (int i = 0; i < 3; i++) {
+    public unsafe void Can_Load_CreateInstance_And_Free_Library() {
+
+        Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
+        Guid iclassFactoryGuid = new Guid("00000001-0000-0000-c000-000000000046");
+        Guid iCorProfilerCallback8Guid = new Guid("5BED9B15-C079-4D47-BFE2-215A140C07E0");
+
+        for (int i = 0; i < 3; i++)
+        {
+            // Load profilers library (dlopen on linux)
             Assert.True(NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
             Assert.AreNotEqual(nint.Zero, handle);
-            nint methodHandle;
-            Assert.AreNotEqual(nint.Zero, methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject"));
+
+            // Get pointer to method DllGetClassObject (dlsym on linux)
+            nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
+            Assert.AreNotEqual(nint.Zero, methodHandle);
+
+            // Cast pointer to DllGetClassObject delegate
             DllGetClassObject dllGetClassObject = Marshal.GetDelegateForFunctionPointer<DllGetClassObject>(methodHandle);
             Assert.NotNull(dllGetClassObject);
-            Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
-            Guid iclassFactoryGuid = new Guid("00000001-0000-0000-c000-000000000046");
-            Guid iCorProfilerCallback8Guid = new Guid("5BED9B15-C079-4D47-BFE2-215A140C07E0");
-            // Get IClassFactory that can create instances of Exception Profiler
-            dllGetClassObject(ref exceptionProfilerGuid, ref iclassFactoryGuid, out IClassFactory classFactory);
+
+            // Call DllGetClassObject to query the IClassFactory interface that can create instances of Exception Profiler
+            dllGetClassObject(ref exceptionProfilerGuid, ref iclassFactoryGuid, out nint classFactoryPtr);
+            Assert.AreNotEqual(nint.Zero, classFactoryPtr);
+
+            // Since we can't use COM marshalling on Linux, we need to manually get the CreateInstance method pointer from the virtual table
+            nint vtablePtr = Marshal.ReadIntPtr(classFactoryPtr);
+            CreateInstance createInstance = Marshal.GetDelegateForFunctionPointer<CreateInstance>(Marshal.ReadIntPtr(vtablePtr + nint.Size * 3));
+            Assert.NotNull(createInstance);
+
             // Create instance of profiler, which implements ICoreProfilerCallback8 interface
-            classFactory.CreateInstance(null, ref iCorProfilerCallback8Guid, out object ppvObject);
-            Assert.NotNull(ppvObject);
+            createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
+            Assert.AreNotEqual(nint.Zero, ppvObjectPtr);
+
+            // Free library
             NativeLibrary.Free(handle);
         }
     }
@@ -87,15 +105,16 @@ public class ProfilersDiscoveryTests
         }
     }
 
-    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory classFactory);
+    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out] out nint classFactoryPtr);
+    private delegate void CreateInstance(nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
 
-    [Guid("00000001-0000-0000-c000-000000000046")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    internal interface IClassFactory
-    {
-        void CreateInstance([MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
-        void LockServer(bool fLock);
-    }
+    //[Guid("00000001-0000-0000-c000-000000000046")]
+    //[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    //internal interface IClassFactory
+    //{
+    //    void CreateInstance([MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+    //    void LockServer(bool fLock);
+    //}
 
     [Test]
     public void Profilers_Are_Discovered()
