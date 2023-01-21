@@ -54,4 +54,34 @@ public class ProfilersDiscoveryTests
         List<Profiler> profilers = profilersDiscovery.GetProfilers(true);
         Assert.IsNotEmpty(profilers);
     }
+
+    [DllImport("libdl")]
+    protected static extern IntPtr dlopen(string filename, int flags);
+
+    [DllImport("libdl")]
+    protected static extern IntPtr dlsym(IntPtr handle, string symbol);
+
+    [Test]
+    [Platform("Linux")]
+    public void Segfault_Repro() {
+        Console.WriteLine($"[SegfaultRepro] Start");
+        const int RTLD_NOW = 2; // for dlopen's flags 
+        IntPtr moduleHandle = dlopen("profiler", RTLD_NOW);
+        Console.WriteLine($"[SegfaultRepro] Module Handle: {moduleHandle}");
+        IntPtr ptr = dlsym(moduleHandle, "DllGetClassObject");
+        Console.WriteLine($"[SegfaultRepro] MethodHandle: {ptr}");
+        DllGetClassObject func = Marshal.GetDelegateForFunctionPointer(ptr, typeof(DllGetClassObject)) as DllGetClassObject;
+        Console.WriteLine($"[SegfaultRepro] DllGetClassObject: {func}");
+    }
+
+    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory classFactory);
+
+    [Guid("00000001-0000-0000-c000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [ComImport]
+    internal interface IClassFactory
+    {
+        void CreateInstance([MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+        void LockServer(bool fLock);
+    }
 }
