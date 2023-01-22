@@ -60,7 +60,7 @@ public class ProfilersDiscoveryTests
         }
     }
 
-    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out] out nint classFactoryPtr);
+    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, out nint classFactoryPtr);
     private delegate void CreateInstance(nint self, nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
 
     [Test]

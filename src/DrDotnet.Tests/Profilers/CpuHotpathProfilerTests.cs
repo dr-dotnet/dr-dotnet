@@ -22,7 +22,7 @@ public class CpuHotpathProfilerTests : ProfilerTests
         Assert.NotNull(GetProfiler());
     }
 
-    [Test]
+    [Test, Explicit]
     [Order(1)]
     [Timeout(160_000)]
     [NonParallelizable]

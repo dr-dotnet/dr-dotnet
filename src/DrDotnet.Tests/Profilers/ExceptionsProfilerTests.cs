@@ -21,7 +21,7 @@ public class ExceptionsProfilerTests : ProfilerTests
         Assert.NotNull(GetProfiler());
     }
 
-    [Test, Explicit]
+    [Test]
     [Order(1)]
     [Timeout(30_000)]
     [NonParallelizable]
@@ -31,34 +31,37 @@ public class ExceptionsProfilerTests : ProfilerTests
         SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
         Profiler profiler = GetProfiler();
 
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
-
-        // Intentionally throws (handled) exceptions
-        ThreadPool.QueueUserWorkItem(async _ =>
+        for (int i = 0; i < 3; i++)
         {
-            while (true)
+            Console.WriteLine($"Profiler_Counts_Exceptions Iteration {i}");
+
+            Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+
+            // Intentionally throws (handled) exceptions
+            ThreadPool.QueueUserWorkItem(async _ =>
             {
-                try
-                {
-                    throw new TestException();
+                while (true) {
+                    try {
+                        throw new TestException();
+                    }
+                    catch { }
+                    await Task.Delay(300);
                 }
-                catch { }
-                await Task.Delay(300);
-            }
-        });
+            });
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+            var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
 
-        var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
+            var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
 
-        Assert.NotNull(summary, "No summary have been created!");
+            Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+            var content = File.ReadAllText(summary.FullName);
 
-        Console.WriteLine(content);
+            Console.WriteLine(content);
 
-        Assert.IsTrue(content.Contains("DrDotnet.Tests.Profilers.TestException:"));
-        Assert.IsFalse(content.Contains("DrDotnet.Tests.Profilers.TestException: 0"));
+            Assert.IsTrue(content.Contains("DrDotnet.Tests.Profilers.TestException:"));
+            Assert.IsFalse(content.Contains("DrDotnet.Tests.Profilers.TestException: 0"));
+        }
     }
 }
 
