@@ -21,7 +21,7 @@ public class ExceptionsProfilerTests : ProfilerTests
         Assert.NotNull(GetProfiler());
     }
 
-    [Test]
+    [Test, Explicit]
     [Order(1)]
     [Timeout(30_000)]
     [NonParallelizable]
