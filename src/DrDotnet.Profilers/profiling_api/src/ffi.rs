@@ -64,6 +64,11 @@ impl From<Uuid> for GUID {
         }
     }
 }
+impl Into<Uuid> for GUID {
+    fn into(self) -> Uuid {
+        Uuid::from_fields(self.data1, self.data2, self.data3, &self.data4).unwrap()
+    }
+}
 pub type IID = GUID;
 pub type REFGUID = *const GUID;
 pub type REFCLSID = *const IID;

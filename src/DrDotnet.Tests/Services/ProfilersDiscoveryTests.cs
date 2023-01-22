@@ -97,7 +97,7 @@ public class ProfilersDiscoveryTests
 
             // Create instance of profiler, which implements ICoreProfilerCallback8 interface
             createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
-            //Assert.AreNotEqual(nint.Zero, ppvObjectPtr);
+            Assert.AreNotEqual(nint.Zero, ppvObjectPtr);
 
             // Free library
             NativeLibrary.Free(handle);

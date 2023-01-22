@@ -31,6 +31,7 @@ where
     T: CorProfilerCallback9,
 {
     pub fn new<'b>(profiler: T) -> &'b mut ClassFactory<T> {
+
         let class_factory = ClassFactory {
             lpVtbl: &ClassFactoryVtbl {
                 IUnknown: IUnknown {
@@ -46,6 +47,14 @@ where
             ref_count: AtomicU32::new(0),
             profiler,
         };
+
+        // info!("--- ClassFactory vtable ---");
+        // info!("- {:?} QueryInterface", (*class_factory.lpVtbl).QueryInterface  as *mut c_void);
+        // info!("- {:?} AddRef", Self::AddRef as *mut c_void);
+        // info!("- {:?} Release", Self::Release as *mut c_void);
+        // info!("- {:?} CreateInstance", Self::CreateInstance as *mut c_void);
+        // info!("- {:?} LockServer", Self::LockServer as *mut c_void);
+
         Box::leak(Box::new(class_factory))
     }
 
@@ -54,10 +63,8 @@ where
         riid: REFIID,
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
+
         info!("IClassFactory::QueryInterface");
-        if ppvObject.is_null() {
-            return E_POINTER;
-        }
 
         if *riid == IUnknown::IID || *riid == IClassFactory::IID {
             *ppvObject = self as *mut ClassFactory<T> as LPVOID;
@@ -93,20 +100,22 @@ where
         1
     }
 
-    pub unsafe extern "system" fn CreateInstance(
-        &mut self,
-        _pUnkOuter: *mut IUnknown<()>,
-        _riid: REFIID,
-        ppvObject: *mut *mut c_void,
+    pub unsafe extern "system" fn CreateInstance(_pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut LPVOID,
+    //pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut *mut c_void,
+    //pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, riid: ffi::REFIID, ppv: *mut ffi::LPVOID,
     ) -> HRESULT {
-        info!("IClassFactory::CreateInstance");
-        let b = CorProfilerCallback::new(T::default());
-        let hr = b.query_interface(_riid, ppvObject);
-        b.release();
-        hr
+        let uuid: uuid::Uuid = GUID::into(*_riid);
+        info!("IClassFactory::CreateInstance({})", uuid);
+        // let b = CorProfilerCallback::new(T::default());
+        // let hr = b.query_interface(_riid, ppvObject);
+        // b.release();
+        // hr
         
-        // *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T> as LPVOID;
-        // S_OK
+        info!("first arg={:?}", _pUnkOuter.is_null());
+        info!("ptr before={:?}", ppvObject.is_null());
+        *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T> as LPVOID;
+        info!("ptr after={:?}", ppvObject.is_null());
+        S_OK
     }
 
     pub extern "system" fn LockServer(&mut self, _fLock: BOOL) -> HRESULT {
