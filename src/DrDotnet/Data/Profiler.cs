@@ -22,10 +22,17 @@ public class Profiler
     {
         PlatformID.Win32NT => $"profilers.dll",
         // https://github.com/dotnet/runtime/issues/21660
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => $"libprofilers.dylib",
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => $"libprofilers.so",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX) => $"libprofilers.dylib",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux) => $"libprofilers.so",
         _ => throw new NotImplementedException()
     };
+
+    public static string GetProfilerLibraryAbsolutePath() {
+        string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        string strWorkPath = Path.GetDirectoryName(strExeFilePath);
+        string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
+        return profilerDll;
+    }
     
     // private string ProfilerLibraryName2 => Environment.OSVersion.Platform switch
     // {
@@ -40,9 +47,7 @@ public class Profiler
     {
         PIndex++;
         
-        string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-        string strWorkPath = Path.GetDirectoryName(strExeFilePath);
-        string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
+        string profilerDll = GetProfilerLibraryAbsolutePath();
         var sessionId = Guid.NewGuid();
 
         // Copy DLL for sidecar profiling through shared volume /tmp

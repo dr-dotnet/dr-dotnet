@@ -72,7 +72,7 @@ public class SegfaultReproTests
 
             Guid sessionId = Guid.NewGuid();
 
-            client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, Profiler.ProfilerLibraryName, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
+            client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, Profiler.GetProfilerLibraryAbsolutePath(), Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
             // This profiler detaches automatically after about 10s
             Thread.Sleep(12_000);
