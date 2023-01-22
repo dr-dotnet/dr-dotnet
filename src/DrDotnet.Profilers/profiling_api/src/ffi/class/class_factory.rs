@@ -100,7 +100,7 @@ where
         1
     }
 
-    pub unsafe extern "system" fn CreateInstance(_pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut LPVOID,
+    pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut LPVOID,
     //pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut *mut c_void,
     //pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, riid: ffi::REFIID, ppv: *mut ffi::LPVOID,
     ) -> HRESULT {

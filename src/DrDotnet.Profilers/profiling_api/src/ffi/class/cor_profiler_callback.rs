@@ -35,7 +35,7 @@ pub struct CorProfilerCallback<T: CorProfilerCallback9> {
 
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     pub fn new<'b>(profiler: T) -> &'b mut CorProfilerCallback<T> {
-        println!("Created cor profiler callback instance");
+        info!("CorProfilerCallback<T>::new");
         let cor_profiler_callback = CorProfilerCallback {
             lpVtbl: &CorProfilerCallbackVtbl {
                 IUnknown: IUnknown {
@@ -170,9 +170,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         ppvObject: *mut *mut c_void,
     ) -> HRESULT {
 
-        if ppvObject.is_null() {
-            return E_POINTER;
-        }
+        info!("CorProfilerCallback<T>::QueryInterface");
 
         if *riid == IUnknown::IID
         || *riid == ICorProfilerCallback::IID
@@ -195,6 +193,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     }
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
+        info!("CorProfilerCallback<T>::AddRef");
         // let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
 
         // println!("CorProfilerCallback addref. Ref count: {}", ref_count);
@@ -204,7 +203,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
-
+        info!("CorProfilerCallback<T>::Release");
         // let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
         // println!("CorProfilerCallbac release. Ref count: {}", ref_count);

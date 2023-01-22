@@ -61,7 +61,7 @@ public class ProfilersDiscoveryTests
     }
 
     private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out] out nint classFactoryPtr);
-    private delegate void CreateInstance(nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
+    private delegate void CreateInstance(nint self, nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
 
     [Test]
     public unsafe void Can_Load_CreateInstance_And_Free_Library() {
@@ -96,7 +96,7 @@ public class ProfilersDiscoveryTests
             Assert.NotNull(createInstance);
 
             // Create instance of profiler, which implements ICoreProfilerCallback8 interface
-            createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
+            createInstance(classFactoryPtr, nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
             Assert.AreNotEqual(nint.Zero, ppvObjectPtr);
 
             // Free library
