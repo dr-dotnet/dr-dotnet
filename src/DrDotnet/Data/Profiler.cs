@@ -18,7 +18,7 @@ public class Profiler
 
     public int PIndex = 0;
     
-    private string ProfilerLibraryName => Environment.OSVersion.Platform switch
+    public static string ProfilerLibraryName => Environment.OSVersion.Platform switch
     {
         PlatformID.Win32NT => $"profilers.dll",
         // https://github.com/dotnet/runtime/issues/21660
