@@ -25,7 +25,6 @@ macro_rules! register{
                     // });
                     // return class_factory_s.lock().unwrap().QueryInterface(riid, ppv)
                     
-                    info!("Querying interface");
                     let profiler = <$type>::default();
                     let class_factory : &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(profiler);
                     return class_factory.QueryInterface(riid, ppv)
