@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 public static class Program
 {
     private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out] out nint classFactoryPtr);
-    private delegate void CreateInstance(nint pUnkOuter, ref Guid riid, ref nint ppvObjectPtr);
+    private delegate void CreateInstance(nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
 
     public static void Main()
     {
@@ -39,7 +39,7 @@ public static class Program
 
             nint ppvObjectPtr = nint.Zero;
             // Create instance of profiler, which implements ICoreProfilerCallback8 interface
-            createInstance(nint.Zero, ref iCorProfilerCallback8Guid, ref ppvObjectPtr);
+            createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out ppvObjectPtr);
             Debug.Assert(nint.Zero != ppvObjectPtr);
 
             // Free library
