@@ -54,18 +54,18 @@ public class Profiler
         // Could be improved
         // if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         // {
-            try
-            {
-                SessionsDiscovery x = new SessionsDiscovery(logger);
-                string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName);
-                File.Copy(profilerDll, tmpProfilerDll, true);
-                profilerDll = tmpProfilerDll;
-                logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "Error while copying profilers library");
-            }
+        SessionsDiscovery x = new SessionsDiscovery(logger);
+        string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName);
+        try
+        {
+            File.Copy(profilerDll, tmpProfilerDll, true);
+            logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Error while copying profilers library");
+        }
+        profilerDll = tmpProfilerDll;
         //}
 
         try
