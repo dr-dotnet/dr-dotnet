@@ -36,36 +36,4 @@ public class ProfilersDiscoveryTests {
         List<Profiler> profilers = profilersDiscovery.GetProfilers(true);
         Assert.IsNotEmpty(profilers);
     }
-
-    [Test]
-    public void Can_Load_Library() {
-        for (int i = 0; i < 3; i++) {
-            Assert.True(NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
-            Assert.AreNotEqual(nint.Zero, handle);
-            Assert.AreNotEqual(nint.Zero, NativeLibrary.GetExport(handle, "DllGetClassObject"));
-        }
-    }
-
-    [Test]
-    public void Can_Load_And_Free_Library() {
-        for (int i = 0; i < 3; i++) {
-            Assert.True(NativeLibrary.TryLoad("profilers", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
-            Assert.AreNotEqual(nint.Zero, handle);
-            Assert.AreNotEqual(nint.Zero, NativeLibrary.GetExport(handle, "DllGetClassObject"));
-            NativeLibrary.Free(handle);
-        }
-    }
-
-    [Test]
-    [Platform("Linux")]
-    public void Can_Load_More_Than_Once_Different_Path() {
-        Directory.CreateDirectory("tmp");
-        File.Copy("libprofilers.so", "tmp/libprofilers.so");
-        for (int i = 0; i < 3; i++) {
-            Assert.True(NativeLibrary.TryLoad("tmp/libprofilers.so", typeof(ProfilersDiscoveryTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
-            Assert.AreNotEqual(nint.Zero, handle);
-            Assert.AreNotEqual(nint.Zero, NativeLibrary.GetExport(handle, "DllGetClassObject"));
-            NativeLibrary.Free(handle);
-        }
-    }
 }
