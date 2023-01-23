@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 
 namespace DrDotnet.Utils;
@@ -24,7 +25,7 @@ public static class Segfault
 
         File.Copy(profilerLibrary, profilerLibraryCopy, true);
 
-        LoadUnload(profilerLibraryCopy);
+        LoadUnload(profilerLibraryCopy, 0);
 
         // Overwrite profiler library
         try {
@@ -34,17 +35,21 @@ public static class Segfault
         }
 
         // Will segfault
-        LoadUnload(profilerLibraryCopy);
+        LoadUnload(profilerLibraryCopy, 1);
     }
 
-    private static void LoadUnload(string library) {
+    private static void LoadUnload(string library, int i) {
         Console.WriteLine($"Loading '{library}'...");
 
         // Load profilers library (dlopen on linux)
         NativeLibrary.TryLoad(library, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle);
         Debug.Assert(nint.Zero != handle);
+        
+        Console.WriteLine("Handle: " + handle);
+        Console.WriteLine(">>> ITeration: " + i);
 
-        return;
+        if (i > 0)
+            return;
 
         // Get pointer to method DllGetClassObject (dlsym on linux)
         nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
