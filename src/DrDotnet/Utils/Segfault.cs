@@ -46,7 +46,7 @@ public static class Segfault
         Debug.Assert(nint.Zero != handle);
         
         Console.WriteLine("Handle: " + handle);
-        Console.WriteLine(">>> ITeration: " + i);
+        Console.WriteLine(">>> Iteration: " + i);
 
         if (i > 0)
             return;
@@ -54,6 +54,8 @@ public static class Segfault
         // Get pointer to method DllGetClassObject (dlsym on linux)
         nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
         Debug.Assert(nint.Zero != methodHandle);
+        
+        Console.WriteLine("DllGetClassObject Handle: " + methodHandle);
 
         // Cast pointer to DllGetClassObject delegate
         DllGetClassObject dllGetClassObject = Marshal.GetDelegateForFunctionPointer<DllGetClassObject>(methodHandle);
@@ -68,6 +70,8 @@ public static class Segfault
         nint createInstancePtr = vtablePtr + nint.Size * 3;
         CreateInstance createInstance = Marshal.GetDelegateForFunctionPointer<CreateInstance>(Marshal.ReadIntPtr(createInstancePtr));
         Debug.Assert(createInstance != null);
+        
+        Console.WriteLine("vtablePtr Handle: " + classFactoryPtr);
 
         // Create instance of profiler, which implements ICoreProfilerCallback8 interface
         createInstance(nint.Zero, nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
