@@ -44,6 +44,8 @@ public static class Segfault
         NativeLibrary.TryLoad(library, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle);
         Debug.Assert(nint.Zero != handle);
 
+        return;
+
         // Get pointer to method DllGetClassObject (dlsym on linux)
         nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
         Debug.Assert(nint.Zero != methodHandle);
