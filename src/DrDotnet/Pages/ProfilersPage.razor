@@ -1,12 +1,12 @@
 ﻿@page "/profilers/{ProcessId:int}"
 
+@using DrDotnet.Utils;
 @using Microsoft.Diagnostics.NETCore.Client;
 @using System.IO;
 @using Microsoft.Extensions.Logging
 @using System.Diagnostics
 
 @inject IProfilerDiscovery _profilersDiscovery;
-@inject ISessionDiscovery _dessionDiscovery;
 @inject NavigationManager _navigationManager;
 @inject IJSRuntime _jsRuntime;
 @inject ILogger _logger;
@@ -72,7 +72,7 @@ else
 
         var fileName = $"coredump_{DateTime.UtcNow}.dmp";
 
-        var dumpFilePath = Path.Combine(_dessionDiscovery.RootDir, fileName);
+        var dumpFilePath = Path.Combine(PathUtils.DrDotnetBaseDirectory, fileName);
         
         client.WriteDump(DumpType.Normal, dumpFilePath, WriteDumpFlags.None);
         

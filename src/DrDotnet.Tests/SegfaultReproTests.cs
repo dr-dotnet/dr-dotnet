@@ -72,15 +72,6 @@ public class SegfaultReproTests
             Guid sessionId = Guid.NewGuid();
 
             string profilerDll = Profiler.GetProfilerLibraryAbsolutePath();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
-                string tmpProfilerDll = Path.Combine(new SessionsDiscovery(null).RootDir, profilerDll);
-                try {
-                    File.Copy(profilerDll, tmpProfilerDll, true);
-                } catch(Exception ex) {
-                    Console.WriteLine("Error: " + ex);
-                }
-                profilerDll = tmpProfilerDll;
-            }
 
             client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 

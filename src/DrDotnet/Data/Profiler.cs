@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using DrDotnet.Utils;
 
 namespace DrDotnet;
 
@@ -27,10 +28,26 @@ public class Profiler
         _ => throw new NotImplementedException()
     };
 
-    public static string GetProfilerLibraryAbsolutePath() {
+    public static string GetProfilerLibraryAbsolutePath()
+    {
         string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
         string strWorkPath = Path.GetDirectoryName(strExeFilePath);
         string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
+
+        string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
+        Exception ex = null;
+        try {
+            File.Copy(profilerDll, tmpProfilerDll, true);
+        }
+        catch (Exception e) {
+            ex = e;
+        }
+        profilerDll = tmpProfilerDll;
+
+        if (!File.Exists(profilerDll)) {
+            throw new FileNotFoundException("Profiler library not found", profilerDll, ex);
+        }
+
         return profilerDll;
     }
     
@@ -49,24 +66,6 @@ public class Profiler
         
         string profilerDll = GetProfilerLibraryAbsolutePath();
         var sessionId = Guid.NewGuid();
-
-        // Copy DLL for sidecar profiling through shared volume /tmp
-        // Could be improved
-        // if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        // {
-        SessionsDiscovery x = new SessionsDiscovery(logger);
-        string tmpProfilerDll = Path.Combine(x.RootDir, ProfilerLibraryName);
-        try
-        {
-            File.Copy(profilerDll, tmpProfilerDll, true);
-            logger.LogInformation("Profiler lib copied to {profilerDll}", profilerDll);
-        }
-        catch (Exception e)
-        {
-            logger.LogError(e, "Error while copying profilers library");
-        }
-        profilerDll = tmpProfilerDll;
-        //}
 
         try
         {

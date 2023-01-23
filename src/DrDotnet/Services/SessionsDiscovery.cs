@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
@@ -15,19 +16,11 @@ public class SessionsDiscovery : ISessionDiscovery
         _logger = logger;
     }
 
-    public string RootDir {
-        get {
-            var dir = Path.Combine(Path.GetTempPath(), "dr-dotnet");
-            Directory.CreateDirectory(dir);
-            return dir;
-        }
-    }
-
     public List<Session> GetSessions()
     {
         var sessions = new List<Session>();
 
-        string[] subdirectoryEntries = Directory.GetDirectories(RootDir);
+        string[] subdirectoryEntries = Directory.GetDirectories(PathUtils.DrDotnetBaseDirectory);
         foreach (string subdirectory in subdirectoryEntries)
         {
             string sessionFilePath = Path.Combine(subdirectory, Session.SESSION_FILE_NAME);
@@ -51,7 +44,7 @@ public class SessionsDiscovery : ISessionDiscovery
 
     private string GetSessionPath(Guid sessionId)
     {
-        return Path.Combine(Path.Combine(RootDir, sessionId.ToString()), Session.SESSION_FILE_NAME);
+        return Path.Combine(Path.Combine(PathUtils.DrDotnetBaseDirectory, sessionId.ToString()), Session.SESSION_FILE_NAME);
     }
 
     public async Task<Session> AwaitUntilCompletion(Guid sessionId)
