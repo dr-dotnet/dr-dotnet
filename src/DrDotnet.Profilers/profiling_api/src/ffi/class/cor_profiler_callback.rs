@@ -164,13 +164,8 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 
 // IUnknown
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
-    pub unsafe extern "system" fn query_interface(
-        &mut self,
-        riid: REFIID,
-        ppvObject: *mut *mut c_void,
-    ) -> HRESULT {
-
-        info!("CorProfilerCallback<T>::QueryInterface");
+    pub unsafe extern "system" fn query_interface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
+        debug!("CorProfilerCallback<T>::QueryInterface");
 
         if *riid == IUnknown::IID
         || *riid == ICorProfilerCallback::IID
@@ -187,38 +182,31 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             self.add_ref();
             S_OK
         } else {
-            //*ppvObject = ptr::null_mut();
+            *ppvObject = ptr::null_mut();
             E_NOINTERFACE
         }
     }
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
-        info!("CorProfilerCallback<T>::AddRef");
-        // let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
-
-        // println!("CorProfilerCallback addref. Ref count: {}", ref_count);
+        debug!("CorProfilerCallback<T>::AddRef");
         
-        // ref_count
-        1
+        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
+        ref_count
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
-        info!("CorProfilerCallback<T>::Release");
-        // let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
+        debug!("CorProfilerCallback<T>::Release");
+        
+        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
-        // println!("CorProfilerCallbac release. Ref count: {}", ref_count);
+        if ref_count == 0 {
+            debug!("CorProfilerCallback released");
+            drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
+        }
         
-        // if ref_count == 0 {
-        //     println!("CorProfilerCallback released!");
-        //     drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
-        // }
-        
-        // ref_count
-        1
+        ref_count
     }
 }
-
-// TODO: Make sure I'm checking for null pointers from the CLR
 
 // ICorProfilerCallback
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {

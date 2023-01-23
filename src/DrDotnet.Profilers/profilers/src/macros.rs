@@ -16,21 +16,12 @@ macro_rules! register{
             $(
                 let clsid = ffi::GUID::from(<$type>::get_info().profiler_id);
                 if *rclsid == clsid {
-                    // use once_cell::sync::Lazy;
-                    // static class_factory_s: Lazy<std::sync::Mutex<&mut ffi::ClassFactory<$type>>> = Lazy::new(|| {
-                    //     info!("Creating ClassFactory singleton");
-                    //     let p = <$type>::default();
-                    //     let c : &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(p);
-                    //     std::sync::Mutex::new(c)
-                    // });
-                    // return class_factory_s.lock().unwrap().QueryInterface(riid, ppv)
-                    
                     let profiler = <$type>::default();
                     let class_factory : &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(profiler);
                     return class_factory.QueryInterface(riid, ppv)
                 }
             )+
-            info!("No matched profiler");
+            error!("No matched profiler");
             return profiling_api::ffi::CLASS_E_CLASSNOTAVAILABLE;
         }
 

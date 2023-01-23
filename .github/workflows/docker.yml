@@ -30,7 +30,7 @@ jobs:
 
       - name: Build
         working-directory: src
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore -p:Version=${{ github.run_number }}
 
       - name: Publish
         run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore

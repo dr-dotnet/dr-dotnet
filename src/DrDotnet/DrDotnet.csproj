@@ -12,6 +12,8 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <!--Output folder must be lowercased because linux filesystem is case sensitive-->
     <OutputPath>..\..\bin\$(Configuration.toLower())\</OutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>false</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>

@@ -17,14 +17,12 @@ public class Profiler
 
     public string Description { get; set; }
 
-    public int PIndex = 0;
-    
     public static string ProfilerLibraryName => Environment.OSVersion.Platform switch
     {
-        PlatformID.Win32NT => $"profilers.dll",
+        PlatformID.Win32NT => "profilers.dll",
         // https://github.com/dotnet/runtime/issues/21660
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX) => $"libprofilers.dylib",
-        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux) => $"libprofilers.so",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX) => "libprofilers.dylib",
+        PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux) => "libprofilers.so",
         _ => throw new NotImplementedException()
     };
 
@@ -37,20 +35,19 @@ public class Profiler
             string profilerDll = GetLocalProfilerLibrary();
 
             string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
-            Exception ex = null;
-            try {
-                File.Copy(profilerDll, tmpProfilerDll, true);
-            }
-            catch (Exception e) {
-                ex = e;
-            }
-            profilerDll = tmpProfilerDll;
 
-            if (!File.Exists(profilerDll)) {
-                throw new FileNotFoundException("Profiler library not found", profilerDll, ex);
-            }
+            // In Linux, there is a segfault if we attach a lib that was attached before but replaced in the meantime
+            // This is a problem because we want our profiler library to always be up to date.
+            // As a workaround, we rename the profiler library with the version to be sure it's up to date without
+            // having to replace it everytime.
+            // See https://github.com/dotnet/runtime/issues/80683
+            string fileName = Path.GetFileNameWithoutExtension(tmpProfilerDll) + '-' + typeof(Profiler).Assembly.GetName().Version;
+            tmpProfilerDll = Path.Combine(Path.GetDirectoryName(tmpProfilerDll)!, fileName + Path.GetExtension(tmpProfilerDll));
+            
+            // Copy but don't overwrite.
+            File.Copy(profilerDll, tmpProfilerDll, false);
 
-            TmpProfilerLibrary = profilerDll;
+            TmpProfilerLibrary = tmpProfilerDll;
         }
         return TmpProfilerLibrary;
     }
@@ -65,11 +62,11 @@ public class Profiler
 
     public Guid StartProfilingSession(int processId, ILogger logger)
     {
-        PIndex++;
-        
         string profilerDll = GetTmpProfilerLibrary();
         var sessionId = Guid.NewGuid();
 
+        logger.LogInformation("Profiler library path: '{profilerDll}'", profilerDll);
+        
         try
         {
             var process = Process.GetProcessById(processId);
@@ -78,19 +75,20 @@ public class Profiler
         catch (Exception e)
         {
             logger.LogError(e, "Process does not seem alive");
+            throw;
         }
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
         
-        try
-        {
-            var envs = client.GetProcessEnvironment();
-            logger.LogInformation("Environment variables: " + envs.Count);
-        }
-        catch (Exception e)
-        {
-            logger.LogError(e, "Can't get process env (IPC broken?)");
-        }
+        // try
+        // {
+        //     var envs = client.GetProcessEnvironment();
+        //     logger.LogInformation("Environment variables: " + envs.Count);
+        // }
+        // catch (Exception e)
+        // {
+        //     logger.LogError(e, "Can't get process env (IPC broken?)");
+        // }
         
         client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 

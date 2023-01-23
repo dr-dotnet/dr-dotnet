@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 
 namespace DrDotnet.Utils;
@@ -22,8 +21,6 @@ public static class Segfault
 
         Console.WriteLine($"Original lib: {profilerLibrary}");
         Console.WriteLine($"Copied lib: {profilerLibraryCopy}");
-
-        File.Copy(profilerLibrary, profilerLibraryCopy, true);
 
         LoadUnload(profilerLibraryCopy, 0);
 
