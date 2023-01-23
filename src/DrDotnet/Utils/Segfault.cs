@@ -1,22 +1,44 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace DrDotnet.Utils;
 
 public static class Segfault
 {
-    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, [Out] out nint classFactoryPtr);
-    private delegate void CreateInstance(nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
+    private delegate int DllGetClassObject(ref Guid clsid, ref Guid iid, out nint classFactoryPtr);
+    private delegate void CreateInstance(nint self, nint pUnkOuter, ref Guid riid, out nint ppvObjectPtr);
 
-    public static void LoadUnload(ILogger logger, string library)
+    private static Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
+    private static Guid iclassFactoryGuid = new Guid("00000001-0000-0000-c000-000000000046");
+    private static Guid iCorProfilerCallback8Guid = new Guid("5BED9B15-C079-4D47-BFE2-215A140C07E0");
+
+    public static void LoadUnload()
     {
-        Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
-        Guid iclassFactoryGuid = new Guid("00000001-0000-0000-c000-000000000046");
-        Guid iCorProfilerCallback8Guid = new Guid("5BED9B15-C079-4D47-BFE2-215A140C07E0");
+        string profilerLibrary = Profiler.GetLocalProfilerLibrary();
+        string profilerLibraryCopy = Path.Combine(Path.GetDirectoryName(profilerLibrary), Path.GetFileNameWithoutExtension(profilerLibrary) + "copy" + Path.GetExtension(profilerLibrary));
 
-        logger.LogInformation($"Loading '{library}'...");
+        Console.WriteLine($"Original lib: {profilerLibrary}");
+        Console.WriteLine($"Copied lib: {profilerLibraryCopy}");
+
+        File.Copy(profilerLibrary, profilerLibraryCopy, true);
+
+        LoadUnload(profilerLibraryCopy);
+
+        // Overwrite profiler library
+        try {
+            File.Copy(profilerLibrary, profilerLibraryCopy, true);
+        } catch (Exception e) {
+            Console.WriteLine(e);
+        }
+
+        // Will segfault
+        LoadUnload(profilerLibraryCopy);
+    }
+
+    private static void LoadUnload(string library) {
+        Console.WriteLine($"Loading '{library}'...");
 
         // Load profilers library (dlopen on linux)
         NativeLibrary.TryLoad(library, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle);
@@ -41,14 +63,10 @@ public static class Segfault
         Debug.Assert(createInstance != null);
 
         // Create instance of profiler, which implements ICoreProfilerCallback8 interface
-        createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
+        createInstance(nint.Zero, nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
         Debug.Assert(nint.Zero != ppvObjectPtr);
-
-        logger.LogInformation("Pointer to profiler object: " + ppvObjectPtr);
 
         // Free library
         NativeLibrary.Free(handle);
-
-        logger.LogInformation("Done");
     }
 }

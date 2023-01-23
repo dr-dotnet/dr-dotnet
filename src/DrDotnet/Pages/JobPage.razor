@@ -11,8 +11,6 @@
 
 <MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Log Process Modules" OnClick="LogProcessModulesInfo" Style="float: right;"></MatButton>
 
-<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Load Unload Lib Manually" OnClick="ManualLoadUnload" Style="float: right;"></MatButton>
-
 <h3 class="mat-h3">Job</h3>
 
 <div class="mat-layout-grid">
@@ -108,10 +106,5 @@
             _logger.LogInformation($" - Module: '{module.FileName}', Name: '{module.ModuleName}', Address: '{module.BaseAddress}'");
         }
         _logger.LogInformation($"---  end listing process modules  ---");
-    }
-
-    private void ManualLoadUnload()
-    {
-        Segfault.LoadUnload(_logger, Profiler.GetTmpProfilerLibrary());
     }
 } 
