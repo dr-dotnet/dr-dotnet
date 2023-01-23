@@ -77,10 +77,10 @@ public class SegfaultReproTests
 
             Console.Out.Flush();
 
-            client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
+            //client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
             // This profiler detaches automatically after about 10s
-            Thread.Sleep(12_000);
+            //Thread.Sleep(12_000);
         }
     }
 }
