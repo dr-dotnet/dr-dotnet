@@ -28,25 +28,31 @@ public class Profiler
         _ => throw new NotImplementedException()
     };
 
+    private static string TmpProfilerLibrary;
+
     public static string GetTmpProfilerLibrary()
     {
-        string profilerDll = GetLocalProfilerLibrary();
+        if (TmpProfilerLibrary == null)
+        {
+            string profilerDll = GetLocalProfilerLibrary();
 
-        string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
-        Exception ex = null;
-        try {
-            File.Copy(profilerDll, tmpProfilerDll, false);
-        }
-        catch (Exception e) {
-            ex = e;
-        }
-        profilerDll = tmpProfilerDll;
+            string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
+            Exception ex = null;
+            try {
+                File.Copy(profilerDll, tmpProfilerDll, true);
+            }
+            catch (Exception e) {
+                ex = e;
+            }
+            profilerDll = tmpProfilerDll;
 
-        if (!File.Exists(profilerDll)) {
-            throw new FileNotFoundException("Profiler library not found", profilerDll, ex);
-        }
+            if (!File.Exists(profilerDll)) {
+                throw new FileNotFoundException("Profiler library not found", profilerDll, ex);
+            }
 
-        return profilerDll;
+            TmpProfilerLibrary = profilerDll;
+        }
+        return TmpProfilerLibrary;
     }
 
     public static string GetLocalProfilerLibrary()
