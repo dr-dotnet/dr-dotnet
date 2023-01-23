@@ -29,9 +29,9 @@ This is what you want to go for if you want to profile a dotnet program locally.
 There is currently a CI step to build a docker image available at `ghcr.io/ogxd/drdotnet:latest`.    
 This image can run on a host as a docker container, next to the container you want to profile.    
 The container you want to profile must be running a dotnet program (of course) and be ran with a few flags to allow Dr-Dotnet to attach/detach later, if needs be.    
-<pre>docker run --rm -d --name **YOUR APP NAME** -v /tmp:/tmp --pid host **YOUR APP IMAGE**</pre>
+<pre>docker run -d --name **YOUR APP NAME** -v /tmp:/tmp --pid host **YOUR APP IMAGE**</pre>
 Then, you are ready to start Dr-Dotnet:
-<pre>docker run --rm -d --name drdotnet -v /tmp:/tmp --pid host -p 8000:92 ghcr.io/ogxd/drdotnet:latest</pre>
+<pre>docker run -d --name drdotnet -v /tmp:/tmp --pid host -p 8000:92 ghcr.io/ogxd/drdotnet:latest</pre>
 You can run Dr-Dotnet anytime you want, or leave it running all the time, it won't do anything if you don't use it (just take a few mbs of RAM because of the dotnet runtime). Make sure the port is private to your network however for security reasons, you don't want your profiler to be open to the public ;)
 
 ## How to contribute
