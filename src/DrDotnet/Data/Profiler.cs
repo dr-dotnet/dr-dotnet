@@ -35,7 +35,7 @@ public class Profiler
         string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
         Exception ex = null;
         try {
-            File.Copy(profilerDll, tmpProfilerDll, true);
+            File.Copy(profilerDll, tmpProfilerDll, false);
         }
         catch (Exception e) {
             ex = e;
