@@ -26,7 +26,7 @@ public class SegfaultReproTests
             Console.WriteLine($"[{nameof(Load_And_Create_Profiler_Instance_Manually)}] Iteration {i}");
 
             // Load profilers library (dlopen on linux)
-            Assert.True(NativeLibrary.TryLoad("profilers", typeof(SegfaultReproTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
+            Assert.True(NativeLibrary.TryLoad(Profiler.GetTmpProfilerLibrary(), typeof(SegfaultReproTests).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle));
             Assert.AreNotEqual(nint.Zero, handle);
 
             // Get pointer to method DllGetClassObject (dlsym on linux)
