@@ -5,7 +5,6 @@ using System.Threading;
 using Microsoft.Diagnostics.NETCore.Client;
 using System.Text;
 using System.Diagnostics;
-using System.IO;
 
 namespace DrDotnet.Tests;
 
@@ -17,7 +16,8 @@ public class SegfaultReproTests
     [Test]
     [Order(1)]
     [NonParallelizable]
-    public unsafe void Load_And_Create_Profiler_Instance_Manually() {
+    public unsafe void Load_And_Create_Profiler_Instance_Manually()
+    {
         Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
         Guid iclassFactoryGuid = new Guid("00000001-0000-0000-c000-000000000046");
         Guid iCorProfilerCallback8Guid = new Guid("5BED9B15-C079-4D47-BFE2-215A140C07E0");
@@ -72,6 +72,10 @@ public class SegfaultReproTests
             Guid sessionId = Guid.NewGuid();
 
             string profilerDll = Profiler.GetProfilerLibraryAbsolutePath();
+
+            Console.WriteLine($"[{nameof(Attach_Using_DiagnosticsClient)}] Profiler path: '{profilerDll}'");
+
+            Console.Out.Flush();
 
             client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
