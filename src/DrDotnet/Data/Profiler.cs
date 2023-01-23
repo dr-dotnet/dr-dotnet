@@ -28,11 +28,9 @@ public class Profiler
         _ => throw new NotImplementedException()
     };
 
-    public static string GetProfilerLibraryAbsolutePath()
+    public static string GetTmpProfilerLibrary()
     {
-        string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-        string strWorkPath = Path.GetDirectoryName(strExeFilePath);
-        string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
+        string profilerDll = GetLocalProfilerLibrary();
 
         string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
         Exception ex = null;
@@ -50,21 +48,20 @@ public class Profiler
 
         return profilerDll;
     }
-    
-    // private string ProfilerLibraryName2 => Environment.OSVersion.Platform switch
-    // {
-    //     PlatformID.Win32NT => $"profilers{PIndex}.dll",
-    //     // https://github.com/dotnet/runtime/issues/21660
-    //     PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.OSX)  => $"libprofilers{PIndex}.dylib",
-    //     PlatformID.Unix when RuntimeInformation.IsOSPlatform(OSPlatform.Linux)  => $"libprofilers{PIndex}.so",
-    //     _ => throw new NotImplementedException()
-    // };
+
+    public static string GetLocalProfilerLibrary()
+    {
+        string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        string strWorkPath = Path.GetDirectoryName(strExeFilePath);
+        string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
+        return profilerDll;
+    }
 
     public Guid StartProfilingSession(int processId, ILogger logger)
     {
         PIndex++;
         
-        string profilerDll = GetProfilerLibraryAbsolutePath();
+        string profilerDll = GetTmpProfilerLibrary();
         var sessionId = Guid.NewGuid();
 
         try

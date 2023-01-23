@@ -71,16 +71,44 @@ public class SegfaultReproTests
 
             Guid sessionId = Guid.NewGuid();
 
-            string profilerDll = Profiler.GetProfilerLibraryAbsolutePath();
+            string profilerDll = Profiler.GetLocalProfilerLibrary();
 
             Console.WriteLine($"[{nameof(Attach_Using_DiagnosticsClient)}] Profiler path: '{profilerDll}'");
 
             Console.Out.Flush();
 
-            //client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
+            client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
             // This profiler detaches automatically after about 10s
-            //Thread.Sleep(12_000);
+            Thread.Sleep(12_000);
+        }
+    }
+
+    [Test]
+    [Order(3)]
+    [NonParallelizable]
+    public void Attach_Using_DiagnosticsClient_TempDir()
+    {
+        Guid exceptionProfilerGuid = new Guid("805A308B-061C-47F3-9B30-F785C3186E82");
+
+        for (int i = 0; i < 3; i++) {
+            Console.WriteLine($"[{nameof(Attach_Using_DiagnosticsClient_TempDir)}] Iteration {i}");
+
+            int processId = Process.GetCurrentProcess().Id;
+            DiagnosticsClient client = new DiagnosticsClient(processId);
+
+            Guid sessionId = Guid.NewGuid();
+
+            string profilerDll = Profiler.GetTmpProfilerLibrary();
+
+            Console.WriteLine($"[{nameof(Attach_Using_DiagnosticsClient)}] Profiler path: '{profilerDll}'");
+
+            Console.Out.Flush();
+
+            client.AttachProfiler(TimeSpan.FromSeconds(10), exceptionProfilerGuid, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
+
+            // This profiler detaches automatically after about 10s
+            Thread.Sleep(12_000);
         }
     }
 }
