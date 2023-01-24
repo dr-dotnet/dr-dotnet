@@ -42,7 +42,7 @@ public class Profiler
             // As a workaround, we rename the profiler library with the version to be sure it's up to date without
             // having to replace it everytime.
             // See https://github.com/dotnet/runtime/issues/80683
-            string fileName = Path.GetFileNameWithoutExtension(tmpProfilerDll) + '-' + Assembly.GetExecutingAssembly().GetName().Version;
+            string fileName = Path.GetFileNameWithoutExtension(tmpProfilerDll) + '-' + Assembly.GetEntryAssembly()!.GetName().Version;
             tmpProfilerDll = Path.Combine(Path.GetDirectoryName(tmpProfilerDll)!, fileName + Path.GetExtension(tmpProfilerDll));
             
             // Copy but don't overwrite.
