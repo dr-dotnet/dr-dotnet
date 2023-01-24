@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <UseRazorSourceGenerator>false</UseRazorSourceGenerator>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
@@ -12,6 +12,8 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <!--Output folder must be lowercased because linux filesystem is case sensitive-->
     <OutputPath>..\..\bin\$(Configuration.toLower())\</OutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>false</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +26,8 @@
     <!--<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="6.0.0" />-->
     <!--<PackageReference Include="Microsoft.AspNetCore.Components" Version="6.0.0" />-->
     <!--<PackageReference Include="Microsoft.AspNetCore.Components.WebView" Version="6.0.0" />-->
-    <PackageReference Include="Microsoft.Diagnostics.NETCore.Client" Version="0.2.257301" />
+    <PackageReference Include="Microsoft.Diagnostics.NETCore.Client" Version="0.2.351802" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.0.6" />
   </ItemGroup>
 
   <ItemGroup>

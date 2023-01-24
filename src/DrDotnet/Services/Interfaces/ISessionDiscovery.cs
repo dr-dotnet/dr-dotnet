@@ -11,7 +11,5 @@ namespace DrDotnet
         Session GetSession(Guid sessionId);
 
         Task<Session> AwaitUntilCompletion(Guid sessionId);
-
-        string RootDir { get; }
     }
 }

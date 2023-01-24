@@ -166,7 +166,7 @@ impl Instruction {
             Operand::InlineBrTarget(val) => bytes.extend_from_slice(&val.to_le_bytes()),
             Operand::InlineSwitch(length, val) => {
                 bytes.extend_from_slice(&length.to_le_bytes());
-                println!(
+                debug!(
                     "{}!!! {}!!! {:?}!!! {:?}!!! {:?}!!! {:?}!!! {:?}!!! {:?}!!!",
                     length,
                     val.len(),

@@ -59,26 +59,42 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
     });
 }
 
-#[cfg(debug_assertions)]
-fn init_logging(uuid: Uuid) {
-    CombinedLogger::init(
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static mut LOGGING_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+// #[cfg(debug_assertions)]
+pub fn init_logging() {
+    
+    // Init once.
+    unsafe {
+        if LOGGING_INITIALIZED.swap(true, Ordering::Relaxed) {
+            error!("Logging is already initialized!");
+            return;
+        }
+    }
+
+    match CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_directory(uuid))).unwrap()),
+            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_root_directory())).unwrap()),
         ]
-    ).unwrap();
+    ) {
+        Ok(_) => info!("Logging initialized!"),
+        Err(error) => println!("Logging initialization failed: {:?}", error)
+    }
 }
 
-#[cfg(not(debug_assertions))]
-fn init_logging(uuid: Uuid) {
-    let config = ConfigBuilder::new().set_max_level(LevelFilter::Error).build();
-    CombinedLogger::init(
-        vec![
-            TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Warn, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
-        ]
-    ).unwrap();
-}
+// #[cfg(not(debug_assertions))]
+// fn init_logging(uuid: Uuid) {
+//     let config = ConfigBuilder::new().set_max_level(LevelFilter::Error).build();
+//     CombinedLogger::init(
+//         vec![
+//             TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
+//             WriteLogger::new(LevelFilter::Warn, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
+//         ]
+//     ).unwrap();
+// }
 
 pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Result<Uuid, ffi::HRESULT> {
     unsafe {
@@ -90,8 +106,6 @@ pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Resu
         match Uuid::parse_str(&cstr) {
             Ok(uuid) => {
                 info!("Successfully parsed session ID {}", uuid);
-                init_logging(uuid);
-                info!("Successfully initialized logging");
                 Ok(uuid)
             },
             Err(_) => {

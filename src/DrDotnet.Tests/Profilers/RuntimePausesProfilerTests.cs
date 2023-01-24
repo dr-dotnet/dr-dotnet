@@ -28,8 +28,8 @@ public class RuntimePausesProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Counts_Runtime_Pauses()
     {
-        ILogger logger = new Logger();
-        SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
+        Logger logger = new Logger();
+        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
         Profiler profiler = GetProfiler();
 
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
@@ -55,7 +55,7 @@ public class RuntimePausesProfilerTests : ProfilerTests
             }
         });
 
-        var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
 

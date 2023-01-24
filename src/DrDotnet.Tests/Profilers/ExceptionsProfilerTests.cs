@@ -27,8 +27,8 @@ public class ExceptionsProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Counts_Exceptions()
     {
-        ILogger logger = new Logger();
-        SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
+        Logger logger = new Logger();
+        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
         Profiler profiler = GetProfiler();
 
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
@@ -36,10 +36,8 @@ public class ExceptionsProfilerTests : ProfilerTests
         // Intentionally throws (handled) exceptions
         ThreadPool.QueueUserWorkItem(async _ =>
         {
-            while (true)
-            {
-                try
-                {
+            while (true) {
+                try {
                     throw new TestException();
                 }
                 catch { }
@@ -47,7 +45,7 @@ public class ExceptionsProfilerTests : ProfilerTests
             }
         });
 
-        var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
 

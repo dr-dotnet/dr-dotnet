@@ -1,14 +1,15 @@
 on: [workflow_dispatch, release]
 
 name: docker
+run-name: Docker ${{ github.ref_name }}
 
 jobs:
   check:
     name: Docker
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04 # had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
     strategy:
       matrix:
-        dotnet-version: ['6.0']
+        dotnet-version: ['7.0']
         
     steps:
       - uses: actions/checkout@v3
@@ -29,10 +30,10 @@ jobs:
 
       - name: Build
         working-directory: src
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Publish
-        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
+        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Copy Native Profilers
         run: cp bin/release/libprofilers.so pub/

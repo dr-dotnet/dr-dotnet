@@ -1,4 +1,6 @@
 ﻿@page "/job/{ProcessId}/{ProfilerId}"
+@using DrDotnet.Utils;
+@using Microsoft.Extensions.Logging
 
 @inject NavigationManager _navigationManager
 @inject IProfilerDiscovery _profilerDiscovery
@@ -6,6 +8,8 @@
 @inject ILogger _logger
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+
+<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Log Process Modules" OnClick="LogProcessModulesInfo" Style="float: right;"></MatButton>
 
 <h3 class="mat-h3">Job</h3>
 
@@ -69,14 +73,14 @@
 
         try
         {
-            _logger.Log($"Start profiling!");
+            _logger.LogInformation("Start profiling!");
             var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
-            _logger.Log($"Successfully attached to process!");
+            _logger.LogInformation("Successfully attached to process!");
             Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            _logger.Log("ERROR: " + ex);
+            _logger.LogError(e, "Could not attach to process {ProcessId}", ProcessId);
         }
 
         Started = false;
@@ -90,5 +94,17 @@
     public void OnBackClick(object data)
     {
         _navigationManager.NavigateTo($"/profilers/{ProcessId}", true);
+    }
+
+    private void LogProcessModulesInfo()
+    {
+        var process = System.Diagnostics.Process.GetProcessById(int.Parse(ProcessId));
+
+        _logger.LogInformation($"--- start listing process modules ---");
+        foreach (System.Diagnostics.ProcessModule module in process.Modules)
+        {
+            _logger.LogInformation($" - Module: '{module.FileName}', Name: '{module.ModuleName}', Address: '{module.BaseAddress}'");
+        }
+        _logger.LogInformation($"---  end listing process modules  ---");
     }
 } 

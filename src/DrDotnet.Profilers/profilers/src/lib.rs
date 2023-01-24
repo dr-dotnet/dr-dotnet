@@ -20,10 +20,13 @@ register!(
 #[no_mangle]
 unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::REFIID, ppv: *mut ffi::LPVOID) -> ffi::HRESULT
 {
-    debug!("[profiler] Entered DllGetClassObject");
+    profilers::init_logging();
+
+    debug!("DllGetClassObject(rclsid: {:?}, riid: {:?})", rclsid, riid);
 
     if ppv.is_null() {
         return ffi::E_FAIL;
     }
+    
     return attach(rclsid, riid, ppv);
 }

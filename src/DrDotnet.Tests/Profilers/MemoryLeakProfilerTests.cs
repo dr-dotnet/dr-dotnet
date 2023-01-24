@@ -28,8 +28,8 @@ public class MemoryLeakProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Detects_Memory_Leaks()
     {
-        ILogger logger = new Logger();
-        SessionDiscovery sessionDiscovery = new SessionDiscovery(logger);
+        Logger logger = new Logger();
+        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
         Profiler profiler = GetProfiler();
 
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
@@ -37,6 +37,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
         // Intentionally allocates memory
         int i = 0;
         Node node = new Node();
+        var baseNode = node;
         ThreadPool.QueueUserWorkItem(async _ =>
         {
             while (true)
@@ -46,14 +47,19 @@ public class MemoryLeakProfilerTests : ProfilerTests
                 {
                     await Task.Delay(10);
                 }
-                if (i % 1000 == 0)
+                if (i % 5000 == 0)
                 {
-                    GC.Collect();
+                    GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: false);
                 }
             }
         });
 
-        var session = await sessionDiscovery.AwaitUntilCompletion(sessionId);
+        // Warmup
+        await Task.Delay(1000);
+
+        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+
+        Console.WriteLine("Session Directory: " + session.Path);
 
         var summary = session.EnumerateFiles().FirstOrDefault(x => x.Name == "summary.md");
 
@@ -63,6 +69,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
 
         Console.WriteLine(content);
         Console.WriteLine(node.Name);
+        Console.WriteLine(baseNode.Name);
 
         // TODO
     }

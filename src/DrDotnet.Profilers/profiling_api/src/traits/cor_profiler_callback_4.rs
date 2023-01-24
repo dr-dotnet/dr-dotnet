@@ -47,17 +47,17 @@ pub trait CorProfilerCallback4: CorProfilerCallback3 {
 
     fn moved_references_2(
         &mut self,
-        old_object_id_range_start: &[ObjectID],
-        new_object_id_range_start: &[ObjectID],
-        object_id_range_length: &[usize],
+        old_object_ids: &[ObjectID],
+        new_object_ids: &[ObjectID],
+        object_lengths: &[usize],
     ) -> Result<(), HRESULT> {
         Ok(())
     }
 
     fn surviving_references_2(
         &mut self,
-        object_id_range_start: &[ObjectID],
-        c_object_id_range_length: &[usize],
+        object_ids: &[ObjectID],
+        object_lengths: &[usize],
     ) -> Result<(), HRESULT> {
         Ok(())
     }

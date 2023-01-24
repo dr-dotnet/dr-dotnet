@@ -7,7 +7,7 @@
 
 <h3 class="mat-h3">Recent Sessions</h3>
 
-<MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" PageSize="20" ShowPaging="true" SelectionChanged="@OnSelectionChanged">
+<MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Process</th>
         <th style="min-width:300px;">Date</th>

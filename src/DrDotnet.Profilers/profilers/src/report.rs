@@ -57,9 +57,15 @@ impl Session {
         return Report { writer: BufWriter::new(file) };
     }
 
+    pub fn get_root_directory() -> String {
+        let directory_path = format!(r"{}/dr-dotnet", std::env::temp_dir().into_os_string().into_string().unwrap());
+        std::fs::create_dir_all(&directory_path);
+        return directory_path;
+    }
+    
     // Returns the directy path for this Session.
     pub fn get_directory(session_id: Uuid) -> String {
-        let directory_path = format!(r"{}/dr-dotnet/{}", std::env::temp_dir().into_os_string().into_string().unwrap(), session_id.to_string());
+        let directory_path = format!(r"{}/{}", Session::get_root_directory(), session_id.to_string());
         std::fs::create_dir_all(&directory_path);
         return directory_path;
     }

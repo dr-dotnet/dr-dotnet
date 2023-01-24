@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 use crate::{
-    ffi::{
-        CorProfilerCallback, IClassFactory, IUnknown, BOOL, E_NOINTERFACE, HRESULT, LPVOID, REFIID,
-        S_OK, ULONG,
-    },
+    ffi::*,
     traits::CorProfilerCallback9,
 };
 use std::ffi::c_void;
@@ -34,6 +31,8 @@ where
     T: CorProfilerCallback9,
 {
     pub fn new<'b>(profiler: T) -> &'b mut ClassFactory<T> {
+        debug!("IClassFactory::new");
+        
         let class_factory = ClassFactory {
             lpVtbl: &ClassFactoryVtbl {
                 IUnknown: IUnknown {
@@ -49,14 +48,13 @@ where
             ref_count: AtomicU32::new(0),
             profiler,
         };
+
         Box::leak(Box::new(class_factory))
     }
 
-    pub unsafe extern "system" fn QueryInterface(
-        &mut self,
-        riid: REFIID,
-        ppvObject: *mut *mut c_void,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn QueryInterface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
+        debug!("IClassFactory::QueryInterface");
+
         if *riid == IUnknown::IID || *riid == IClassFactory::IID {
             *ppvObject = self as *mut ClassFactory<T> as LPVOID;
             self.AddRef();
@@ -68,41 +66,38 @@ where
     }
 
     pub unsafe extern "system" fn AddRef(&mut self) -> ULONG {
-        // TODO: Which ordering is appropriate?
-        let prev_ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed);
-        prev_ref_count + 1
-    }
-
-    pub unsafe extern "system" fn Release(&mut self) -> ULONG {
-        // Ensure we are not trying to release the memory twice if
-        // client calls release despite the ref_count being zero.
-        // TODO: Which ordering is appropriate?
-        if self.ref_count.load(Ordering::Relaxed) == 0 {
-            panic!("Cannot release the COM object, it has already been released.");
-        }
-
-        let prev_ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed);
-        let ref_count = prev_ref_count - 1;
-
-        if ref_count == 0 {
-            drop(Box::from_raw(self as *mut ClassFactory<T>));
-        }
-
+        debug!("IClassFactory::AddRef");
+        
+        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
         ref_count
     }
 
-    pub unsafe extern "system" fn CreateInstance(
-        &mut self,
-        _pUnkOuter: *mut IUnknown<()>,
-        _riid: REFIID,
-        ppvObject: *mut *mut c_void,
-    ) -> HRESULT {
-        *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T>
-            as LPVOID;
+    pub unsafe extern "system" fn Release(&mut self) -> ULONG {
+        debug!("IClassFactory::Release");
+        
+        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
+        
+        if ref_count == 0 {
+            debug!("IClassFactory released");
+            drop(Box::from_raw(self as *mut ClassFactory<T>));
+        }
+        
+        ref_count
+    }
+
+    pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
+        let uuid: uuid::Uuid = GUID::into(*_riid);
+        debug!("IClassFactory::CreateInstance({})", uuid);
+        
+        *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T> as LPVOID;
         S_OK
     }
 
     pub extern "system" fn LockServer(&mut self, _fLock: BOOL) -> HRESULT {
+        debug!("IClassFactory::LockServer");
         S_OK
     }
 }
+
+unsafe impl<T> Sync for ClassFactory<T> where T: Sync, T: CorProfilerCallback9 {}
+unsafe impl<T> Send for ClassFactory<T> where T: Send, T: CorProfilerCallback9 {}

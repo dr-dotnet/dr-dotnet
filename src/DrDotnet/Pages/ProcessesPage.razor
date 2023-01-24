@@ -16,24 +16,26 @@
 }
 else
 {
-    <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged">
+    <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Name</th>
         <th>Id</th>
         <th style="min-width:300px;">Start Time</th>
-        <th>Main Module</th>
+        <th>Managed Assembly</th>
+        <th>Runtime Version</th>
     </MatTableHeader>
     <MatTableRow>
-        <td>@context.ProcessName</td>
-        <td>@context.Id</td>
+        <td>@context.Name</td>
+        <td>@context.Pid</td>
         <td>@context.StartTime</td>
-        <td>@context.MainModule.ModuleName</td>
+        <td>@context.ManagedAssemblyName</td>
+        <td>@context.Version</td>
     </MatTableRow>
     </MatTable>
 }
 
 @code {
-    private List<System.Diagnostics.Process> _processes;
+    private List<ProcessInfo> _processes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,7 +61,7 @@ else
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/profilers/{(data as System.Diagnostics.Process).Id}", true);
+        _navigationManager.NavigateTo($"/profilers/{(data as ProcessInfo).Pid}", true);
     }
 
     public void OnBackClick(object data)

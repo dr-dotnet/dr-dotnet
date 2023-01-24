@@ -10,14 +10,13 @@ public class Program
         CreateHostBuilder(args).Build().Run();
     }
 
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
+    public static IHostBuilder CreateHostBuilder(string[] args) {
+        return Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(webBuilder => {
                 webBuilder.UseStartup<Startup>();
-                //webBuilder.UseSetting("https_port", "51376");
                 //webBuilder.UseUrls("http://localhost:51376");
                 webBuilder.UseUrls(@"http://*:92");
                 webBuilder.UseSetting(WebHostDefaults.DetailedErrorsKey, "true");
             });
+    }
 }

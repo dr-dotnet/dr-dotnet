@@ -1,16 +1,7 @@
 #![allow(non_snake_case)]
 use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, CorProfilerInfo};
 use crate::{
-    ffi::{
-        int, mdMethodDef, AppDomainID, AssemblyID, ClassID, FunctionID, GCHandleID,
-        ICorProfilerCallback, ICorProfilerCallback2, ICorProfilerCallback3, ICorProfilerCallback4,
-        ICorProfilerCallback5, ICorProfilerCallback6, ICorProfilerCallback7, ICorProfilerCallback8,
-        ICorProfilerCallback9, IUnknown, ModuleID, ObjectID, ReJITID, ThreadID, BOOL,
-        COR_PRF_FINALIZER_FLAGS, COR_PRF_GC_REASON, COR_PRF_GC_ROOT_FLAGS, COR_PRF_GC_ROOT_KIND,
-        COR_PRF_JIT_CACHE, COR_PRF_SUSPEND_REASON, COR_PRF_TRANSITION_REASON, DWORD, E_FAIL,
-        E_NOINTERFACE, GUID, HRESULT, LPCBYTE, LPVOID, REFGUID, REFIID, SIZE_T, S_OK, UINT,
-        UINT_PTR, ULONG, WCHAR,
-    },
+    ffi::*,
     traits::CorProfilerCallback9,
     ProfilerInfo,
 };
@@ -44,6 +35,7 @@ pub struct CorProfilerCallback<T: CorProfilerCallback9> {
 
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     pub fn new<'b>(profiler: T) -> &'b mut CorProfilerCallback<T> {
+        info!("CorProfilerCallback<T>::new");
         let cor_profiler_callback = CorProfilerCallback {
             lpVtbl: &CorProfilerCallbackVtbl {
                 IUnknown: IUnknown {
@@ -172,25 +164,19 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 
 // IUnknown
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
-    pub unsafe extern "system" fn query_interface(
-        &mut self,
-        riid: REFIID,
-        ppvObject: *mut *mut c_void,
-    ) -> HRESULT {
-        println!(
-            "CorProfilerCallback hit query_interface! Querying riid: {:?}",
-            *riid
-        );
+    pub unsafe extern "system" fn query_interface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
+        debug!("CorProfilerCallback<T>::QueryInterface");
+
         if *riid == IUnknown::IID
-            || *riid == ICorProfilerCallback::IID
-            || *riid == ICorProfilerCallback2::IID
-            || *riid == ICorProfilerCallback3::IID
-            || *riid == ICorProfilerCallback4::IID
-            || *riid == ICorProfilerCallback5::IID
-            || *riid == ICorProfilerCallback6::IID
-            || *riid == ICorProfilerCallback7::IID
-            || *riid == ICorProfilerCallback8::IID
-            || *riid == ICorProfilerCallback9::IID
+        || *riid == ICorProfilerCallback::IID
+        || *riid == ICorProfilerCallback2::IID
+        || *riid == ICorProfilerCallback3::IID
+        || *riid == ICorProfilerCallback4::IID
+        || *riid == ICorProfilerCallback5::IID
+        || *riid == ICorProfilerCallback6::IID
+        || *riid == ICorProfilerCallback7::IID
+        || *riid == ICorProfilerCallback8::IID
+        || *riid == ICorProfilerCallback9::IID
         {
             *ppvObject = self as *mut CorProfilerCallback<T> as LPVOID;
             self.add_ref();
@@ -202,31 +188,25 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     }
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
-        // TODO: Which ordering is appropriate?
-        let prev_ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed);
-        prev_ref_count + 1
+        debug!("CorProfilerCallback<T>::AddRef");
+        
+        let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
+        ref_count
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
-        // Ensure we are not trying to release the memory twice if
-        // client calls release despite the ref_count being zero.
-        // TODO: Which ordering is appropriate?
-        if self.ref_count.load(Ordering::Relaxed) == 0 {
-            panic!("Cannot release the COM object, it has already been released.");
-        }
-
-        let prev_ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed);
-        let ref_count = prev_ref_count - 1;
+        debug!("CorProfilerCallback<T>::Release");
+        
+        let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
         if ref_count == 0 {
+            debug!("CorProfilerCallback released");
             drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
         }
-
+        
         ref_count
     }
 }
-
-// TODO: Make sure I'm checking for null pointers from the CLR
 
 // ICorProfilerCallback
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {

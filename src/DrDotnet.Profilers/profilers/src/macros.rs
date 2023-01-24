@@ -17,11 +17,12 @@ macro_rules! register{
                 let clsid = ffi::GUID::from(<$type>::get_info().profiler_id);
                 if *rclsid == clsid {
                     let profiler = <$type>::default();
-                    let class_factory: &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(profiler);
+                    let class_factory : &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(profiler);
                     return class_factory.QueryInterface(riid, ppv)
                 }
             )+
-            return ffi::E_FAIL;
+            error!("No matched profiler");
+            return profiling_api::ffi::CLASS_E_CLASSNOTAVAILABLE;
         }
 
         // Returns the list of profilers that are registered, along with their information.

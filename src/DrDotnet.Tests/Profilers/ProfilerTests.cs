@@ -10,7 +10,7 @@ public abstract class ProfilerTests
 
     public Profiler GetProfiler()
     {
-        ILogger logger = new Logger();
+        Logger logger = new Logger();
         ProfilersDiscovery profilersDiscovery = new ProfilersDiscovery(logger);
         var profilers = profilersDiscovery.GetProfilers(true);
         var profiler = profilers.Where(x => x.ProfilerId == ProfilerGuid).FirstOrDefault();
