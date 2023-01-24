@@ -28,15 +28,12 @@ jobs:
         working-directory: src
         run: dotnet restore
 
-      - name: WriteVersion
-        run: echo ${{ github.run_number }}
-
       - name: Build
         working-directory: src
-        run: dotnet build --configuration Release --no-restore -p:Version=${{ github.run_number }}
+        run: dotnet build --configuration Release --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Publish
-        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore -p:Version=${{ github.run_number }}
+        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Copy Native Profilers
         run: cp bin/release/libprofilers.so pub/
