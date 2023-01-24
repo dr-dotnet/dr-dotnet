@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -41,11 +42,14 @@ public class Profiler
             // As a workaround, we rename the profiler library with the version to be sure it's up to date without
             // having to replace it everytime.
             // See https://github.com/dotnet/runtime/issues/80683
-            string fileName = Path.GetFileNameWithoutExtension(tmpProfilerDll) + '-' + typeof(Profiler).Assembly.GetName().Version;
+            string fileName = Path.GetFileNameWithoutExtension(tmpProfilerDll) + '-' + Assembly.GetExecutingAssembly().GetName().Version;
             tmpProfilerDll = Path.Combine(Path.GetDirectoryName(tmpProfilerDll)!, fileName + Path.GetExtension(tmpProfilerDll));
             
             // Copy but don't overwrite.
-            File.Copy(profilerDll, tmpProfilerDll, false);
+            if (!File.Exists(tmpProfilerDll))
+            {
+                File.Copy(profilerDll, tmpProfilerDll, false);
+            }
 
             TmpProfilerLibrary = tmpProfilerDll;
         }
@@ -54,7 +58,7 @@ public class Profiler
 
     public static string GetLocalProfilerLibrary()
     {
-        string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        string strExeFilePath = Assembly.GetExecutingAssembly().Location;
         string strWorkPath = Path.GetDirectoryName(strExeFilePath);
         string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
         return profilerDll;
