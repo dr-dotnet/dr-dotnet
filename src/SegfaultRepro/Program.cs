@@ -17,7 +17,8 @@ public static class Program
         //NativeLibrary.Free(handle);
 
         Console.WriteLine("Overwrite");
-        File.Copy(profilerLibrary, profilerLibraryCopy, true);
+        File.Delete(profilerLibraryCopy);
+        File.Copy(profilerLibrary, profilerLibraryCopy, false);
 
         NativeLibrary.TryLoad(profilerLibraryCopy, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out handle);
         NativeLibrary.TryGetExport(handle, "DllGetClassObject", out nint h2);
