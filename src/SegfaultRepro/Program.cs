@@ -13,14 +13,14 @@ public static class Program
         File.Copy(profilerLibrary, profilerLibraryCopy, true);
 
         NativeLibrary.TryLoad(profilerLibraryCopy, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle);
-        _ = NativeLibrary.GetExport(handle, "DllGetClassObject");
+        NativeLibrary.TryGetExport(handle, "DllGetClassObject", out nint h1);
         //NativeLibrary.Free(handle);
 
         Console.WriteLine("Overwrite");
         File.Copy(profilerLibrary, profilerLibraryCopy, true);
 
         NativeLibrary.TryLoad(profilerLibraryCopy, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out handle);
-        _ = NativeLibrary.GetExport(handle, "DllGetClassObject");
+        NativeLibrary.TryGetExport(handle, "DllGetClassObject", out nint h2);
 
         Console.WriteLine("End");
     }
