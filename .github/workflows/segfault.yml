@@ -4,7 +4,7 @@ name: segfaultcpp
 
 jobs:
   check:
-    name: Segfault CPP
+    name: Segfault Repro
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,10 +39,14 @@ jobs:
       - name: Copy native lib
         run: cp bin/release/libprofilers.so cpp/
 
-      - name: Build cpp
+      - name: Build CPP
         working-directory: cpp
         run: /usr/bin/g++ -fdiagnostics-color=always -g -std=c++17 main.cpp -o main -ldl
 
-      - name: Run
+      - name: Run CPP dlopen dlsym
         working-directory: cpp
         run: ./main
+
+      - name: Run CS NativeLibrary
+        working-directory: bin/release
+        run: ./SegfaultRepro

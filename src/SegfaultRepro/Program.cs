@@ -1,28 +1,27 @@
 ﻿using DrDotnet.Utils;
-using Microsoft.Extensions.Logging.Abstractions;
+using System.Runtime.InteropServices;
 
 public static class Program
 {
-    public static void Main() {
+    public static void Main()
+    {
+        Console.WriteLine("Start");
+
         string profilerLibrary = "libprofilers.so";
         string profilerLibraryCopy = "libprofilerscopy.so";
 
-        File.Copy(profilerLibrary, profilerLibraryCopy, true /* overwrite */);
+        File.Copy(profilerLibrary, profilerLibraryCopy, true);
 
-        Console.WriteLine(">> Load + Export");
+        NativeLibrary.TryLoad(profilerLibraryCopy, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out nint handle);
+        _ = NativeLibrary.GetExport(handle, "DllGetClassObject");
+        //NativeLibrary.Free(handle);
 
-        Segfault.LoadUnload(NullLogger.Instance, profilerLibraryCopy);
+        Console.WriteLine("Overwrite");
+        File.Copy(profilerLibrary, profilerLibraryCopy, true);
 
-        Console.WriteLine(">> Copy");
+        NativeLibrary.TryLoad(profilerLibraryCopy, typeof(Segfault).Assembly, DllImportSearchPath.AssemblyDirectory, out handle);
+        _ = NativeLibrary.GetExport(handle, "DllGetClassObject");
 
-        // Without this, there is no segfault
-        File.Copy(profilerLibrary, profilerLibraryCopy, true /* overwrite */);
-
-        Console.WriteLine(">> Load + Export");
-
-        Segfault.LoadUnload(NullLogger.Instance, profilerLibraryCopy);
-
-        Console.WriteLine(">> Done");
-
+        Console.WriteLine("End");
     }
 }

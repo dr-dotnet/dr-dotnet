@@ -9,14 +9,15 @@ namespace DrDotnet.Tests;
 
 public class SegfaultReproTests
 {
-    [Test, Order(1), Repeat(3)]
+    [Test, Order(1), Explicit]
     [NonParallelizable]
     public void Attach_Using_DiagnosticsClient() {
 
-        Console.WriteLine(">>> Attach_Using_DiagnosticsClient");
-
         string profilerLibrary = "libprofilers.so";
         string profilerLibraryCopy = "libprofilerscopy.so";
+        Console.WriteLine(">>> Attach_Using_DiagnosticsClient");
+
+
 
         Console.WriteLine(">>> Copy");
 
