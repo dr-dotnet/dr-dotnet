@@ -46,7 +46,11 @@ jobs:
       - name: Run CPP dlopen dlsym
         working-directory: cpp
         run: ./main
+        env:
+          LD_DEBUG: all
 
       - name: Run CS NativeLibrary
         working-directory: bin/release
         run: ./SegfaultRepro
+        env:
+          LD_DEBUG: all
