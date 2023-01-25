@@ -28,26 +28,26 @@ public class SegfaultReproTests
 
         Console.WriteLine(">>> Export");
 
-        _ = NativeLibrary.GetExport(handle, "DllGetClassObject");
+        nint s = NativeLibrary.GetExport(handle, "DllGetClassObject");
 
-        Console.WriteLine(">>> Free");
+        Console.WriteLine(">>> Free " + s);
 
-        NativeLibrary.Free(handle);
+        //NativeLibrary.Free(handle); // don't free
     }
 
-    [Test, Order(2), Repeat(3)]
-    [NonParallelizable]
-    public void Test()
-    {
-        string profilerLibrary = "libprofilers.so";
-        string profilerLibraryCopy = "libprofilerscopy.so";
+    //[Test, Order(2), Repeat(3)]
+    //[NonParallelizable]
+    //public void Test()
+    //{
+    //    string profilerLibrary = "libprofilers.so";
+    //    string profilerLibraryCopy = "libprofilerscopy.so";
 
-        Console.WriteLine(">> Copy");
+    //    Console.WriteLine(">> Copy");
 
-        File.Copy(profilerLibrary, profilerLibraryCopy, true /* overwrite */);
+    //    File.Copy(profilerLibrary, profilerLibraryCopy, true /* overwrite */);
         
-        Console.WriteLine(">> Load + Export + Free");
+    //    Console.WriteLine(">> Load + Export + Free");
         
-        Segfault.LoadUnload(NullLogger.Instance, profilerLibraryCopy);
-    }
+    //    Segfault.LoadUnload(NullLogger.Instance, profilerLibraryCopy);
+    //}
 }
