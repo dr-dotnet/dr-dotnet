@@ -51,4 +51,34 @@ public class SegfaultReproTests
         
     //    Segfault.LoadUnload(NullLogger.Instance, profilerLibraryCopy);
     //}
+
+    [Test]
+    public void TestCopy()
+    {
+        string profilerLibrary = "libprofilers.so";
+        string profilerLibraryCopy = "libprofilerscopy.so";
+
+        File.Delete(profilerLibraryCopy);
+        File.Copy(profilerLibrary, profilerLibraryCopy, false);
+
+        string check1 = GetMD5Checksum(profilerLibraryCopy);
+        
+        File.Copy(profilerLibrary, profilerLibraryCopy, true);
+        
+        string check2 = GetMD5Checksum(profilerLibraryCopy);
+        
+        Assert.AreEqual(check1, check2);
+    }
+    
+    public static string GetMD5Checksum(string filename)
+    {
+        using (var md5 = System.Security.Cryptography.MD5.Create())
+        {
+            using (var stream = System.IO.File.OpenRead(filename))
+            {
+                var hash = md5.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "");
+            }
+        }
+    }
 }
