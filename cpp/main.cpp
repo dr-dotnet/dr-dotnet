@@ -9,20 +9,23 @@ namespace fs = std::filesystem;
 
 int main()
 {
+    const char* libProfilers = "libprofilers.so";
+    const char* libProfilersCopy = "libprofilerscopy.so";
+
     printf("Start\n");
 
-    fs::remove("libprofilerscopy.so");
-    fs::copy_file("libprofilers.so", "libprofilerscopy.so");
+    fs::remove(libProfilersCopy);
+    fs::copy_file(libProfilers, libProfilersCopy);
 
-    void *h = dlopen("./libprofilerscopy.so", RTLD_LAZY);
+    void *h = dlopen(libProfilersCopy, RTLD_LAZY | RTLD_GLOBAL);
     void *d = dlsym(h, "DllGetClassObject");
     //dlclose(h);
 
     printf("Overwrite\n");
-    fs::remove("libprofilerscopy.so");
-    fs::copy_file("libprofilers.so", "libprofilerscopy.so");
+    fs::remove(libProfilersCopy);
+    fs::copy_file(libProfilers, libProfilersCopy);
 
-    void *h2 = dlopen("./libprofilerscopy.so", RTLD_LAZY);
+    void *h2 = dlopen(libProfilersCopy, RTLD_LAZY | RTLD_GLOBAL);
     void *d2 = dlsym(h2, "DllGetClassObject");
 
     printf("End\n");
