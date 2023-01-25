@@ -17,8 +17,6 @@ public class Profiler
 
     public string Description { get; set; }
 
-    public int PIndex = 0;
-    
     public static string ProfilerLibraryName => Environment.OSVersion.Platform switch
     {
         PlatformID.Win32NT => $"profilers.dll",
@@ -33,18 +31,12 @@ public class Profiler
         string profilerDll = GetLocalProfilerLibrary();
 
         string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
-        Exception ex = null;
-        try {
-            File.Copy(profilerDll, tmpProfilerDll, true);
-        }
-        catch (Exception e) {
-            ex = e;
-        }
-        profilerDll = tmpProfilerDll;
 
-        if (!File.Exists(profilerDll)) {
-            throw new FileNotFoundException("Profiler library not found", profilerDll, ex);
-        }
+        // We need this stupid line
+        File.Delete(tmpProfilerDll);
+        File.Copy(profilerDll, tmpProfilerDll, false);
+
+        profilerDll = tmpProfilerDll;
 
         return profilerDll;
     }
@@ -59,8 +51,6 @@ public class Profiler
 
     public Guid StartProfilingSession(int processId, ILogger logger)
     {
-        PIndex++;
-        
         string profilerDll = GetTmpProfilerLibrary();
         var sessionId = Guid.NewGuid();
 
