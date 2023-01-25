@@ -17,7 +17,7 @@ int main()
     fs::remove(libProfilersCopy);
     fs::copy_file(libProfilers, libProfilersCopy);
 
-    void *h = dlopen(libProfilersCopy, RTLD_LAZY | RTLD_GLOBAL);
+    void *h = dlopen(libProfilersCopy, RTLD_NOW);
     void *d = dlsym(h, "DllGetClassObject");
     //dlclose(h);
 
@@ -25,7 +25,7 @@ int main()
     fs::remove(libProfilersCopy);
     fs::copy_file(libProfilers, libProfilersCopy);
 
-    void *h2 = dlopen(libProfilersCopy, RTLD_LAZY | RTLD_GLOBAL);
+    void *h2 = dlopen(libProfilersCopy, RTLD_NOW);
     void *d2 = dlsym(h2, "DllGetClassObject");
 
     printf("End\n");
