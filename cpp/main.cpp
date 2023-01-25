@@ -16,7 +16,7 @@ int main()
 
     void *h = dlopen("./libprofilerscopy.so", RTLD_LAZY | RTLD_DEEPBIND);
     void *d = dlsym(h, "DllGetClassObject");
-    //dlclose(h);
+    dlclose(h);
 
     printf("Overwrite\n");
     fs::remove("libprofilerscopy.so");
