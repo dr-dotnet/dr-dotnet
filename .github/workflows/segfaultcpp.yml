@@ -1,0 +1,48 @@
+on: [push]
+
+name: segfaultcpp
+
+jobs:
+  check:
+    name: Segfault CPP
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['7.0']
+        
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+
+      - name: Install Dotnet SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+          
+      - name: Install Dependencies
+        working-directory: src/
+        run: dotnet restore
+
+      - name: Build
+        working-directory: src
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Install g++
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential gdb
+
+      - name: Copy native lib
+        run: cp bin/release/libprofilers.so cpp/
+
+      - name: Build cpp
+        working-directory: cpp
+        run: /usr/bin/g++ -fdiagnostics-color=always -g -std=c++17 main.cpp -o main -ldl
+
+      - name: Run
+        working-directory: cpp
+        run: ./main
