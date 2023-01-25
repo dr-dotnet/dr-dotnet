@@ -26,25 +26,25 @@ public static class Segfault
         nint methodHandle = NativeLibrary.GetExport(handle, "DllGetClassObject");
         Debug.Assert(nint.Zero != methodHandle);
 
-        // Cast pointer to DllGetClassObject delegate
-        DllGetClassObject dllGetClassObject = Marshal.GetDelegateForFunctionPointer<DllGetClassObject>(methodHandle);
-        Debug.Assert(dllGetClassObject != null);
-
-        // Call DllGetClassObject to query the IClassFactory interface that can create instances of Exception Profiler
-        dllGetClassObject(ref exceptionProfilerGuid, ref iclassFactoryGuid, out nint classFactoryPtr);
-        Debug.Assert(nint.Zero != classFactoryPtr);
-
-        // Since we can't use COM marshalling on Linux, we need to manually get the CreateInstance method pointer from the virtual table
-        nint vtablePtr = Marshal.ReadIntPtr(classFactoryPtr);
-        nint createInstancePtr = vtablePtr + nint.Size * 3;
-        CreateInstance createInstance = Marshal.GetDelegateForFunctionPointer<CreateInstance>(Marshal.ReadIntPtr(createInstancePtr));
-        Debug.Assert(createInstance != null);
-
-        // Create instance of profiler, which implements ICoreProfilerCallback8 interface
-        createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
-        Debug.Assert(nint.Zero != ppvObjectPtr);
-
-        logger.LogInformation("Pointer to profiler object: " + ppvObjectPtr);
+        // // Cast pointer to DllGetClassObject delegate
+        // DllGetClassObject dllGetClassObject = Marshal.GetDelegateForFunctionPointer<DllGetClassObject>(methodHandle);
+        // Debug.Assert(dllGetClassObject != null);
+        //
+        // // Call DllGetClassObject to query the IClassFactory interface that can create instances of Exception Profiler
+        // dllGetClassObject(ref exceptionProfilerGuid, ref iclassFactoryGuid, out nint classFactoryPtr);
+        // Debug.Assert(nint.Zero != classFactoryPtr);
+        //
+        // // Since we can't use COM marshalling on Linux, we need to manually get the CreateInstance method pointer from the virtual table
+        // nint vtablePtr = Marshal.ReadIntPtr(classFactoryPtr);
+        // nint createInstancePtr = vtablePtr + nint.Size * 3;
+        // CreateInstance createInstance = Marshal.GetDelegateForFunctionPointer<CreateInstance>(Marshal.ReadIntPtr(createInstancePtr));
+        // Debug.Assert(createInstance != null);
+        //
+        // // Create instance of profiler, which implements ICoreProfilerCallback8 interface
+        // createInstance(nint.Zero, ref iCorProfilerCallback8Guid, out nint ppvObjectPtr);
+        // Debug.Assert(nint.Zero != ppvObjectPtr);
+        //
+        // logger.LogInformation("Pointer to profiler object: " + ppvObjectPtr);
 
         // Free library
         NativeLibrary.Free(handle);
