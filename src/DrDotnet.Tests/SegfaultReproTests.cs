@@ -32,7 +32,7 @@ public class SegfaultReproTests
 
         Console.WriteLine(">>> Free " + s);
 
-        //NativeLibrary.Free(handle); // don't free
+        NativeLibrary.Free(handle);
     }
 
     //[Test, Order(2), Repeat(3)]
