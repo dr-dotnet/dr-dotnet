@@ -14,7 +14,7 @@ int main()
     fs::remove("libprofilerscopy.so");
     fs::copy_file("libprofilers.so", "libprofilerscopy.so");
 
-    void *h = dlopen("./libprofilerscopy.so", RTLD_LAZY | RTLD_DEEPBIND);
+    void *h = dlopen("./libprofilerscopy.so", RTLD_LAZY);
     void *d = dlsym(h, "DllGetClassObject");
     //dlclose(h);
 
@@ -22,7 +22,7 @@ int main()
     fs::remove("libprofilerscopy.so");
     fs::copy_file("libprofilers.so", "libprofilerscopy.so");
 
-    void *h2 = dlopen("./libprofilerscopy.so", RTLD_LAZY | RTLD_DEEPBIND);
+    void *h2 = dlopen("./libprofilerscopy.so", RTLD_LAZY);
     void *d2 = dlsym(h2, "DllGetClassObject");
 
     printf("End\n");
