@@ -47,10 +47,10 @@ jobs:
         working-directory: cpp
         run: ./main
         env:
-          LD_DEBUG: symbols
+          LD_DEBUG: bindings
 
       - name: Run CS NativeLibrary
         working-directory: bin/release
         run: ./SegfaultRepro
         env:
-          LD_DEBUG: symbols
+          LD_DEBUG: bindings
