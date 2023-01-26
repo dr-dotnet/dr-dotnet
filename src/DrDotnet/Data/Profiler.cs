@@ -18,6 +18,10 @@ public class Profiler
 
     public string Description { get; set; }
 
+    /// <summary>
+    ///  Name of the profilers library. Different depending on the operating system.
+    /// </summary>
+    /// <exception cref="NotImplementedException"></exception>
     public static string ProfilerLibraryName => Environment.OSVersion.Platform switch
     {
         PlatformID.Win32NT => "profilers.dll",
@@ -29,33 +33,32 @@ public class Profiler
 
     private static string TmpProfilerLibrary;
 
+    /// <summary>
+    /// Path of the profilers library in the shared temporary folder
+    /// </summary>
+    /// <returns></returns>
     public static string GetTmpProfilerLibrary()
     {
         if (TmpProfilerLibrary == null)
         {
             string profilerDll = GetLocalProfilerLibrary();
-
             string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
 
-            // In Linux, there is a segfault if we attach a lib that was attached before but replaced in the meantime
-            // This is a problem because we want our profiler library to always be up to date.
-            // As a workaround, we rename the profiler library with the version to be sure it's up to date without
-            // having to replace it everytime.
-            // See https://github.com/dotnet/runtime/issues/80683
-            string fileName = Path.GetFileNameWithoutExtension(tmpProfilerDll) + '-' + Assembly.GetEntryAssembly()!.GetName().Version;
-            tmpProfilerDll = Path.Combine(Path.GetDirectoryName(tmpProfilerDll)!, fileName + Path.GetExtension(tmpProfilerDll));
-            
-            // Copy but don't overwrite.
-            if (!File.Exists(tmpProfilerDll))
-            {
-                File.Copy(profilerDll, tmpProfilerDll, false);
-            }
+            // Copy but don't overwrite. Instead, delete before, and copy after. This is required because in Linux if we do
+            // a straight override while the library has already been loaded before (and not unloaded), it messed up the mappings 
+            // and leads to a segfault
+            File.Delete(tmpProfilerDll);
+            File.Copy(profilerDll, tmpProfilerDll, false);
 
             TmpProfilerLibrary = tmpProfilerDll;
         }
         return TmpProfilerLibrary;
     }
 
+    /// <summary>
+    /// Path of the profilers library shipped localy with the program
+    /// </summary>
+    /// <returns></returns>
     public static string GetLocalProfilerLibrary()
     {
         string strExeFilePath = Assembly.GetExecutingAssembly().Location;
@@ -70,6 +73,7 @@ public class Profiler
         var sessionId = Guid.NewGuid();
 
         logger.LogInformation("Profiler library path: '{profilerDll}'", profilerDll);
+        logger.LogInformation("Profiler version: '{version}'", Assembly.GetEntryAssembly()!.GetName().Version);
         
         try
         {
