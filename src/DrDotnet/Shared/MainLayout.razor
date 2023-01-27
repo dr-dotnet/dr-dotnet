@@ -1,4 +1,5 @@
 ﻿@using Microsoft.Extensions.Logging
+@using DrDotnet.Utils
 @inherits LayoutComponentBase
 
 @inject ILogger _logger;
@@ -7,15 +8,14 @@
     <div class="main">
         <div class="top-row px-4">
             <b style="flex-grow: 1;">Dr.Dotnet</b>
+            <i>Version @VersionUtils.CurrentVersion</i>
             <MatButton OnClick="@OpenDialog" Icon="receipt" Style="">Logs</MatButton>
             <MatButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MatButton>
-            
         </div>
 
         <div class="content px-4">
             @Body
         </div>
-
     </div>
 </div>
 

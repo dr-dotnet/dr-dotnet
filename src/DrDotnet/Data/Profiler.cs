@@ -73,7 +73,7 @@ public class Profiler
         var sessionId = Guid.NewGuid();
 
         logger.LogInformation("Profiler library path: '{profilerDll}'", profilerDll);
-        logger.LogInformation("Profiler version: '{version}'", Assembly.GetEntryAssembly()!.GetName().Version);
+        logger.LogInformation("Profiler version: '{version}'", VersionUtils.CurrentVersion);
         
         try
         {
