@@ -14,13 +14,27 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Tests", "DrDotnet.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+		..\CODE_OF_CONDUCT.md = ..\CODE_OF_CONDUCT.md
+		..\LICENSE.md = ..\LICENSE.md
+		..\CONTRIBUTING.md = ..\CONTRIBUTING.md
+		..\ARCHITECTURE.md = ..\ARCHITECTURE.md
+		..\BUILDING.md = ..\BUILDING.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Github", "Github", "{AC974AE4-3CB7-41BE-B9D2-129759DEAA0B}"
 	ProjectSection(SolutionItems) = preProject
 		..\.github\workflows\build.yml = ..\.github\workflows\build.yml
 		..\.github\workflows\docker.yml = ..\.github\workflows\docker.yml
-		..\README.md = ..\README.md
-		Directory.Build.props = Directory.Build.props
 		Dockerfile = Dockerfile
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Properties", "Properties", "{5DD991BF-55D5-459C-9DCD-CE3E1B657D60}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+		..\CHANGELOG.md = ..\CHANGELOG.md
 	EndProjectSection
 EndProject
 Global
