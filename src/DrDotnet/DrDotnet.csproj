@@ -56,7 +56,7 @@
     <Exec Command="cargo build --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
   </Target>
   <Target Condition="'$(Configuration)'=='Release'" Name="BuildProfilersRelease" AfterTargets="BuildProfilersDebug">
-    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin -vv" />
+    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
   </Target>
 
   <!--Make sure native profilers gets copied to publish directory-->
