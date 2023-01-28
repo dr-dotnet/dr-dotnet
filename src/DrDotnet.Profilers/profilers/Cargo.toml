@@ -1,13 +1,13 @@
 [package]
 name = "profilers"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["Olivier Giniaux <oginiaux@gmail.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/ogxd/dr-dotnet"
 
 [dependencies]
-profiling_api = { version = "0.1.0", path = "../profiling_api" }
+profiling_api = { version = "*", path = "../profiling_api" }
 uuid = { version = "0.8", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde_json = "1.0"

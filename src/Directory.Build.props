@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <BuildNumber>0</BuildNumber>
-    <AssemblyVersion>1.0.1.$(BuildNumber)</AssemblyVersion>
+    <AssemblyVersion Condition="'$(VERSION)' == ''">0.0.0.0</AssemblyVersion>
+    <AssemblyVersion Condition="'$(VERSION)' != ''">$(VERSION).$(BUILD_NUMBER)</AssemblyVersion>
   </PropertyGroup>
 </Project>

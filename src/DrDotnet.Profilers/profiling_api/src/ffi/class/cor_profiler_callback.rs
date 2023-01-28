@@ -165,7 +165,8 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 // IUnknown
 impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     pub unsafe extern "system" fn query_interface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
-        debug!("CorProfilerCallback<T>::QueryInterface");
+        let uuid: uuid::Uuid = GUID::into(*riid);
+        debug!("CorProfilerCallback<T>::QueryInterface({})", uuid);
 
         if *riid == IUnknown::IID
         || *riid == ICorProfilerCallback::IID
