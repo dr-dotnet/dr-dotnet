@@ -28,12 +28,18 @@ jobs:
         working-directory: src
         run: dotnet restore
 
+      - name: Get Version Number
+        run: |
+          echo "VERSION=$(head -1 CHANGELOG.md | grep -o "[0-9]\.[0-9]\.[0-9]")" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+          echo Version is: $(VERSION).$(BUILD_NUMBER)
+
       - name: Build
         working-directory: src
         run: dotnet build --configuration Release --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Publish
-        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore -p:BuildNumber=${{ github.run_number }}
+        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub --no-restore
 
       - name: Copy Native Profilers
         run: cp bin/release/libprofilers.so pub/

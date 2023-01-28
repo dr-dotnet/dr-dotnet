@@ -47,13 +47,16 @@
 
   <!--Build native profilers as a Pre Build event-->
   <Target Name="PreBuildPrintVars" AfterTargets="PreBuildEvent">
-    <Exec Command="echo Configuration: $(Configuration)&#xD;&#xA;echo SolutionDir: $(SolutionDir)&#xD;&#xA;echo ProjectDir: $(ProjectDir)" />
+    <Exec Command="echo Configuration: $(Configuration)" />
+    <Exec Command="echo SolutionDir: $(SolutionDir)" />
+    <Exec Command="echo ProjectDir: $(ProjectDir)" />
+    <Exec Command="echo Version: $(VERSION).$(BUILD_NUMBER)" />
   </Target>
   <Target Condition="'$(Configuration)'=='Debug'" Name="BuildProfilersDebug" AfterTargets="PreBuildPrintVars">
     <Exec Command="cargo build --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
   </Target>
   <Target Condition="'$(Configuration)'=='Release'" Name="BuildProfilersRelease" AfterTargets="BuildProfilersDebug">
-    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin -vv" />
   </Target>
 
   <!--Make sure native profilers gets copied to publish directory-->
