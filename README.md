@@ -12,9 +12,9 @@ Dr-Dotnet is a profiling tool that can be used locally or remotely to track comm
 
 ## Features
 
+- **Problem focused**<br/>The spirit of the profilers shipped with Dr-Dotnet is to target a specific issue. In other words, it won't take a full dump or a deeply nested trace and let you browse it in an attempt to find a problem among the gigabytes of data generated. Despite being the way to go in theory, in real world scenarios where applications can do a lot more than hello world or give the weather, doing so is like searching for a needle in a haystack.     Instead, the approach is to propose a few profilers whose each individual function is to look for a specific problem, such as a memory leak, a deadlock, an anormal number of exceptions, a CPU hotpath, a zombie thread, ... The output of each of these analyses can in general be summarize in a couple of line or in a table, which is perfect for an human.
 - **Cross platform**<br/>Dr-Dotnet can be used to profile dotnet programs running Windows, Linux or MacOS, on X86 or ARM cpus.
 - **Evolutive**<br/>Dr-Dotnet isn't really "a profiler" but rather a framework for profiling. It is shipped with a suite of builtin profilers that will grow and improve hopefully thanks to the community contributions.
-- **Problem focused**<br/>The spirit of the profilers shipped with Dr-Dotnet is to target a specific issue. In other words, it won't take a full dump or a deeply nested trace and let you browse it in an attempt to find a problem among the gigabytes of data generated. Despite being the way to go in theory, in real world scenarios where applications can do a lot more than hello world or give the weather, doing so is like searching for a needle in a haystack.     Instead, the approach is to propose a few profilers whose each individual function is to look for a specific problem, such as a memory leak, a deadlock, an anormal number of exceptions, a CPU hotpath, a zombie thread, ... The output of each of these analyses can in general be summarize in a couple of line or in a table, which is perfect for an human.
 
 ## How to use
 
@@ -22,7 +22,8 @@ There are currently 2 recommended ways to use Dr-Dotnet, depending on your useca
 
 ### Dr-Dotnet Desktop
 
-This is what you want to go for if you want to profile a dotnet program locally.
+This is what you want to go for if you want to profile a dotnet program locally.    
+There is no release yet but you can build it from the source.
 
 ### Dr-Dotnet as a Docker Sidecar
 
@@ -32,7 +33,8 @@ The container you want to profile must be running a dotnet program (of course) a
 <pre>docker run -d --name **YOUR APP NAME** -v /tmp:/tmp --pid host **YOUR APP IMAGE**</pre>
 Then, you are ready to start Dr-Dotnet:
 <pre>docker run -d --name drdotnet -v /tmp:/tmp --pid host -p 8000:92 ghcr.io/ogxd/drdotnet:latest</pre>
-You can run Dr-Dotnet anytime you want, or leave it running all the time, it won't do anything if you don't use it (just take a few mbs of RAM because of the dotnet runtime). Make sure the port is private to your network however for security reasons, you don't want your profiler to be open to the public ;)
+You can run Dr-Dotnet anytime you want, or leave it running all the time, it won't do anything if you don't use it (just take a few mbs of RAM because of the dotnet runtime).    
+Make sure the port is private to your network however for security reasons, you don't want your profiler to be open to the public.
 
 ## [How to Contribute](CONTRIBUTING.md)
 ## [Code of Conduct](CODE_OF_CONDUCT.md)

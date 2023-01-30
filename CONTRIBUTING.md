@@ -14,20 +14,20 @@
 
 ## Project Spirit
 
-Dr-Dotnet's goal is to fill the gap between doing *not profiling at all* and *spending countless hours on analyzing huge dumps and traces*. Thus, it is not a remplacement to existing tools (WinDbg, Perfview, ...), and never it will be.     
-Here are some of the most important values behind this project. The relevance of a new profiler or new feature shall be evaluated accordingly this them.
+Dr-Dotnet's goal is to fill the gap between doing *no profiling at all* and *spending countless hours on analyzing huge dumps and traces*. Thus, it is not a replacement to existing tools (WinDbg, Perfview, ...), and never it will be.     
+Here are some of the most important values behind this project. The relevance of a new profiler or a feature request will be evaluated accordingly.
 
 ### Problem Focused
 
 Usually, when it comes to profiling (with traces or memory dumps for instance), we have an objective in mind: we might have observed an unusual amount of memory usage and want to track down a memory leak, or find hot paths to optimize CPU usage, or debug a deadlock observed in production.   
-**Every profiler is aimed at helping solving a specific issue** that could have been observed without profiling (from common observability means like a CPU metric for instance).    
+**Every profiler in Dr-Dotnet is aimed at helping solving a specific issue** that could have been observed without profiling (from common observability means like a CPU metric for instance).    
 Some examples are: Find deadlocks, Detect memory leaks, List CPU hotpaths, ...
 
 ### Concise
 
 The tool should be relatively easy to use, meaning mainly two things:
 - **The less parametrization we have, the better it is**. Parametrization introduces complexity and confusion to the user. If some parameter must be introduced, it must be justified, documented and be set with an adequate default value for the most common scenario.
-- **A profiler output must be as concise as possible**. This is not easy, because we have often tempted to output too much information, thinking that "it could be useful".    
+- **A profiler output must be as concise as possible**. This is not easy, because we are often tempted to output too much information, thinking that "it could be useful".    
 For instance, if a profiler displays the total time spent in GC but also the longest GC pause, it could be refactored into two distinct profilers (even if the implementation won't differ much), because a high time spent in GC and a long GC pause time are two different observations.
 
 ### Performance
