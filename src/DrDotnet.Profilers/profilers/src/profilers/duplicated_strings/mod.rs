@@ -40,22 +40,19 @@ impl CorProfilerCallback for DuplicatedStringsProfiler
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
-
-        self.object_to_class.insert(object_id, class_id);
-
+        
         let pinfo = self.profiler_info();
         let type_name = match pinfo.get_class_id_info(class_id) {
             Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
             _ => "unknown".to_owned()
         };
         // debug!("Object id: {}, Class id: {}, Type name: {}", object_id, class_id, type_name);
-        if type_name != "System.String" {
-            return Ok(());
-        }
-        let str = get_string_value(pinfo, &object_id);
-
-        debug!("String value: {}", str);
         
+        // Keep ref of string only
+        if type_name == "System.String" {
+            self.object_to_class.insert(object_id, class_id);
+        }
+
         Ok(())
     }
 }
@@ -84,22 +81,22 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
+
+        let str_layout = match self.profiler_info().get_string_layout_2() {
+            Ok(str_layout) => str_layout,
+            Err(hresult) => {
+                error!("Error getting string layout: {:x}", hresult);
+                return Err(hresult);
+            }
+        };
         
         // Process the recorded objects
-        // for (object_id, class_id) in self.object_to_class.iter() {
-        //     let pinfo = self.profiler_info();
-        //     let type_name = match pinfo.get_class_id_info(*class_id) {
-        //         Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
-        //         _ => "unknown".to_owned()
-        //     };
-        //     debug!("Object id: {}, Class id: {}, Type name: {}", *object_id, *class_id, type_name);
-        //     if type_name != "System.String" { 
-        //         continue;
-        //     }
-        //     let str = get_string_value(pinfo, object_id);
-        // 
-        //     debug!("String value: {}", str);
-        // }
+        for (object_id, class_id) in self.object_to_class.iter() {
+
+            let str = get_string_value(&str_layout, object_id);
+        
+            debug!("String value: {}", str);
+        }
 
         // We're done, we can detach :)
         let profiler_info = self.profiler_info().clone();
