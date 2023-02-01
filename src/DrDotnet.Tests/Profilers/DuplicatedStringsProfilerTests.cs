@@ -38,8 +38,9 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
         var service4 = new string('6',3);
         var service5 = new string('6',3);
         
+        // using var service = new AllocationSimulation(1_000_000, 100_000);
         await Task.Delay(1000);
-  
+
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
         var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);

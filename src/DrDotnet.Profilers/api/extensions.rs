@@ -1,3 +1,5 @@
+use std::ffi::{c_char, CStr};
+use std::ptr::null;
 use crate::ffi::*;
 use crate::*;
 
@@ -68,4 +70,26 @@ pub fn get_gc_gen(generation_collected: &[ffi::BOOL]) -> i8 {
         }
     }
     return max_gen;
+}
+
+pub fn get_string_value(info: &ProfilerInfo, object_id: &ObjectID) -> String {
+    match info.get_string_layout_2() {
+        Ok(str_layout) => {
+            let ptr_size = std::mem::size_of::<usize>();
+            let str_ptr = match ptr_size {
+                4 => (((*object_id) as u32) + str_layout.buffer_offset) as *const c_char,
+                8 => (((*object_id) as u64) + (str_layout.buffer_offset as u64)) as *const c_char,
+                _ => panic!("pointer size not handled")
+            };
+            let c_str: &CStr = unsafe {
+                CStr::from_ptr(str_ptr) 
+            };
+            let str_slice: &str = c_str.to_str().unwrap();
+            str_slice.to_string().to_owned()
+        },
+        Err(hresult) => {
+            warn!("get_string_value({}) failed (0x{})", object_id, format!("{:01$x}", hresult, 8));
+            "unknown_0006".to_owned()
+        }
+    }
 }

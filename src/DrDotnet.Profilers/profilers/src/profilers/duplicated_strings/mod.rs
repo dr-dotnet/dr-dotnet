@@ -11,7 +11,6 @@ use crate::profilers::*;
 #[derive(Default)]
 pub struct DuplicatedStringsProfiler {
     profiler_info: Option<ProfilerInfo>,
-    // profiler_info_mutex: Mutex<Option<ProfilerInfo>>,
     session_id: Uuid,
     object_to_class: HashMap<ffi::ObjectID, ffi::ClassID>,
     nb_of_occurrences_by_string: HashMap<String, u64>,
@@ -33,16 +32,11 @@ impl Profiler for DuplicatedStringsProfiler {
     }
 }
 
-// impl DuplicatedStringsProfiler {
-//     fn profiler_info_guard(&self) -> MutexGuard<Option<ProfilerInfo>> {
-//         self.profiler_info_mutex.lock().unwrap()
-//     }
-// }
-
 impl CorProfilerCallback for DuplicatedStringsProfiler
 {
     fn object_references(&mut self, object_id: ObjectID, class_id: ClassID, _object_ref_ids: &[ObjectID]) -> Result<(), HRESULT> {
-        if !self.record_object_references { 
+        
+        if !self.record_object_references {
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
@@ -85,10 +79,13 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
                 Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
                 _ => "unknown".to_owned()
             };
-            info!("Object id: {}, Class id: {}, Type name: {}", *object_id, *class_id, type_name);
+            debug!("Object id: {}, Class id: {}, Type name: {}", *object_id, *class_id, type_name);
             if type_name != "System.String" { 
                 continue;
             }
+            let str = get_string_value(pinfo, object_id);
+
+            debug!("String value: {}", str);
         }
 
         // We're done, we can detach :)
@@ -103,27 +100,12 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        info!("initialize_for_attach");
-        
         self.profiler_info = Some(profiler_info);
-        // self.profiler_info_mutex = Mutex::new(Some(profiler_info));
         
         match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
-            Ok(_) => (),
+            Ok(_) => info!("Succeed to register profiler for COR_PRF_MONITOR_GC events"),
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
-
-        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
-        // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
-        // BUT the following article says that we should use this same thread for GC callbacks??
-        // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/clr-profilers-and-windows-store-apps#forcegc-creates-a-managed-thread
-        let p_clone = self.profiler_info().clone();
-        let _ = thread::spawn(move || {
-            match p_clone.force_gc() {
-                Ok(_) => (),
-                Err(hresult) => error!("Error forcing GC: {:x}", hresult)
-            };
-        }).join();
 
         match init_session(client_data, client_data_length) {
             Ok(uuid) => {
@@ -136,8 +118,19 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
+        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
+        // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
+        let p_clone = self.profiler_info().clone();
+        let _ = thread::spawn(move || {
+            debug!("Force GC");
+            match p_clone.force_gc() {
+                Ok(_) => debug!("GC Forced!"),
+                Err(hresult) => error!("Error forcing GC: {:x}", hresult)
+            };
+        }).join();
+        
         // Security timeout
-        detach_after_duration::<DuplicatedStringsProfiler>(&self, 5, None);
+        detach_after_duration::<DuplicatedStringsProfiler>(&self, 360, None);
 
         Ok(())
     }
