@@ -3,6 +3,7 @@ use std::sync::{Mutex, MutexGuard};
 use profiling_api::*;
 use uuid::Uuid;
 use std::thread;
+use itertools::Itertools;
 use profiling_api::ffi::{ClassID, HRESULT, ObjectID};
 
 use crate::report::*;
@@ -13,7 +14,7 @@ pub struct DuplicatedStringsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
     object_to_class: HashMap<ffi::ObjectID, ffi::ClassID>,
-    nb_of_occurrences_by_string: HashMap<String, u64>,
+    str_to_count: HashMap<String, u64>,
     record_object_references: bool
 }
 
@@ -71,7 +72,7 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
 
         Ok(())
     }
-
+    
     fn garbage_collection_finished(&mut self) -> Result<(), HRESULT> {
         info!("GC finished");
         self.record_object_references = false;
@@ -92,10 +93,10 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         
         // Process the recorded objects
         for (object_id, class_id) in self.object_to_class.iter() {
-
-            let str = unsafe {get_string_value(&str_layout, object_id)}; 
-        
-            debug!("String value: {}", str);
+            // Get string value and increment it's count
+            let str = get_string_value(&str_layout, object_id);
+            let count = self.str_to_count.entry(str).or_insert(0);
+            *count += 1;
         }
 
         // We're done, we can detach :)
@@ -152,6 +153,10 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
         let mut report = session.create_report("summary.md".to_owned());
 
         report.write_line(format!("# Duplicate strings Report"));
+
+        for i in self.str_to_count.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()) {
+            report.write_line(format!("- #({}) \"{}\"", i.1, i.0));
+        }
 
         info!("Report written");
 

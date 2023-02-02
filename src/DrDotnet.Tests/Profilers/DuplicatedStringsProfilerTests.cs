@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -32,14 +33,11 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
         SessionsDiscovery sessionsDiscovery = new(logger);
         Profiler profiler = GetProfiler();
 
-        var service1 = new string('6',3);
-        var service2 = new string('6',3);
-        var service3 = new string('6',3);
-        var service4 = new string('6',3);
-        var service5 = new string('6',3);
-        
-        // using var service = new AllocationSimulation(1_000_000, 100_000);
-        await Task.Delay(1000);
+        List<string> list = new();
+        for (int i = 0; i < 666; i++)
+        {
+            list.Add(new string('6',6));
+        }
 
         Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
 
