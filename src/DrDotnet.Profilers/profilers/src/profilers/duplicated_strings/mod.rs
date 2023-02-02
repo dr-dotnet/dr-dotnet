@@ -93,7 +93,7 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         // Process the recorded objects
         for (object_id, class_id) in self.object_to_class.iter() {
 
-            let str = get_string_value(&str_layout, object_id);
+            let str = unsafe {get_string_value(&str_layout, object_id)}; 
         
             debug!("String value: {}", str);
         }

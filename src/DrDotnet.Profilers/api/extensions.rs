@@ -1,5 +1,6 @@
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr, OsString};
 use std::ptr::null;
+use std::slice;
 use crate::ffi::*;
 use crate::*;
 
@@ -72,16 +73,17 @@ pub fn get_gc_gen(generation_collected: &[ffi::BOOL]) -> i8 {
     return max_gen;
 }
 
-pub fn get_string_value(str_layout: &StringLayout, object_id: &ObjectID) -> String {
-    let ptr_size = std::mem::size_of::<usize>();
-    let str_ptr = match ptr_size {
-        4 => (((*object_id) as u32) + str_layout.buffer_offset) as *const c_char,
-        8 => (((*object_id) as u64) + (str_layout.buffer_offset as u64)) as *const c_char,
-        _ => panic!("pointer size not handled")
-    };
-    let c_str: &CStr = unsafe {
-        CStr::from_ptr(str_ptr)
-    };
-    let str_slice: &str = c_str.to_str().unwrap();
-    str_slice.to_string().to_owned()
+pub unsafe fn get_string_value(str_layout: &StringLayout, object_id: &ObjectID) -> String {
+
+    // let ptr = (*object_id as *const c_char).offset(str_layout.buffer_offset as isize);
+    // let c_str: &CStr = unsafe { CStr::from_ptr(ptr) };
+    // c_str.to_str().unwrap().to_owned()
+
+    // https://learn.microsoft.com/en-us/archive/blogs/davbr/when-is-it-safe-to-use-objectids
+    
+    let ptr = (*object_id as *const u16).offset(str_layout.buffer_offset as isize);
+    // let len = (*object_id as *const DWORD).offset(str_layout.string_length_offset as isize);
+    let len =  (0..).take_while(|&i| *ptr.offset(i) != 0).count();
+    let slice = std::slice::from_raw_parts(ptr, len);
+    String::from_utf16(slice).unwrap().to_owned()
 }
