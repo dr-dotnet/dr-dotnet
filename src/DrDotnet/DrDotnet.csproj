@@ -45,10 +45,14 @@
     <Exec Command="echo Version: $(VERSION).$(BUILD_NUMBER)" />
   </Target>
   <Target Condition="'$(Configuration)'=='Debug'" Name="BuildProfilersDebug" AfterTargets="PreBuildPrintVars">
-    <Exec Command="cargo build --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+    <Exec Command="
+    cd $(ProjectDir)../DrDotnet.Profilers
+    cargo build" />
   </Target>
   <Target Condition="'$(Configuration)'=='Release'" Name="BuildProfilersRelease" AfterTargets="BuildProfilersDebug">
-    <Exec Command="cargo build --release --manifest-path=$(ProjectDir)../DrDotnet.Profilers/Cargo.toml --target-dir=$(ProjectDir)../../bin" />
+    <Exec Command="
+    cd $(ProjectDir)../DrDotnet.Profilers
+    cargo build --release" />
   </Target>
 
   <!--Make sure native profilers gets copied to publish directory-->

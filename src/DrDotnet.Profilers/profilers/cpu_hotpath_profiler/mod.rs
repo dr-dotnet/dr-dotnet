@@ -1,9 +1,9 @@
-use profiling_api::*;
 use dashmap::DashMap;
 use uuid::Uuid;
 use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 
+use crate::api::*;
 use crate::report::*;
 use crate::profilers::*;
 

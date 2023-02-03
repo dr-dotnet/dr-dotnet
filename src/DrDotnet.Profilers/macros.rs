@@ -8,7 +8,7 @@ macro_rules! count {
 macro_rules! register{
     ($($type:ty),+) => (
 
-        use profiling_api::*;
+        use crate::api::*;
         use profilers::*;
 
         // Attaches the profiler with the given rclsid to the targeted process.
@@ -22,7 +22,7 @@ macro_rules! register{
                 }
             )+
             error!("No matched profiler");
-            return profiling_api::ffi::CLASS_E_CLASSNOTAVAILABLE;
+            return ffi::CLASS_E_CLASSNOTAVAILABLE;
         }
 
         // Returns the list of profilers that are registered, along with their information.

@@ -5,10 +5,10 @@
 // - Stop profiling and make a report
 
 use std::collections::{HashMap, HashSet};
-use profiling_api::*;
 use uuid::Uuid;
 use itertools::Itertools;
 
+use crate::api::*;
 use crate::report::*;
 use crate::profilers::*;
 
