@@ -16,8 +16,8 @@ pub use gc_survivors_profiler::GCSurvivorsProfiler as GCSurvivorsProfiler;
 pub mod cpu_hotpath_profiler;
 pub use cpu_hotpath_profiler::CpuHotpathProfiler as CpuHotpathProfiler;
 
-pub mod duplicated_strings;
-pub use duplicated_strings::DuplicatedStringsProfiler as DuplicatedStringsProfiler;
+pub mod duplicated_strings_profiler;
+pub use duplicated_strings_profiler::DuplicatedStringsProfiler as DuplicatedStringsProfiler;
 
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};

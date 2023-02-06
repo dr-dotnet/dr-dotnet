@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
-use profiling_api::*;
 use uuid::Uuid;
 use std::thread;
 use itertools::Itertools;
-use profiling_api::ffi::{ClassID, HRESULT, ObjectID};
 
+use crate::api::*;
+use crate::api::ffi::{ClassID, HRESULT, ObjectID};
 use crate::report::*;
 use crate::profilers::*;
 
