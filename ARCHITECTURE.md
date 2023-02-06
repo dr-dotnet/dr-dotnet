@@ -59,8 +59,8 @@ Otherwise, you must clone https://github.com/ogxd/ffidji and build it.
 Code generation will only generate types and method signatures, so the rust method implementations must be done manually.  
 The C# one is automatically updated so there is nothing to do on this side.
 
-  | WARNING: Remember that this interoperability loads the profilers library in the DrDotnet process, not in the profiling target process, so you cannot set variables in memory to use them during the profiling session |
-  | --- |
+  | WARNING: Remember that this interoperability loads the profilers library in the DrDotnet process, not in the profiled process, so you cannot set variables in memory to use them during the profiling session |
+  | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
 ## Loading, instantiating and initializing the profilers library
 
