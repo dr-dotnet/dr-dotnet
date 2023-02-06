@@ -14,10 +14,10 @@
 //      - When garbage collection ends, for each flagged entry in A, pull the whole retention path and aggregate count by name + the total increase in retained bytes
 
 use std::collections::{HashMap};
-use profiling_api::*;
 use uuid::Uuid;
 use itertools::Itertools;
 
+use crate::api::*;
 use crate::report::*;
 use crate::profilers::*;
 

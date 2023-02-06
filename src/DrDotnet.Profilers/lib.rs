@@ -3,6 +3,10 @@ mod report;
 mod interop;
 mod macros;
 mod utils;
+mod api;
+
+#[macro_use]
+extern crate bitflags;
 
 #[macro_use]
 extern crate log;

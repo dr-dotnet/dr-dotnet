@@ -18,11 +18,11 @@ pub use cpu_hotpath_profiler::CpuHotpathProfiler as CpuHotpathProfiler;
 
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use profiling_api::*;
 
 use simplelog::*;
 use std::fs::File;
 
+use crate::api::*;
 use crate::report::*;
 
 #[derive(Serialize, Deserialize)]

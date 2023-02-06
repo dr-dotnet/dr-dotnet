@@ -1,15 +1,11 @@
-#[macro_use]
-extern crate bitflags;
-
-#[macro_use]
-extern crate log;
+#![allow(dead_code)]
 
 pub mod cil;
 pub mod ffi;
 
 mod metadata_import;
 mod profiler_info;
-mod traits;
+pub mod traits;
 mod types;
 pub mod extensions;
 
