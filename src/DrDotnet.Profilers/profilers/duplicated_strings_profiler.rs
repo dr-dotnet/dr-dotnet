@@ -12,8 +12,9 @@ use crate::profilers::*;
 pub struct DuplicatedStringsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    class_by_object: HashMap<ffi::ObjectID, ffi::ClassID>,
+    string_object_ids: Vec<ObjectID>,
     str_counts: HashMap<String, u64>,
+    string_class_id: Option<ClassID>,
     record_object_references: bool,
     number_of_str_to_print: usize
 }
@@ -23,8 +24,9 @@ impl Default for DuplicatedStringsProfiler {
         DuplicatedStringsProfiler {
             profiler_info: None,
             session_id: Default::default(),
-            class_by_object: Default::default(),
+            string_object_ids: Default::default(),
             str_counts: Default::default(),
+            string_class_id: None,
             record_object_references: false,
             number_of_str_to_print: 100,
         }
@@ -55,16 +57,25 @@ impl CorProfilerCallback for DuplicatedStringsProfiler
             return Ok(());
         }
         
-        let pinfo = self.profiler_info();
-        let type_name = match pinfo.get_class_id_info(class_id) {
-            Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
-            _ => "unknown".to_owned()
-        };
-        // debug!("Object id: {}, Class id: {}, Type name: {}", object_id, class_id, type_name);
-        
-        // Keep ref of string only
-        if type_name == "System.String" {
-            self.class_by_object.insert(object_id, class_id);
+        // We store the string class ID once we found it once so that we don't have to parse the type name every time
+        match self.string_class_id {
+            Some(id) => {
+                if id == class_id {
+                    self.string_object_ids.push(object_id);
+                }
+            },
+            None => {
+                let pinfo = self.profiler_info();
+                let type_name = match pinfo.get_class_id_info(class_id) {
+                    Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
+                    _ => "unknown".to_owned()
+                };
+
+                if type_name == "System.String" {
+                    self.string_class_id = Option::Some(class_id);
+                    return self.object_references(object_id, class_id, _object_ref_ids);
+                }
+            }
         }
 
         Ok(())
@@ -105,7 +116,7 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         };
         
         // Process the recorded objects
-        for (object_id, class_id) in self.class_by_object.iter() {
+        for object_id in self.string_object_ids.iter() {
             // Get string value and increment it's count
             let str = get_string_value(&str_layout, object_id);
             let count = self.str_counts.entry(str).or_insert(0);
