@@ -9,13 +9,26 @@ use crate::api::ffi::{ClassID, HRESULT, ObjectID};
 use crate::report::*;
 use crate::profilers::*;
 
-#[derive(Default)]
 pub struct DuplicatedStringsProfiler {
     profiler_info: Option<ProfilerInfo>,
     session_id: Uuid,
-    object_to_class: HashMap<ffi::ObjectID, ffi::ClassID>,
-    str_to_count: HashMap<String, u64>,
-    record_object_references: bool
+    class_by_object: HashMap<ffi::ObjectID, ffi::ClassID>,
+    str_counts: HashMap<String, u64>,
+    record_object_references: bool,
+    number_of_str_to_print: usize
+}
+
+impl Default for DuplicatedStringsProfiler {
+    fn default() -> Self {
+        DuplicatedStringsProfiler {
+            profiler_info: None,
+            session_id: Default::default(),
+            class_by_object: Default::default(),
+            str_counts: Default::default(),
+            record_object_references: false,
+            number_of_str_to_print: 100,
+        }
+    }
 }
 
 impl Profiler for DuplicatedStringsProfiler {
@@ -51,7 +64,7 @@ impl CorProfilerCallback for DuplicatedStringsProfiler
         
         // Keep ref of string only
         if type_name == "System.String" {
-            self.object_to_class.insert(object_id, class_id);
+            self.class_by_object.insert(object_id, class_id);
         }
 
         Ok(())
@@ -92,10 +105,10 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         };
         
         // Process the recorded objects
-        for (object_id, class_id) in self.object_to_class.iter() {
+        for (object_id, class_id) in self.class_by_object.iter() {
             // Get string value and increment it's count
             let str = get_string_value(&str_layout, object_id);
-            let count = self.str_to_count.entry(str).or_insert(0);
+            let count = self.str_counts.entry(str).or_insert(0);
             *count += 1;
         }
 
@@ -154,7 +167,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
 
         report.write_line(format!("# Duplicate strings Report"));
 
-        for i in self.str_to_count.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()) {
+        for i in self.str_counts.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()).take(self.number_of_str_to_print) {
             report.write_line(format!("- #({}) \"{}\"", i.1, i.0));
         }
 
