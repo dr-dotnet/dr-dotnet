@@ -63,19 +63,17 @@ public class ProcessDiscovery : IProcessDiscovery
             
                 try
                 {
-                    Process process = Process.GetProcessById(processes[i]);
-
                     if (processes[i] == currentProcess.Id)
                         continue;
-
-                    _logger.LogInformation($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
-
-                    if (!TryGetManagedAssemblyNameFromPid(process.Id, out string assemblyName, out string version))
+                    
+                    _logger.LogInformation($"- [Process] Id: {processes[i]}");
+                    
+                    if (!TryGetManagedAssemblyNameFromPid(processes[i], out string assemblyName, out string version))
                     {
                         continue;
                     }
 
-                    dotnetProcesses.Add(new ProcessInfo { Pid = process.Id, Name = process.ProcessName, StartTime = process.StartTime, ManagedAssemblyName = assemblyName, Version = version });
+                    dotnetProcesses.Add(new ProcessInfo { Pid = processes[i], ManagedAssemblyName = assemblyName, Version = version });
                 }
                 catch (Exception e)
                 {
