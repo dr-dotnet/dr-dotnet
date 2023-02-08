@@ -1,3 +1,4 @@
+use std::slice;
 use crate::ffi::*;
 use crate::*;
 
@@ -68,4 +69,22 @@ pub fn get_gc_gen(generation_collected: &[ffi::BOOL]) -> i8 {
         }
     }
     return max_gen;
+}
+
+pub fn get_string_value(str_layout: &StringLayout, object_id: &ObjectID) -> String {
+    
+    let ptr = (*object_id + str_layout.buffer_offset as usize) as *const u16;
+    let len = (*object_id + str_layout.string_length_offset as usize) as *const DWORD;
+    // Could also be written as
+    // let ptr = (*object_id as *const u8).offset(str_layout.buffer_offset as isize) as *const u16;
+    // let len = (*object_id as *const u8).offset(str_layout.string_length_offset as isize) as *const DWORD;
+    
+    let slice = unsafe { slice::from_raw_parts(ptr, *len as usize) };
+    String::from_utf16_lossy(slice).to_owned()
+    
+    // TODO: Benchmark widestring::U16CString::from_ptr_unchecked against String::from_utf16_lossy
+    // unsafe {
+    //     let str_len: u32 = *len_ptr;
+    //     return widestring::U16CString::from_ptr_unchecked(str_ptr, str_len as usize).to_string_lossy()
+    // };
 }

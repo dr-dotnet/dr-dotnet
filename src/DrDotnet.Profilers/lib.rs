@@ -18,7 +18,8 @@ register!(
     AllocationByClassProfiler,
     MemoryLeakProfiler,
     RuntimePauseProfiler,
-    CpuHotpathProfiler);
+    CpuHotpathProfiler,
+    DuplicatedStringsProfiler);
 
 // Actual COM entry point
 #[no_mangle]
