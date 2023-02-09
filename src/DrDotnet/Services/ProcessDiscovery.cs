@@ -55,6 +55,9 @@ public class ProcessDiscovery : IProcessDiscovery
         try
         {
             var currentProcess = Process.GetCurrentProcess();
+
+            _logger.LogInformation($"DrDortnet process ID is {currentProcess}");
+
             var processes = DiagnosticsClient.GetPublishedProcesses().ToArray();
             
             for (int i = 0; i < processes.Length; i++)
@@ -63,13 +66,14 @@ public class ProcessDiscovery : IProcessDiscovery
             
                 try
                 {
-                    if (processes[i] == currentProcess.Id)
-                        continue;
+                    // if (processes[i] == currentProcess.Id)
+                    //     continue;
                     
                     _logger.LogInformation($"- [Process] Id: {processes[i]}");
                     
                     if (!TryGetManagedAssemblyNameFromPid(processes[i], out string assemblyName, out string version))
                     {
+                        dotnetProcesses.Add(new ProcessInfo { Pid = processes[i], ManagedAssemblyName = "unknown", Version = "unknown" });
                         continue;
                     }
 
