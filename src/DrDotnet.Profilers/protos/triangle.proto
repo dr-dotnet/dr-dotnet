@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+enum Color {
+    UNKNOWN = 0;
+    RED = 1;
+    GREEN = 2;
+    BLUE = 3;
+}
+
+message Properties {
+    oneof properties {
+        int32 p1 = 1;
+        string p2 = 2;
+    }
+}
+
+message Triangle {
+  string description = 1;
+  Color color = 2;
+  Properties properties = 3;
+  int32 struct = 4;
+}
