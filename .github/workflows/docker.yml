@@ -44,18 +44,16 @@ jobs:
       - name: Copy Native Profilers
         run: cp bin/release/libprofilers.so pub/
 
-      - name: Docker Build
-        run: docker build -f src/Dockerfile -t ghcr.io/ogxd/drdotnet:latest .
-
       - name: Docker Login
         run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
 
-      - name: Docker Push Branch
+      - name: Docker Build branch
         if: ${{ github.ref_name != 'master' }}
-        run: docker push ghcr.io/ogxd/drdotnet:${VERSION}.${BUILD_NUMBER}-${{ github.ref_name }}
+        run: docker build -f src/Dockerfile -t ghcr.io/ogxd/drdotnet:${VERSION}.${BUILD_NUMBER}-${{ github.ref_name }} .
 
-      - name: Docker Push Master
-        if: ${{ github.ref_name != 'master' }}
-        run: |
-          docker push ghcr.io/ogxd/drdotnet:${VERSION%.*}
-          docker push ghcr.io/ogxd/drdotnet:latest
+      - name: Docker Build master
+        if: ${{ github.ref_name == 'master' }}
+        run: docker build -f src/Dockerfile -t ghcr.io/ogxd/drdotnet:latest -t ghcr.io/ogxd/drdotnet:${VERSION%.*} .
+ 
+      - name: Docker Push
+        run: docker push --all-tags ghcr.io/ogxd/drdotnet
