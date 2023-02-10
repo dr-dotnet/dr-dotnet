@@ -50,5 +50,12 @@ jobs:
       - name: Docker Login
         run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
 
-      - name: Docker Push
-        run: docker push ghcr.io/ogxd/drdotnet:latest
+      - name: Docker Push Branch
+        if: ${{ github.ref_name != 'master' }}
+        run: docker push ghcr.io/ogxd/drdotnet:${VERSION}.${BUILD_NUMBER}-${{ github.ref_name }}
+
+      - name: Docker Push Master
+        if: ${{ github.ref_name != 'master' }}
+        run: |
+          docker push ghcr.io/ogxd/drdotnet:${VERSION%.*}
+          docker push ghcr.io/ogxd/drdotnet:latest
