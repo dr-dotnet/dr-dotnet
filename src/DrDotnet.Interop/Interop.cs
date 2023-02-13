@@ -2,10 +2,7 @@
 
 using System;
 using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 using System.Security;
-using System.Text;
-
 using char16 = System.Char;
 using int8 = System.SByte;
 using uint8 = System.Byte;
@@ -25,234 +22,32 @@ namespace DrDotnet.Interop
     { 
         public const string LIBRARY_NAME = "profilers";
 
-        private readonly struct Arr<T>
+        private readonly struct Buffer
         { 
             public readonly IntPtr ptr;
             public readonly int size;
-            public Arr(IntPtr ptr, int size)
+            public Buffer(IntPtr ptr, int size)
             { 
                 this.ptr = ptr;
                 this.size = size;
             } 
-        } 
-
-        private unsafe static T[] CopyArray<T>(IntPtr ptr, int size) where T : unmanaged
-        { 
-            int length = size * sizeof(T);
-            T[] array = new T[size];
-            void* u_src = ptr.ToPointer();
-            fixed (T* u_dst = &array[0])
-            { 
-                Unsafe.CopyBlock(u_dst, u_src, (uint)length);
-            } 
-            return array;
-        } 
-
-        private static T[] Convert<T>(Arr<T> arr) where T : unmanaged
-        { 
-            return CopyArray<T>(arr.ptr, arr.size);
-        } 
-
-        private static T Convert<T>(T obj) where T : unmanaged
-        { 
-            return obj;
-        } 
-
+        }
+        
         [SuppressUnmanagedCodeSecurity]
-        [DllImport(LIBRARY_NAME, EntryPoint = "Alloc_FFI")]
-        private static extern IntPtr Alloc(int length);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(LIBRARY_NAME, EntryPoint = "Free_FFI")]
-        private static extern void Free(IntPtr ptr, int length);
-
-        private static unsafe void Free<T>(Arr<T> input) where T : unmanaged
-        { 
-            Free(input.ptr, input.size * sizeof(T));
-        } 
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct Profiler
-        { 
-            public string name;
-            public string description;
-            public string guid;
-            public bool isReleased;
-        } 
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct Profiler_FFI
-        { 
-            public string_FFI name;
-            public string_FFI description;
-            public string_FFI guid;
-            public bool isReleased;
-        } 
-
-        private static unsafe void Free(Profiler_FFI input)
-        { 
-            Free(input.name);
-            Free(input.description);
-            Free(input.guid);
-        } 
-
-        private static Profiler Convert(Profiler_FFI data_FFI)
-        { 
-            return new Profiler
-            { 
-                name = Convert(data_FFI.name),
-                description = Convert(data_FFI.description),
-                guid = Convert(data_FFI.guid),
-                isReleased = data_FFI.isReleased,
-            };
-        } 
-
-        private static Profiler_FFI Convert(Profiler data)
-        { 
-            return new Profiler_FFI
-            { 
-                name = Convert(data.name),
-                description = Convert(data.description),
-                guid = Convert(data.guid),
-                isReleased = Convert(data.isReleased),
-            };
-        } 
-
-        private unsafe static Profiler[] Convert(Arr<Profiler_FFI> arr)
-        { 
-            var array_ffi = CopyArray<Profiler_FFI>(arr.ptr, arr.size);
-            var array = new Profiler[arr.size];
-            for (int i = 0; i < arr.size; ++i) array[i] = Convert(array_ffi[i]);
-            return array;
-        } 
-
-        private unsafe static Arr<Profiler_FFI> Convert(Profiler[] array)
-        { 
-            int length = array.Length * sizeof(Profiler_FFI);
-            IntPtr ptr = Alloc(length);
-            Profiler_FFI* u_dst = (Profiler_FFI*)ptr.ToPointer();
-            for (int i = 0; i < length; ++i) u_dst[i] = Convert(array[i]);
-            return new Arr<Profiler_FFI>(ptr, length);
-        } 
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct Profilers
-        { 
-            public Profiler[] profilers;
-        } 
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct Profilers_FFI
-        { 
-            public Arr<Profiler_FFI> profilers;
-        } 
-
-        private static unsafe void Free(Profilers_FFI input)
-        { 
-            for (int i = 0; i < input.profilers.size; i++)
-            { 
-                Free(((Profiler_FFI*)input.profilers.ptr)[i]);
-            } 
-            Free(input.profilers);
-        } 
-
-        private static Profilers Convert(Profilers_FFI data_FFI)
-        { 
-            return new Profilers
-            { 
-                profilers = Convert(data_FFI.profilers),
-            };
-        } 
-
-        private static Profilers_FFI Convert(Profilers data)
-        { 
-            return new Profilers_FFI
-            { 
-                profilers = Convert(data.profilers),
-            };
-        } 
-
-        private unsafe static Profilers[] Convert(Arr<Profilers_FFI> arr)
-        { 
-            var array_ffi = CopyArray<Profilers_FFI>(arr.ptr, arr.size);
-            var array = new Profilers[arr.size];
-            for (int i = 0; i < arr.size; ++i) array[i] = Convert(array_ffi[i]);
-            return array;
-        } 
-
-        private unsafe static Arr<Profilers_FFI> Convert(Profilers[] array)
-        { 
-            int length = array.Length * sizeof(Profilers_FFI);
-            IntPtr ptr = Alloc(length);
-            Profilers_FFI* u_dst = (Profilers_FFI*)ptr.ToPointer();
-            for (int i = 0; i < length; ++i) u_dst[i] = Convert(array[i]);
-            return new Arr<Profilers_FFI>(ptr, length);
-        } 
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct string_FFI
-        { 
-            public Arr<uint8> utf8bytes;
-        } 
-
-        private static unsafe void Free(string_FFI input)
-        { 
-            Free(input.utf8bytes.ptr, input.utf8bytes.size * sizeof(uint8));
-        } 
-
-        private static string Convert(string_FFI data_FFI)
-        { 
-            unsafe
-            { 
-                byte* pStringUtf8 = (byte*)data_FFI.utf8bytes.ptr;
-                var len = 0;
-                while (pStringUtf8[len] != 0) len++; // Todo: not needed since we have size
-                return Encoding.UTF8.GetString(pStringUtf8, len);
-            } 
-        } 
-
-        private static string_FFI Convert(string data)
-        { 
-            unsafe
-            { 
-                fixed (char* pInput = data)
-                { 
-                    var len = Encoding.UTF8.GetByteCount(pInput, data.Length);
-                    var pResult = (byte*)Alloc(len + 1).ToPointer();
-                    var bytesWritten = Encoding.UTF8.GetBytes(pInput, data.Length, pResult, len);
-                    pResult[len] = 0; // null terminated
-                    return new string_FFI { utf8bytes = new Arr<byte>((IntPtr)pResult, len + 1) };
-                } 
-            } 
-        } 
-
-        private unsafe static string[] Convert(Arr<string_FFI> arr)
-        { 
-            var array_ffi = CopyArray<string_FFI>(arr.ptr, arr.size);
-            var array = new string[arr.size];
-            for (int i = 0; i < arr.size; ++i) array[i] = Convert(array_ffi[i]);
-            return array;
-        } 
-
-        private unsafe static Arr<string_FFI> Convert(string[] array)
-        { 
-            int length = array.Length * sizeof(string_FFI);
-            IntPtr ptr = Alloc(length);
-            string_FFI* u_dst = (string_FFI*)ptr.ToPointer();
-            for (int i = 0; i < length; ++i) u_dst[i] = Convert(array[i]);
-            return new Arr<string_FFI>(ptr, length);
-        } 
+        [DllImport(LIBRARY_NAME, EntryPoint = "FreeBuffer")]
+        private static extern void FreeBuffer_FFI(Buffer buffer);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(LIBRARY_NAME, EntryPoint = "GetAvailableProfilers")]
-        private extern static Profilers_FFI GetAvailableProfilers_FFI();
+        private static extern Buffer GetAvailableProfilers_FFI();
 
-        public static Profilers GetAvailableProfilers()
-        { 
-            var result_ffi = GetAvailableProfilers_FFI();
-            var result = Convert(result_ffi);
-            Free(result_ffi);
-            return result;
+        public static unsafe ProfilersInfo GetAvailableProfilers()
+        {
+            Buffer buffer = GetAvailableProfilers_FFI();
+            ReadOnlySpan<byte> bytes = new ReadOnlySpan<byte>(buffer.ptr.ToPointer(), buffer.size);
+            ProfilersInfo profilersInfo = ProfilersInfo.Parser.ParseFrom(bytes);
+            FreeBuffer_FFI(buffer);
+            return profilersInfo;
         } 
     } 
 } 

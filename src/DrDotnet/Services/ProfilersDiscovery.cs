@@ -24,15 +24,15 @@ public class ProfilersDiscovery : IProfilerDiscovery
 
         var interopProfilers = NativeProfilersInterface.GetAvailableProfilers();
 
-        foreach (var interopProfiler in interopProfilers.profilers)
+        foreach (var interopProfiler in interopProfilers.Profilers)
         {
-            if (listUnreleasedProfilers || interopProfiler.isReleased)
+            if (listUnreleasedProfilers || interopProfiler.IsReleased)
             {
                 profilers.Add(new Profiler
                 {
-                    Name = interopProfiler.name,
-                    ProfilerId = new Guid(interopProfiler.guid),
-                    Description = interopProfiler.description
+                    Name = interopProfiler.Name,
+                    ProfilerId = new Guid(interopProfiler.Uuid),
+                    Description = interopProfiler.Description
                 });
             }
         }
