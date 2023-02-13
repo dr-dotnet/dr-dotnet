@@ -15,7 +15,7 @@ message Property {
     string value = 5;
 }
 
-message ProfilerInfo {
+message ProfilerMetadata {
     string uuid = 1;
     string name = 2;
     string description = 3;
@@ -23,8 +23,8 @@ message ProfilerInfo {
     repeated Property properties = 5;
 }
 
-message ProfilersInfo {
-    repeated ProfilerInfo profilers = 1;
+message ProfilersMetadata {
+    repeated ProfilerMetadata profilers = 1;
 }
 
 message SessionInfo {

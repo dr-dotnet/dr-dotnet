@@ -34,12 +34,15 @@ impl Default for DuplicatedStringsProfiler {
 }
 
 impl Profiler for DuplicatedStringsProfiler {
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("bdaba522-104c-4343-8952-036bed81527d").unwrap(),
+
+    fn get_info() -> ProfilerMetadata {
+        return ProfilerMetadata {
+            uuid: "bdaba522-104c-4343-8952-036bed81527d".to_owned(),
             name: "Duplicated Strings".to_owned(),
             description: "For now, just duplicated strings and their occurence".to_owned(),
-            is_released: true,
+            isReleased: true,
+            properties: vec![],
+            ..std::default::Default::default()
         }
     }
 

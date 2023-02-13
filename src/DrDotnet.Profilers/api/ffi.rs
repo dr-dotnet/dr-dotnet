@@ -69,6 +69,18 @@ impl Into<Uuid> for GUID {
         Uuid::from_fields(self.data1, self.data2, self.data3, &self.data4).unwrap()
     }
 }
+
+impl From<String> for GUID {
+    fn from(u: String) -> Self {
+        GUID::from(Uuid::parse_str(u.as_str()).unwrap())
+    }
+}
+impl Into<String> for GUID {
+    fn into(self) -> String {
+        Uuid::from_fields(self.data1, self.data2, self.data3, &self.data4).unwrap().to_string()
+    }
+}
+
 pub type IID = GUID;
 pub type REFGUID = *const GUID;
 pub type REFCLSID = *const IID;

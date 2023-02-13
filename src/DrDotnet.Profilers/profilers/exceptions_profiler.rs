@@ -14,12 +14,23 @@ pub struct ExceptionsProfiler {
 }
 
 impl Profiler for ExceptionsProfiler {
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E82").unwrap(),
+    fn get_info() -> ProfilerMetadata {
+        return ProfilerMetadata {
+            uuid: "805A308B-061C-47F3-9B30-F785C3186E82".to_owned(),
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
-            is_released: true,
+            isReleased: true,
+            properties: vec![
+                Property { 
+                    name: "Duration".to_owned(),
+                    key: "duration".to_owned(),
+                    description: "The duration in seconds".to_owned(),
+                    type_: PropertyType::INT.into(),
+                    value: "12".to_owned(),
+                    ..std::default::Default::default()
+                }
+            ],
+            ..std::default::Default::default()
         }
     }
 

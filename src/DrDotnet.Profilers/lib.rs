@@ -11,6 +11,10 @@ extern crate bitflags;
 #[macro_use]
 extern crate log;
 
+mod rust_protobuf_protos {
+    include!(concat!(env!("OUT_DIR"), "/rust_protobuf_protos/mod.rs"));
+}
+
 // Create function to list and attach profilers
 register!(
     GCSurvivorsProfiler,

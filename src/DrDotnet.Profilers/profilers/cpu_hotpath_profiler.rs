@@ -17,12 +17,14 @@ pub struct CpuHotpathProfiler {
 
 impl Profiler for CpuHotpathProfiler {
 
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-A485B2056E71").unwrap(),
+    fn get_info() -> ProfilerMetadata {
+        return ProfilerMetadata {
+            uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
             name: "CPU Hotpath Profiler".to_owned(),
             description: "Lists CPU hotpaths.".to_owned(),
-            is_released: true, // If true, visible in release mode. Otherwise, profiler is only visible in debug mode
+            isReleased: true,
+            properties: vec![],
+            ..std::default::Default::default()
         }
     }
 

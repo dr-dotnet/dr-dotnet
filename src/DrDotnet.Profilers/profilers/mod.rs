@@ -27,18 +27,10 @@ use std::fs::File;
 
 use crate::api::*;
 use crate::report::*;
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProfilerData {
-    pub profiler_id: Uuid,
-    pub name: String,
-    pub description: String,
-    pub is_released: bool,
-}
+use crate::rust_protobuf_protos::interop::*;
 
 pub trait Profiler : CorProfilerCallback9 {
-    fn get_info() -> ProfilerData;
+    fn get_info() -> ProfilerMetadata;
     fn profiler_info(&self) -> &ProfilerInfo;
 }
 

@@ -49,12 +49,15 @@ pub struct MemoryLeakProfiler {
 }
 
 impl Profiler for MemoryLeakProfiler {
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E83").unwrap(),
+
+    fn get_info() -> ProfilerMetadata {
+        return ProfilerMetadata {
+            uuid: "805A308B-061C-47F3-9B30-F785C3186E83".to_owned(),
             name: "Memory Leaks Profiler".to_owned(),
             description: "Finds managed memory leaks.".to_owned(),
-            is_released: true,
+            isReleased: true,
+            properties: vec![],
+            ..std::default::Default::default()
         }
     }
 

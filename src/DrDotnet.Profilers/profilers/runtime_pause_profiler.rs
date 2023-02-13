@@ -39,12 +39,15 @@ impl Default for RuntimePauseProfiler {
 }
 
 impl Profiler for RuntimePauseProfiler {
-    fn get_info() -> ProfilerData {
-        return ProfilerData {
-            profiler_id: Uuid::parse_str("805A308B-061C-47F3-9B30-F785C3186E85").unwrap(),
+
+    fn get_info() -> ProfilerMetadata {
+        return ProfilerMetadata {
+            uuid: "805A308B-061C-47F3-9B30-F785C3186E85".to_owned(),
             name: "Runtime Profiler".to_owned(),
             description: "Measures the impact of runtime pauses on response time".to_owned(),
-            is_released: true,
+            isReleased: true,
+            properties: vec![],
+            ..std::default::Default::default()
         }
     }
 

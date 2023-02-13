@@ -7,7 +7,7 @@ use std::io::BufWriter;
 use std::fs::File;
 use std::io::Write;
 
-use crate::profilers::ProfilerData;
+use crate::rust_protobuf_protos::interop::*;
 
 // A Session refers to a profiling session. In conists in a process, a profiler, and a timestamp at which the profiling was done.
 #[derive(Serialize, Deserialize)]
@@ -16,14 +16,14 @@ pub struct Session {
     session_id: Uuid,
     process_name: String,
     timestamp: DateTime<Local>,
-    profiler: ProfilerData,
+    profiler_name: String,
 }
 
 impl Session {
 
     // Returns a Session from its UID and ProfilerData.
     // If the Session report is not present on the disk, it will be written at the same time.
-    pub fn get_session(session_id: Uuid, profiler: ProfilerData) -> Session {
+    pub fn get_session(session_id: Uuid, profiler: ProfilerMetadata) -> Session {
 
         let process_name = std::env::current_exe().unwrap()
             .file_name().unwrap()
@@ -33,7 +33,7 @@ impl Session {
         let report = Session {
             session_id: session_id,
             process_name : process_name,
-            profiler: profiler,
+            profiler_name: profiler.name,
             timestamp: chrono::offset::Local::now()
         };
 
