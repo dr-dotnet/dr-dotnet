@@ -18,16 +18,12 @@ else
 {
     <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
-        <th>Name</th>
         <th>Id</th>
-        <th style="min-width:300px;">Start Time</th>
-        <th>Managed Assembly</th>
+        <th>Managed Assembly Name</th>
         <th>Runtime Version</th>
     </MatTableHeader>
     <MatTableRow>
-        <td>@context.Name</td>
         <td>@context.Pid</td>
-        <td>@context.StartTime</td>
         <td>@context.ManagedAssemblyName</td>
         <td>@context.Version</td>
     </MatTableRow>
@@ -41,12 +37,12 @@ else
     {
         await base.OnInitializedAsync();
 
-        ScanProcessesAsync(); // Fire and forget
+        ScanProcesses();
     }
 
-    private async Task ScanProcessesAsync()
+    private void ScanProcesses()
     {
-        _processes = await _processDiscovery.GetDotnetProcessesAsync(OnProgress);
+        _processes = _processDiscovery.GetDotnetProcesses(OnProgress);
 
         StateHasChanged();
     }

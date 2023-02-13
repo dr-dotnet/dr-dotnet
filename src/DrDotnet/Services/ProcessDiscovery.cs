@@ -1,17 +1,15 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
 
 public class ProcessDiscovery : IProcessDiscovery
 {
-    private ILogger _logger;
+    private readonly ILogger _logger;
 
     public ProcessDiscovery(ILogger logger)
     {
@@ -44,43 +42,28 @@ public class ProcessDiscovery : IProcessDiscovery
         }
     }
 
-    public async ValueTask<List<ProcessInfo>> GetDotnetProcessesAsync(Action<float> progressCallback)
+    public List<ProcessInfo> GetDotnetProcesses(Action<float> progressCallback)
     {
         _logger.LogInformation("Listing dotnet processes...");
 
         var dotnetProcesses = new List<ProcessInfo>();
 
-        // Todo: Use IAsyncEnumerable
-        
         try
         {
-            var currentProcess = Process.GetCurrentProcess();
             var processes = DiagnosticsClient.GetPublishedProcesses().ToArray();
             
             for (int i = 0; i < processes.Length; i++)
             {
                 progressCallback(1f * i / processes.Length);
             
-                try
+                _logger.LogInformation($"- Process Id: {processes[i]}");
+                
+                if (!TryGetManagedAssemblyNameFromPid(processes[i], out string assemblyName, out string version))
                 {
-                    Process process = Process.GetProcessById(processes[i]);
-
-                    if (processes[i] == currentProcess.Id)
-                        continue;
-
-                    _logger.LogInformation($"- [Process] Id: {processes[i]}, Name: {process.ProcessName}");
-
-                    if (!TryGetManagedAssemblyNameFromPid(process.Id, out string assemblyName, out string version))
-                    {
-                        continue;
-                    }
-
-                    dotnetProcesses.Add(new ProcessInfo { Pid = process.Id, Name = process.ProcessName, StartTime = process.StartTime, ManagedAssemblyName = assemblyName, Version = version });
+                    continue;
                 }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Can't read process {ProcessId} information.", processes[i]);
-                }
+
+                dotnetProcesses.Add(new ProcessInfo { Pid = processes[i], ManagedAssemblyName = assemblyName, Version = version });
             }
         
             _logger.LogInformation("Finished listing dotnet processes.");

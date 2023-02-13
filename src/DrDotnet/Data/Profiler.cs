@@ -74,17 +74,6 @@ public class Profiler
 
         logger.LogInformation("Profiler library path: '{profilerDll}'", profilerDll);
         logger.LogInformation("Profiler version: '{version}'", VersionUtils.CurrentVersion);
-        
-        try
-        {
-            var process = Process.GetProcessById(processId);
-            ArgumentNullException.ThrowIfNull(process);
-        }
-        catch (Exception e)
-        {
-            logger.LogError(e, "Process does not seem alive");
-            throw;
-        }
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
         
