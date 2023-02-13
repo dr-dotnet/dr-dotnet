@@ -56,11 +56,10 @@ public class ProcessDiscovery : IProcessDiscovery
             {
                 progressCallback(1f * i / processes.Length);
             
-                _logger.LogInformation($"- [Process] Id: {processes[i]}");
+                _logger.LogInformation($"- Process Id: {processes[i]}");
                 
                 if (!TryGetManagedAssemblyNameFromPid(processes[i], out string assemblyName, out string version))
                 {
-                    dotnetProcesses.Add(new ProcessInfo { Pid = processes[i], ManagedAssemblyName = "unknown", Version = "unknown" });
                     continue;
                 }
 
