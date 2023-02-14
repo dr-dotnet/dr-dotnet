@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -29,9 +30,9 @@ public class ExceptionsProfilerTests : ProfilerTests
     {
         Logger logger = new Logger();
         SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        Profiler profiler = GetProfiler();
+        ProfilerMetadata profiler = GetProfiler();
 
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+        Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
 
         // Intentionally throws (handled) exceptions
         ThreadPool.QueueUserWorkItem(async _ =>

@@ -16,7 +16,7 @@ using float16 = System.Half;
 using float32 = System.Single;
 using float64 = System.Double;
 
-namespace DrDotnet.Interop
+namespace DrDotnet.Utils
 { 
     public static class NativeProfilersInterface
     { 

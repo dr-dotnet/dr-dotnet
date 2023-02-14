@@ -3,9 +3,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using DrDotnet.Tests.Simulations;
+using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -30,12 +30,12 @@ public class GCSurvivorsProfilerTests : ProfilerTests
     {
         Logger logger = new Logger();
         SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        Profiler profiler = GetProfiler();
+        ProfilerMetadata profiler = GetProfiler();
 
         using var service = new AllocationSimulation(1_000_000, 100_000);
         await Task.Delay(3000);
 
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+        Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
 
         var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
 

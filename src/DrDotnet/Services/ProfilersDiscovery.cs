@@ -1,6 +1,5 @@
-﻿using DrDotnet.Interop;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
@@ -8,19 +7,19 @@ namespace DrDotnet;
 public class ProfilersDiscovery : IProfilerDiscovery
 {
     private ILogger _logger;
-    private List<Profiler> _profilers;
+    private List<ProfilerMetadata> _profilers;
 
     public ProfilersDiscovery(ILogger logger)
     {
         _logger = logger;
     }
 
-    public List<Profiler> GetProfilers(bool listUnreleasedProfilers = false)
+    public List<ProfilerMetadata> GetProfilers(bool listUnreleasedProfilers = false)
     {
         if (_profilers != null)
             return _profilers;
 
-        var profilers = new List<Profiler>();
+        var profilers = new List<ProfilerMetadata>();
 
         var interopProfilers = NativeProfilersInterface.GetAvailableProfilers();
 
@@ -28,12 +27,7 @@ public class ProfilersDiscovery : IProfilerDiscovery
         {
             if (listUnreleasedProfilers || interopProfiler.IsReleased)
             {
-                profilers.Add(new Profiler
-                {
-                    Name = interopProfiler.Name,
-                    ProfilerId = new Guid(interopProfiler.Uuid),
-                    Description = interopProfiler.Description
-                });
+                profilers.Add(interopProfiler);
             }
         }
 

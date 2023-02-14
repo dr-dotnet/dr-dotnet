@@ -4,6 +4,6 @@ namespace DrDotnet
 {
     public interface IProfilerDiscovery
     {
-        List<Profiler> GetProfilers(bool listUnreleasedProfilers = false);
+        List<ProfilerMetadata> GetProfilers(bool listUnreleasedProfilers = false);
     }
 }

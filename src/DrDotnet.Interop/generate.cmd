@@ -1,1 +1,0 @@
-ffidji -f csharp Interop.cs -t rust interop.rs -i Interop.xml

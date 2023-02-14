@@ -1,23 +1,16 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using Microsoft.Extensions.Logging;
-using DrDotnet.Utils;
+using Google.Protobuf;
 
-namespace DrDotnet;
+namespace DrDotnet.Utils;
 
-public class Profiler
+public static class ProfilingExtensions
 {
-    public Guid ProfilerId { get; set; }
-
-    public string Name { get; set; }
-
-    public string Description { get; set; }
-
     /// <summary>
     ///  Name of the profilers library. Different depending on the operating system.
     /// </summary>
@@ -67,7 +60,7 @@ public class Profiler
         return profilerDll;
     }
 
-    public Guid StartProfilingSession(int processId, ILogger logger)
+    public static Guid StartProfilingSession(ProfilerMetadata profiler, int processId, ILogger logger)
     {
         string profilerDll = GetTmpProfilerLibrary();
         var sessionId = Guid.NewGuid();
@@ -76,20 +69,15 @@ public class Profiler
         logger.LogInformation("Profiler version: '{version}'", VersionUtils.CurrentVersion);
 
         DiagnosticsClient client = new DiagnosticsClient(processId);
-        
-        // try
-        // {
-        //     var envs = client.GetProcessEnvironment();
-        //     logger.LogInformation("Environment variables: " + envs.Count);
-        // }
-        // catch (Exception e)
-        // {
-        //     logger.LogError(e, "Can't get process env (IPC broken?)");
-        // }
-        
-        client.AttachProfiler(TimeSpan.FromSeconds(10), ProfilerId, profilerDll, Encoding.UTF8.GetBytes(sessionId.ToString() + "\0"));
 
-        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", ProfilerId, sessionId, processId);
+        SessionInfo sessionInfo = new SessionInfo();
+        sessionInfo.Uuid = sessionId.ToString();
+        sessionInfo.Properties.AddRange(profiler.Properties);
+        byte[] sessionInfoSerialized = sessionInfo.ToByteArray();
+        
+        client.AttachProfiler(TimeSpan.FromSeconds(10), profiler.Guid, profilerDll, sessionInfoSerialized);
+
+        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", profiler.Guid, sessionId, processId);
 
         return sessionId;
     }

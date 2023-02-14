@@ -92,21 +92,23 @@ pub fn init_logging() {
 // }
 
 pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Result<Uuid, ffi::HRESULT> {
-    unsafe {
-        if data_length <= 0 {
-            error!("Data should be non empty to carry the session ID");
-            return Err(ffi::E_FAIL);
-        }
-        let cstr = std::ffi::CStr::from_ptr(data as *const _).to_string_lossy();
-        match Uuid::parse_str(&cstr) {
-            Ok(uuid) => {
-                info!("Successfully parsed session ID {}", uuid);
-                Ok(uuid)
-            },
-            Err(_) => {
-                error!("Failed to parse session ID from FFI data");
-                Err(ffi::E_FAIL)
-            }
+
+    if data_length <= 0 {
+        error!("Data should be non empty to carry the session ID");
+        return Err(ffi::E_FAIL);
+    }
+
+    let buffer: &[u8] = unsafe { std::slice::from_raw_parts(data as *const u8, data_length as usize) };
+    let session_info: SessionInfo = protobuf::Message::parse_from_bytes(&buffer).unwrap();
+
+    match Uuid::parse_str(&session_info.uuid) {
+        Ok(uuid) => {
+            info!("Successfully parsed session ID {}", uuid);
+            Ok(uuid)
+        },
+        Err(_) => {
+            error!("Failed to parse session ID from FFI data");
+            Err(ffi::E_FAIL)
         }
     }
 }

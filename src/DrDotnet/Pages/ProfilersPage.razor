@@ -28,14 +28,14 @@ else
     </MatTableHeader>
     <MatTableRow>
         <td>@context.Name</td>
-        <td>@context.ProfilerId</td>
+        <td>@context.Uuid</td>
         <td>@context.Description</td>
     </MatTableRow>
     </MatTable>
 }
 
 @code {
-    private List<Profiler> _profilers;
+    private List<ProfilerMetadata> _profilers;
 
     [Parameter]
     public int ProcessId { get; set; }
@@ -49,7 +49,7 @@ else
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as Profiler).ProfilerId}", true);
+        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as ProfilerMetadata)!.Uuid}", true);
     }
 
     public void OnBackClick(object data)

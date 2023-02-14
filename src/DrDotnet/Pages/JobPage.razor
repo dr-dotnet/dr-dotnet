@@ -17,7 +17,7 @@
             <h4 class="mat-h4">@_profiler.Name</h4>
         </div>
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6 mat-body1">
-            @_profiler.ProfilerId
+            @_profiler.Uuid
         </div>
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
@@ -56,13 +56,13 @@
     [Parameter]
     public string ProfilerId { get; set; }
 
-    public Profiler _profiler;
+    public ProfilerMetadata _profiler;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.ProfilerId.ToString() == ProfilerId).First();
+        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.Uuid == ProfilerId).First();
     }
 
     private async Task OnRunAnalysisClicked(object data)
@@ -72,7 +72,7 @@
         try
         {
             _logger.LogInformation("Start profiling!");
-            var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
+            var sessionId = ProfilingExtensions.StartProfilingSession(_profiler, int.Parse(ProcessId), _logger);
             _logger.LogInformation("Successfully attached to process!");
             Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
         }

@@ -32,7 +32,7 @@ public class ProfilersDiscoveryTests {
     [Test]
     public void Profilers_Are_Discovered() {
         ProfilersDiscovery profilersDiscovery = new(Mock.Of<ILogger>());
-        List<Profiler> profilers = profilersDiscovery.GetProfilers(true);
+        List<ProfilerMetadata> profilers = profilersDiscovery.GetProfilers(true);
         Assert.IsNotEmpty(profilers);
     }
 }
