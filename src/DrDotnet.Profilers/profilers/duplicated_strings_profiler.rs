@@ -11,7 +11,7 @@ use crate::profilers::*;
 
 pub struct DuplicatedStringsProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     string_object_ids: Vec<ObjectID>,
     str_counts: HashMap<String, u64>,
     string_class_id: Option<ClassID>,
@@ -23,7 +23,7 @@ impl Default for DuplicatedStringsProfiler {
     fn default() -> Self {
         DuplicatedStringsProfiler {
             profiler_info: None,
-            session_id: Default::default(),
+            session_info: Default::default(),
             string_object_ids: Default::default(),
             str_counts: Default::default(),
             string_class_id: None,
@@ -40,8 +40,7 @@ impl Profiler for DuplicatedStringsProfiler {
             uuid: "bdaba522-104c-4343-8952-036bed81527d".to_owned(),
             name: "Duplicated Strings".to_owned(),
             description: "For now, just duplicated strings and their occurence".to_owned(),
-            isReleased: true,
-            properties: vec![],
+            is_released: true,
             ..std::default::Default::default()
         }
     }
@@ -146,8 +145,8 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
         }
 
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -175,7 +174,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_id, AllocationByClassProfiler::get_info());
+        let session = Session::get_session(self.session_info.get_uuid(), AllocationByClassProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 

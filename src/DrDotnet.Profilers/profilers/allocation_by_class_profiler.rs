@@ -9,7 +9,7 @@ use crate::profilers::*;
 #[derive(Default)]
 pub struct AllocationByClassProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     allocations_by_class: DashMap<String, AtomicIsize>,
     collections: usize,
 }
@@ -21,8 +21,7 @@ impl Profiler for AllocationByClassProfiler {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E84".to_owned(),
             name: "Allocations by Class".to_owned(),
             description: "For now, just allocations by class".to_owned(),
-            isReleased: true,
-            properties: vec![],
+            is_released: true,
             ..std::default::Default::default()
         }
     }
@@ -80,8 +79,8 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
         }
 
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -96,7 +95,7 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_id, AllocationByClassProfiler::get_info());
+        let session = Session::get_session(self.session_info.get_uuid(), AllocationByClassProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 

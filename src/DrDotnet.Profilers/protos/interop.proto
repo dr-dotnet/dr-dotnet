@@ -1,16 +1,17 @@
 syntax = "proto3";
 
-enum PropertyType {
+enum ParameterType {
     UNKNOWN = 0;
     STRING = 1;
     INT = 2;
     FLOAT = 3;
+    BOOLEAN = 4;
 }
 
-message Property {
+message ProfilerParameter {
     string key = 1;
     string name = 2;
-    PropertyType type = 3;
+    ParameterType type = 3;
     string description = 4;
     string value = 5;
 }
@@ -19,8 +20,8 @@ message ProfilerMetadata {
     string uuid = 1;
     string name = 2;
     string description = 3;
-    bool isReleased = 4;
-    repeated Property properties = 5;
+    bool is_released = 4;
+    repeated ProfilerParameter parameters = 5;
 }
 
 message ProfilersMetadata {
@@ -29,5 +30,5 @@ message ProfilersMetadata {
 
 message SessionInfo {
     string uuid = 1;
-    repeated Property properties = 2;
+    repeated ProfilerParameter parameters = 2;
 }

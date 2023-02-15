@@ -15,7 +15,7 @@ use crate::profilers::*;
 #[derive(Default, Clone)]
 pub struct GCSurvivorsProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     object_to_references: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
     serialized_survivor_branches: HashMap<String, u64>,
     root_references: HashSet<ffi::ObjectID>,
@@ -31,8 +31,7 @@ impl Profiler for GCSurvivorsProfiler {
             description: "After a garbage collection, iterate over GC roots and browse through references recursively until an ephemeral object is found (gen 0 or 1). \
                 Then, list such retained objects with the chain of references, along with the count of such occurence. \
                 Timeouts after 320s if no garbage collection happened or if did not succeed to catch any callback.".to_owned(),
-            isReleased: true,
-            properties: vec![],
+            is_released: true,
             ..std::default::Default::default()
         }
     }
@@ -240,8 +239,8 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
         }
 
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -258,7 +257,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_id, GCSurvivorsProfiler::get_info());
+        let session = Session::get_session(self.session_info.get_uuid(), GCSurvivorsProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 

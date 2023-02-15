@@ -39,7 +39,7 @@ struct GCInfo {
 #[derive(Default, Clone)]
 pub struct MemoryLeakProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     object_to_referencers: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
     surviving_references: HashMap<ffi::ObjectID, ReferenceInfo>,
     serialized_survivor_branches: HashMap<String, u64>,
@@ -55,8 +55,7 @@ impl Profiler for MemoryLeakProfiler {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E83".to_owned(),
             name: "Memory Leaks Profiler".to_owned(),
             description: "Finds managed memory leaks.".to_owned(),
-            isReleased: true,
-            properties: vec![],
+            is_released: true,
             ..std::default::Default::default()
         }
     }
@@ -317,8 +316,8 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
         }
 
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -335,7 +334,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_id, MemoryLeakProfiler::get_info());
+        let session = Session::get_session(self.session_info.get_uuid(), MemoryLeakProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 

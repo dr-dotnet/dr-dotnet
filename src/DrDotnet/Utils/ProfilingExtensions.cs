@@ -72,7 +72,7 @@ public static class ProfilingExtensions
 
         SessionInfo sessionInfo = new SessionInfo();
         sessionInfo.Uuid = sessionId.ToString();
-        sessionInfo.Properties.AddRange(profiler.Properties);
+        sessionInfo.Parameters.AddRange(profiler.Parameters);
         byte[] sessionInfoSerialized = sessionInfo.ToByteArray();
         
         client.AttachProfiler(TimeSpan.FromSeconds(10), profiler.Guid, profilerDll, sessionInfoSerialized);

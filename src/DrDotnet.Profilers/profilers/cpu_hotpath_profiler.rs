@@ -10,7 +10,7 @@ use crate::profilers::*;
 #[derive(Default)]
 pub struct CpuHotpathProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     detached: Arc<AtomicBool>,
     calls: Arc<Mutex<DashMap<usize, AtomicIsize>>>,
 }
@@ -22,8 +22,7 @@ impl Profiler for CpuHotpathProfiler {
             uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
             name: "CPU Hotpath Profiler".to_owned(),
             description: "Lists CPU hotpaths.".to_owned(),
-            isReleased: true,
-            properties: vec![],
+            is_released: true,
             ..std::default::Default::default()
         }
     }
@@ -74,8 +73,8 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
         }
 
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -119,7 +118,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
         });
 
         let detached = self.detached.clone();
-        let session_id = self.session_id.clone();
+        let session_id = self.session_info.get_uuid().clone();
         let profiler_info = self.profiler_info().clone();
         let calls = self.calls.clone();
 

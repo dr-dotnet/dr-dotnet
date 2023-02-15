@@ -9,7 +9,7 @@ use crate::profilers::*;
 #[derive(Default)]
 pub struct ExceptionsProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     exceptions: DashMap<String, AtomicIsize>,
 }
 
@@ -19,14 +19,14 @@ impl Profiler for ExceptionsProfiler {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E82".to_owned(),
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
-            isReleased: true,
-            properties: vec![
-                Property { 
+            is_released: true,
+            parameters: vec![
+                ProfilerParameter { 
                     name: "Duration".to_owned(),
                     key: "duration".to_owned(),
-                    description: "The duration in seconds".to_owned(),
-                    type_: PropertyType::INT.into(),
-                    value: "12".to_owned(),
+                    description: "The profiling duration in seconds".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "10".to_owned(),
                     ..std::default::Default::default()
                 }
             ],
@@ -78,8 +78,8 @@ impl CorProfilerCallback3 for ExceptionsProfiler
         }
 
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -88,13 +88,14 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        detach_after_duration::<ExceptionsProfiler>(&self, 10, None);
+        let duration_seconds = self.session_info.parameters.iter().find(|&x| x.key == "duration").unwrap().value.parse::<i32>().unwrap();;
+        detach_after_duration::<ExceptionsProfiler>(&self, duration_seconds as u64, None);
         Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_id, ExceptionsProfiler::get_info());
+        let session = Session::get_session(self.session_info.get_uuid(), ExceptionsProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 

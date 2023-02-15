@@ -18,7 +18,7 @@ pub struct RuntimePause {
 
 pub struct RuntimePauseProfiler {
     profiler_info: Option<ProfilerInfo>,
-    session_id: Uuid,
+    session_info: SessionInfo,
     profiling_start: Instant,
     profiling_end: Instant,
     gc_pauses: Vec<RuntimePause>,
@@ -29,7 +29,7 @@ impl Default for RuntimePauseProfiler {
     fn default() -> RuntimePauseProfiler {
         RuntimePauseProfiler {
             profiler_info: None,
-            session_id: Uuid::default(),
+            session_info: SessionInfo::default(),
             profiling_start: Instant::now(),
             profiling_end: Instant::now(),
             gc_pauses: Vec::new(),
@@ -45,8 +45,7 @@ impl Profiler for RuntimePauseProfiler {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E85".to_owned(),
             name: "Runtime Profiler".to_owned(),
             description: "Measures the impact of runtime pauses on response time".to_owned(),
-            isReleased: true,
-            properties: vec![],
+            is_released: true,
             ..std::default::Default::default()
         }
     }
@@ -151,8 +150,8 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
         }
         
         match init_session(client_data, client_data_length) {
-            Ok(uuid) => {
-                self.session_id = uuid;
+            Ok(s) => {
+                self.session_info = s;
                 Ok(())
             },
             Err(err) => Err(err)
@@ -170,7 +169,7 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
     {
         self.profiling_end = Instant::now();
 
-        let session = Session::get_session(self.session_id, RuntimePauseProfiler::get_info());
+        let session = Session::get_session(self.session_info.get_uuid(), RuntimePauseProfiler::get_info());
 
         let mut report = session.create_report("summary.md".to_owned());
 

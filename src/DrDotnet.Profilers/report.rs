@@ -23,31 +23,24 @@ impl Session {
 
     // Returns a Session from its UID and ProfilerData.
     // If the Session report is not present on the disk, it will be written at the same time.
-    pub fn get_session(session_id: Uuid, profiler: ProfilerMetadata) -> Session {
+    pub fn create_session_json(session_info: SessionInfo, profiler: ProfilerMetadata) {
 
         let process_name = std::env::current_exe().unwrap()
             .file_name().unwrap()
             .to_str().unwrap()
             .to_owned();
 
-        let report = Session {
-            session_id: session_id,
-            process_name : process_name,
-            profiler_name: profiler.name,
-            timestamp: chrono::offset::Local::now()
-        };
+        let s = SessionInfo::new();
 
         // Serialize to JSON
-        let json = serde_json::to_string_pretty(&report).unwrap();
+        let json = protobuf_json_mapping::print_to_string(&s).unwrap();
 
         // Write session report
-        let json_path = format!("{}/session.json", Session::get_directory(session_id));
+        let json_path = format!("{}/session.json", Session::get_directory(session_info.uuid));
         if !Path::exists(Path::new(&json_path)) {
             let mut session_stream = File::create(json_path).expect("Unable to create file");
             session_stream.write_all(json.as_bytes()).expect("Unable to write data");    
-        }
-
-        return report;
+        };
     }
 
     // Create a new report for a given Session, ready to be filled up.
@@ -64,7 +57,7 @@ impl Session {
     }
     
     // Returns the directy path for this Session.
-    pub fn get_directory(session_id: Uuid) -> String {
+    pub fn get_directory(session_id: String) -> String {
         let directory_path = format!(r"{}/{}", Session::get_root_directory(), session_id.to_string());
         std::fs::create_dir_all(&directory_path);
         return directory_path;

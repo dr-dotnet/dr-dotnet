@@ -22,6 +22,7 @@ thread-priority = "0.10.0"
 widestring = "0.4.2"
 bitflags = "1.2.1"
 protobuf = "3.2.0"
+protobuf-json-mapping = "3.2.0"
 
 [build-dependencies]
 protobuf-codegen = "3.2.0"

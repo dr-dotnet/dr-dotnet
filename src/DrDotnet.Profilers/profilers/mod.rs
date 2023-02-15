@@ -34,6 +34,16 @@ pub trait Profiler : CorProfilerCallback9 {
     fn profiler_info(&self) -> &ProfilerInfo;
 }
 
+pub trait UniquelyIdentified {
+    fn get_uuid(&mut self) -> Uuid;
+}
+
+impl UniquelyIdentified for SessionInfo {
+    fn get_uuid(&mut self) -> Uuid {
+        Uuid::parse_str(&self.uuid).unwrap()
+    }
+}
+
 pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
 {
     let profiler_info = profiler.profiler_info().clone();
@@ -91,7 +101,7 @@ pub fn init_logging() {
 //     ).unwrap();
 // }
 
-pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Result<Uuid, ffi::HRESULT> {
+pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Result<SessionInfo, ffi::HRESULT> {
 
     if data_length <= 0 {
         error!("Data should be non empty to carry the session ID");
@@ -99,12 +109,12 @@ pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Resu
     }
 
     let buffer: &[u8] = unsafe { std::slice::from_raw_parts(data as *const u8, data_length as usize) };
-    let session_info: SessionInfo = protobuf::Message::parse_from_bytes(&buffer).unwrap();
+    let session_info_result: Result<SessionInfo, protobuf::Error> = protobuf::Message::parse_from_bytes(&buffer);
 
-    match Uuid::parse_str(&session_info.uuid) {
-        Ok(uuid) => {
-            info!("Successfully parsed session ID {}", uuid);
-            Ok(uuid)
+    match session_info_result {
+        Ok(session_info) => {
+            info!("Successfully parsed session with ID {}", session_info.uuid);
+            Ok(session_info)
         },
         Err(_) => {
             error!("Failed to parse session ID from FFI data");
