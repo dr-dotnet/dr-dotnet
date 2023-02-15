@@ -45,15 +45,15 @@ jobs:
         run: cp bin/release/libprofilers.so pub/
 
       - name: Docker Login
-        run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+        run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
       - name: Docker Build branch
         if: ${{ github.ref_name != 'master' }}
-        run: docker build -f src/Dockerfile -t ghcr.io/ogxd/drdotnet:${VERSION}.${BUILD_NUMBER}-${{ github.ref_name }} .
+        run: docker build -f src/Dockerfile -t ogxd/drdotnet:${VERSION}.${BUILD_NUMBER}-${{ github.ref_name }} .
 
       - name: Docker Build master
         if: ${{ github.ref_name == 'master' }}
-        run: docker build -f src/Dockerfile -t ghcr.io/ogxd/drdotnet:latest -t ghcr.io/ogxd/drdotnet:${VERSION%.*} .
+        run: docker build -f src/Dockerfile -t ogxd/drdotnet:latest -t ogxd/drdotnet:${VERSION%.*} .
  
       - name: Docker Push
-        run: docker push --all-tags ghcr.io/ogxd/drdotnet
+        run: docker push --all-tags ogxd/drdotnet
