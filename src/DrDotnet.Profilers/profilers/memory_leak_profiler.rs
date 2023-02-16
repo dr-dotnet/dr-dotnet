@@ -14,7 +14,6 @@
 //      - When garbage collection ends, for each flagged entry in A, pull the whole retention path and aggregate count by name + the total increase in retained bytes
 
 use std::collections::{HashMap};
-use uuid::Uuid;
 use itertools::Itertools;
 
 use crate::api::*;
@@ -334,9 +333,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_info.get_uuid(), MemoryLeakProfiler::get_info());
-
-        let mut report = session.create_report("summary.md".to_owned());
+        let mut report = self.session_info.create_report("summary.md".to_owned());
 
         if self.serialized_survivor_branches.len() == 0 {
             report.write_line("**Profiler was unable to get a GC surviving references callback! (120 seconds timeout)**".to_string());

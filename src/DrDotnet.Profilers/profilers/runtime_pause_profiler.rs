@@ -1,5 +1,4 @@
 use crate::api::*;
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use std::time::{Instant, Duration};
 
@@ -169,9 +168,7 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
     {
         self.profiling_end = Instant::now();
 
-        let session = Session::get_session(self.session_info.get_uuid(), RuntimePauseProfiler::get_info());
-
-        let mut report = session.create_report("summary.md".to_owned());
+        let mut report = self.session_info.create_report("summary.md".to_owned());
 
         report.write_line(format!("# Runtime Pauses Report"));
         report.write_line(format!("## General"));

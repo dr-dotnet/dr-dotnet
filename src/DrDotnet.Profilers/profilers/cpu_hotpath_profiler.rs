@@ -1,5 +1,4 @@
 use dashmap::DashMap;
-use uuid::Uuid;
 use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 
@@ -118,7 +117,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
         });
 
         let detached = self.detached.clone();
-        let session_id = self.session_info.get_uuid().clone();
+        let session_info = self.session_info.clone();
         let profiler_info = self.profiler_info().clone();
         let calls = self.calls.clone();
 
@@ -128,9 +127,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
             // We want to do this before the profiler is fully detached
             detached.store(true, std::sync::atomic::Ordering::Relaxed);
 
-            let session = Session::get_session(session_id, ExceptionsProfiler::get_info());
-
-            let mut report = session.create_report("summary.md".to_owned());
+            let mut report = session_info.create_report("summary.md".to_owned());
     
             report.write_line(format!("# Method Calls"));
     

@@ -1,5 +1,4 @@
 use dashmap::DashMap;
-use uuid::Uuid;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 use crate::api::*;
@@ -95,9 +94,7 @@ impl CorProfilerCallback3 for AllocationByClassProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_info.get_uuid(), AllocationByClassProfiler::get_info());
-
-        let mut report = session.create_report("summary.md".to_owned());
+        let mut report = self.session_info.create_report("summary.md".to_owned());
 
         report.write_line(format!("# Allocations Report"));
         report.write_line(format!("## Total Collections"));

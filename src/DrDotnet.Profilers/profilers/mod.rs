@@ -32,6 +32,9 @@ use crate::rust_protobuf_protos::interop::*;
 pub trait Profiler : CorProfilerCallback9 {
     fn get_info() -> ProfilerMetadata;
     fn profiler_info(&self) -> &ProfilerInfo;
+    fn caca(&self) -> bool {
+        true
+    }
 }
 
 pub trait UniquelyIdentified {
@@ -82,7 +85,7 @@ pub fn init_logging() {
     match CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(format!("{}/profiler.debug.log", Session::get_root_directory())).unwrap()),
+            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(format!("{}/profiler.debug.log", SessionInfo::get_root_directory())).unwrap()),
         ]
     ) {
         Ok(_) => info!("Logging initialized!"),

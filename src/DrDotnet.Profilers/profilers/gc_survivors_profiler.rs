@@ -5,7 +5,6 @@
 // - Stop profiling and make a report
 
 use std::collections::{HashMap, HashSet};
-use uuid::Uuid;
 use itertools::Itertools;
 
 use crate::api::*;
@@ -257,9 +256,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let session = Session::get_session(self.session_info.get_uuid(), GCSurvivorsProfiler::get_info());
-
-        let mut report = session.create_report("summary.md".to_owned());
+        let mut report = self.session_info.create_report("summary.md".to_owned());
 
         if self.serialized_survivor_branches.len() == 0 {
             report.write_line("**Profiler was unable to get a GC surviving references callback! (120 seconds timeout)**".to_string());
