@@ -7,13 +7,14 @@ use crate::profilers::*;
 
 #[derive(Default)]
 pub struct ExceptionsProfiler {
-    profiler_info: Option<ProfilerInfo>,
+    profiler_info: ProfilerInfo,
     session_info: SessionInfo,
     exceptions: DashMap<String, AtomicIsize>,
 }
 
 impl Profiler for ExceptionsProfiler {
-    fn get_info() -> ProfilerMetadata {
+
+    fn profiler_metadata() -> ProfilerMetadata {
         return ProfilerMetadata {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E82".to_owned(),
             name: "Exceptions Profiler".to_owned(),
@@ -34,7 +35,11 @@ impl Profiler for ExceptionsProfiler {
     }
 
     fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
+        &self.profiler_info
+    }
+
+    fn session_info(&self) -> &SessionInfo {
+        &self.session_info
     }
 }
 
@@ -69,7 +74,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 {
     fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        self.profiler_info = Some(profiler_info);
+        self.profiler_info = profiler_info;
 
         match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS) {
             Ok(_) => (),
@@ -87,8 +92,8 @@ impl CorProfilerCallback3 for ExceptionsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let duration_seconds = self.session_info.parameters.iter().find(|&x| x.key == "duration").unwrap().value.parse::<i32>().unwrap();;
-        detach_after_duration::<ExceptionsProfiler>(&self, duration_seconds as u64, None);
+        let duration_seconds = self.get_session_parameter::<u64>("duration").unwrap();
+        detach_after_duration::<ExceptionsProfiler>(&self, duration_seconds, None);
         Ok(())
     }
 

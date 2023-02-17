@@ -16,7 +16,7 @@ pub struct CpuHotpathProfiler {
 
 impl Profiler for CpuHotpathProfiler {
 
-    fn get_info() -> ProfilerMetadata {
+    fn profiler_metadata() -> ProfilerMetadata {
         return ProfilerMetadata {
             uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
             name: "CPU Hotpath Profiler".to_owned(),
@@ -28,6 +28,10 @@ impl Profiler for CpuHotpathProfiler {
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
+    }
+
+    fn session_info(&self) -> &SessionInfo {
+        &self.session_info
     }
 }
 

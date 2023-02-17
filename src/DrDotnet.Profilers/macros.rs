@@ -15,7 +15,7 @@ macro_rules! register{
         // Attaches the profiler with the given rclsid to the targeted process.
         pub unsafe fn attach(rclsid: ffi::REFCLSID, riid: ffi::REFIID, ppv: *mut ffi::LPVOID) -> ffi::HRESULT {
             $(
-                let clsid = ffi::GUID::from(<$type>::get_info().uuid);
+                let clsid = ffi::GUID::from(<$type>::profiler_metadata().uuid);
                 if *rclsid == clsid {
                     let profiler = <$type>::default();
                     let class_factory : &mut ffi::ClassFactory<$type> = ffi::ClassFactory::new(profiler);
@@ -29,7 +29,7 @@ macro_rules! register{
         // Returns the list of profilers that are registered, along with their information.
         // This function is called through PInvoke from the UI in order to list available profilers.
         pub fn get_profiler_infos() -> [ProfilerMetadata; count!($($type)*)] {
-            return [$(<$type>::get_info(),)+]
+            return [$(<$type>::profiler_metadata(),)+]
         }
     )
 }

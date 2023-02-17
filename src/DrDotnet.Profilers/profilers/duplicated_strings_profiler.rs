@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::sync::{Mutex, MutexGuard};
-use uuid::Uuid;
 use std::thread;
 use itertools::Itertools;
 
@@ -35,7 +33,7 @@ impl Default for DuplicatedStringsProfiler {
 
 impl Profiler for DuplicatedStringsProfiler {
 
-    fn get_info() -> ProfilerMetadata {
+    fn profiler_metadata() -> ProfilerMetadata {
         return ProfilerMetadata {
             uuid: "bdaba522-104c-4343-8952-036bed81527d".to_owned(),
             name: "Duplicated Strings".to_owned(),
@@ -47,6 +45,10 @@ impl Profiler for DuplicatedStringsProfiler {
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
+    }
+
+    fn session_info(&self) -> &SessionInfo {
+        &self.session_info
     }
 }
 

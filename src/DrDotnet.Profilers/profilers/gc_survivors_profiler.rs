@@ -23,7 +23,7 @@ pub struct GCSurvivorsProfiler {
 
 impl Profiler for GCSurvivorsProfiler {
 
-    fn get_info() -> ProfilerMetadata {
+    fn profiler_metadata() -> ProfilerMetadata {
         return ProfilerMetadata {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E86".to_owned(),
             name: "GC Survivors".to_owned(),
@@ -37,6 +37,10 @@ impl Profiler for GCSurvivorsProfiler {
 
     fn profiler_info(&self) -> &ProfilerInfo {
         self.profiler_info.as_ref().unwrap()
+    }
+
+    fn session_info(&self) -> &SessionInfo {
+        &self.session_info
     }
 }
 

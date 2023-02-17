@@ -19,31 +19,27 @@ pub use cpu_hotpath_profiler::CpuHotpathProfiler as CpuHotpathProfiler;
 pub mod duplicated_strings_profiler;
 pub use duplicated_strings_profiler::DuplicatedStringsProfiler as DuplicatedStringsProfiler;
 
-use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-
 use simplelog::*;
 use std::fs::File;
+use std::str::FromStr;
 
 use crate::api::*;
 use crate::report::*;
 use crate::rust_protobuf_protos::interop::*;
 
 pub trait Profiler : CorProfilerCallback9 {
-    fn get_info() -> ProfilerMetadata;
+    fn profiler_metadata() -> ProfilerMetadata;
+    fn session_info(&self) -> &SessionInfo;
     fn profiler_info(&self) -> &ProfilerInfo;
-    fn caca(&self) -> bool {
-        true
-    }
-}
 
-pub trait UniquelyIdentified {
-    fn get_uuid(&mut self) -> Uuid;
-}
-
-impl UniquelyIdentified for SessionInfo {
-    fn get_uuid(&mut self) -> Uuid {
-        Uuid::parse_str(&self.uuid).unwrap()
+    fn get_session_parameter<T: FromStr>(&self, key: &str) -> Result<T, String>{
+        match self.session_info().parameters.iter().find(|&x| x.key == "duration") {
+            Some(property) => match property.value.parse::<T>() {
+                Ok(value) => Ok(value),
+                Err(_) => Err(format!("Could not convert property '{}' value '{}' to expected type", key, property.value)),
+            },
+            None => Err(format!("Could not find property '{}'", key)),
+        }
     }
 }
 
@@ -52,7 +48,7 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
     let profiler_info = profiler.profiler_info().clone();
 
     std::thread::spawn(move || {
-        if (thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max).is_err()) {
+        if thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max).is_err() {
             error!("Could not increase thread priority for detach operation");
         }
         std::thread::sleep(std::time::Duration::from_secs(duration_seconds));

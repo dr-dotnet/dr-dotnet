@@ -31,6 +31,12 @@ pub struct ProfilerInfo {
     info: *const FFICorProfilerInfo,
 }
 
+impl Default for ProfilerInfo {
+    fn default() -> Self {
+        Self { info: core::ptr::null() }
+    }
+}
+
 unsafe impl Send for ProfilerInfo {}
 
 impl ProfilerInfo {

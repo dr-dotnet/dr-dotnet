@@ -18,10 +18,8 @@ impl Session for SessionInfo {
     // If the Session report is not present on the disk, it will be written at the same time.
     fn create_session_json(&self) {
 
-        let s = SessionInfo::new();
-
         // Serialize to JSON
-        let json = protobuf_json_mapping::print_to_string(&s).unwrap();
+        let json = protobuf_json_mapping::print_to_string(self).unwrap();
 
         // Write session report
         let json_path = format!("{}/session.json", SessionInfo::get_directory(&self.uuid));
@@ -41,14 +39,14 @@ impl Session for SessionInfo {
 
     fn get_root_directory() -> String {
         let directory_path = format!(r"{}/dr-dotnet", std::env::temp_dir().into_os_string().into_string().unwrap());
-        std::fs::create_dir_all(&directory_path);
+        std::fs::create_dir_all(&directory_path).ok();
         return directory_path;
     }
     
     // Returns the directy path for this Session.
     fn get_directory(session_id: &String) -> String {
         let directory_path = format!(r"{}/{}", SessionInfo::get_root_directory(), session_id.to_string());
-        std::fs::create_dir_all(&directory_path);
+        std::fs::create_dir_all(&directory_path).ok();
         return directory_path;
     }
 }
