@@ -33,7 +33,7 @@ pub trait Profiler : CorProfilerCallback9 {
     fn profiler_info(&self) -> &ProfilerInfo;
 
     fn get_session_parameter<T: FromStr>(&self, key: &str) -> Result<T, String>{
-        match self.session_info().parameters.iter().find(|&x| x.key == "duration") {
+        match self.session_info().parameters.iter().find(|&x| x.key == key) {
             Some(property) => match property.value.parse::<T>() {
                 Ok(value) => Ok(value),
                 Err(_) => Err(format!("Could not convert property '{}' value '{}' to expected type", key, property.value)),
