@@ -2,35 +2,28 @@ use dashmap::DashMap;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 use crate::api::*;
-use crate::report::*;
+use crate::macros::*;
 use crate::profilers::*;
 
 #[derive(Default)]
 pub struct AllocationByClassProfiler {
-    profiler_info: Option<ProfilerInfo>,
+    clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     allocations_by_class: DashMap<String, AtomicIsize>,
     collections: usize,
 }
 
 impl Profiler for AllocationByClassProfiler {
+    profiler_getset!();
 
-    fn profiler_metadata() -> ProfilerMetadata {
-        return ProfilerMetadata {
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E84".to_owned(),
             name: "Allocations by Class".to_owned(),
             description: "For now, just allocations by class".to_owned(),
             is_released: true,
             ..std::default::Default::default()
         }
-    }
-
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
-    }
-
-    fn session_info(&self) -> &SessionInfo {
-        &self.session_info
     }
 }
 
@@ -41,9 +34,9 @@ impl CorProfilerCallback for AllocationByClassProfiler
         // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo10-enumerateobjectreferences-method
         for i in 0..class_ids.len() {
             
-            let pinfo = self.profiler_info();
-            let name = match pinfo.get_class_id_info(class_ids[i]) {
-                Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
+            let clr = self.clr();
+            let name = match clr.get_class_id_info(class_ids[i]) {
+                Ok(class_info) => clr.get_type_name(class_info.module_id, class_info.token),
                 _ => "unknown2".to_owned()
             };
 
@@ -72,22 +65,9 @@ impl CorProfilerCallback2 for AllocationByClassProfiler
 
 impl CorProfilerCallback3 for AllocationByClassProfiler
 {
-    fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        self.profiler_info = Some(profiler_info);
-        
-        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
-            Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
-        }
-
-        match init_session(client_data, client_data_length) {
-            Ok(s) => {
-                self.session_info = s;
-                Ok(())
-            },
-            Err(err) => Err(err)
-        }
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>

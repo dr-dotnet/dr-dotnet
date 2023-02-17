@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
+#![allow(unused_must_use)]
 
 extern crate libc;
 use std::ffi::CStr; 
@@ -21,7 +22,7 @@ pub struct Buffer {
 #[no_mangle]
 pub extern "C" fn GetAvailableProfilers() -> Buffer
 {
-    let mut profilers_info: ProfilersMetadata = ProfilersMetadata::new();
+    let mut profilers_info: ProfilersInfo = ProfilersInfo::new();
     profilers_info.profilers = get_profiler_infos().to_vec();
 
     let bytes = protobuf::Message::write_to_bytes(&profilers_info).unwrap();

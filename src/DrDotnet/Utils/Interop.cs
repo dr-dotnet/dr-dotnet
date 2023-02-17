@@ -41,11 +41,11 @@ namespace DrDotnet.Utils
         [DllImport(LIBRARY_NAME, EntryPoint = "GetAvailableProfilers")]
         private static extern Buffer GetAvailableProfilers_FFI();
 
-        public static unsafe ProfilersMetadata GetAvailableProfilers()
+        public static unsafe ProfilersInfo GetAvailableProfilers()
         {
             Buffer buffer = GetAvailableProfilers_FFI();
             ReadOnlySpan<byte> bytes = new ReadOnlySpan<byte>(buffer.ptr.ToPointer(), buffer.size);
-            ProfilersMetadata profilersInfo = ProfilersMetadata.Parser.ParseFrom(bytes);
+            ProfilersInfo profilersInfo = ProfilersInfo.Parser.ParseFrom(bytes);
             FreeBuffer_FFI(buffer);
             return profilersInfo;
         } 

@@ -17,7 +17,7 @@ use std::collections::{HashMap};
 use itertools::Itertools;
 
 use crate::api::*;
-use crate::report::*;
+use crate::macros::*;
 use crate::profilers::*;
 
 #[derive(Default, Clone)]
@@ -37,7 +37,7 @@ struct GCInfo {
 
 #[derive(Default, Clone)]
 pub struct MemoryLeakProfiler {
-    profiler_info: Option<ProfilerInfo>,
+    clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     object_to_referencers: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
     surviving_references: HashMap<ffi::ObjectID, ReferenceInfo>,
@@ -48,9 +48,10 @@ pub struct MemoryLeakProfiler {
 }
 
 impl Profiler for MemoryLeakProfiler {
+    profiler_getset!();
 
-    fn profiler_metadata() -> ProfilerMetadata {
-        return ProfilerMetadata {
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E83".to_owned(),
             name: "Memory Leaks Profiler".to_owned(),
             description: "Finds managed memory leaks.".to_owned(),
@@ -58,19 +59,11 @@ impl Profiler for MemoryLeakProfiler {
             ..std::default::Default::default()
         }
     }
-
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
-    }
-
-    fn session_info(&self) -> &SessionInfo {
-        &self.session_info
-    }
 }
 
 impl MemoryLeakProfiler
 {
-    pub fn append_referencers(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String>
+    pub fn append_referencers(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String>
     {
         let mut branches = Vec::new();
 
@@ -80,7 +73,7 @@ impl MemoryLeakProfiler
     }
 
     // Recursively drill through referencers.
-    fn append_referencers_recursive(&self, info: &ProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
+    fn append_referencers_recursive(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
     {
         let gen = match info.get_object_generation(object_id) {
             Ok(gen) => gen.generation,
@@ -126,7 +119,7 @@ impl MemoryLeakProfiler
         }
     }
 
-    fn get_inner_type(info: &ProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize
+    fn get_inner_type(info: &ClrProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize
     {
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
         match info.is_array_class(class_id) {
@@ -139,18 +132,19 @@ impl MemoryLeakProfiler
         }
     }
 
-    fn get_object_class_name(info: &ProfilerInfo, object_id: ffi::ObjectID) -> String
+    // Todo: Share code?
+    fn get_object_class_name(clr: &ClrProfilerInfo, object_id: ffi::ObjectID) -> String
     {
         let mut array_dimension = 0;
 
-        let mut name = match info.get_class_from_object(object_id) {
+        let mut name = match clr.get_class_from_object(object_id) {
             Ok(class_id) => {
                 // As the class could be an array, we recursively dig until we find the inner type that is not an array
-                let class_id = MemoryLeakProfiler::get_inner_type(info, class_id, &mut array_dimension);
+                let class_id = MemoryLeakProfiler::get_inner_type(clr, class_id, &mut array_dimension);
                 // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
                 // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-                match info.get_class_id_info(class_id) {
-                    Ok(class_info) => extensions::get_type_name(info, class_info.module_id, class_info.token),
+                match clr.get_class_id_info(class_id) {
+                    Ok(class_info) => clr.get_type_name(class_info.module_id, class_info.token),
                     _ => "unknown2".to_owned()
                 }
             }
@@ -202,13 +196,13 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
-        info!("GC started on gen {} for reason {:?}", extensions::get_gc_gen(&generation_collected), reason);
+        info!("GC started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
 
         if self.finished {
             return Ok(());
         }
 
-        let gc_gen = extensions::get_gc_gen(&generation_collected);
+        let gc_gen = ClrProfilerInfo::get_gc_gen(&generation_collected);
         self.current_gc_info.generation = gc_gen;
 
         if gc_gen < 2 {
@@ -261,7 +255,7 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         self.finished = true;
 
         // Disable profiling to free some resources
-        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
+        match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
@@ -281,13 +275,13 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 
             //info!("Persisting object id: {}", *object_id);
 
-            let info = self.profiler_info();
+            let info = self.clr();
             let gen = info.get_object_generation(*object_id).unwrap();
             if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
                 error!("Object is supposed to be in gen 2 but is {:?}", gen.generation);
             }
 
-            let info = self.profiler_info();
+            let info = self.clr();
             for branch in self.append_referencers(info, *object_id, 6) {
                 *self.serialized_survivor_branches.entry(branch).or_insert(0u64) += 1;
             }
@@ -296,7 +290,7 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         info!("Successfully processed persisting objects");
 
         // Request detach
-        let profiler_info = self.profiler_info().clone();
+        let profiler_info = self.clr().clone();
         profiler_info.request_profiler_detach(3000).ok();
 
         // We can free some memory
@@ -309,22 +303,9 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 
 impl CorProfilerCallback3 for MemoryLeakProfiler
 {
-    fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        self.profiler_info = Some(profiler_info);
-
-        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
-            Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
-        }
-
-        match init_session(client_data, client_data_length) {
-            Ok(s) => {
-                self.session_info = s;
-                Ok(())
-            },
-            Err(err) => Err(err)
-        }
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
@@ -382,7 +363,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             if id == 0 {
                 continue;
             }
-            let info = self.profiler_info();
+            let info = self.clr();
             let gen = info.get_object_generation(id).unwrap();
             if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
                 continue;
@@ -430,7 +411,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
             if old_id == 0 {
                 continue;
             }
-            let info = self.profiler_info();
+            let info = self.clr();
             let gen = info.get_object_generation(old_id).unwrap();
             if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
                 continue;

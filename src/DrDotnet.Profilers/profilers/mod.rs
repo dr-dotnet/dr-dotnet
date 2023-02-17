@@ -21,31 +21,45 @@ pub use duplicated_strings_profiler::DuplicatedStringsProfiler as DuplicatedStri
 
 use simplelog::*;
 use std::fs::File;
-use std::str::FromStr;
 
 use crate::api::*;
-use crate::report::*;
 use crate::rust_protobuf_protos::interop::*;
 
-pub trait Profiler : CorProfilerCallback9 {
-    fn profiler_metadata() -> ProfilerMetadata;
-    fn session_info(&self) -> &SessionInfo;
-    fn profiler_info(&self) -> &ProfilerInfo;
+pub trait Profiler : CorProfilerCallback9 + CorProfilerCallback8 {
+    fn profiler_info() -> ProfilerInfo;
 
-    fn get_session_parameter<T: FromStr>(&self, key: &str) -> Result<T, String>{
-        match self.session_info().parameters.iter().find(|&x| x.key == key) {
-            Some(property) => match property.value.parse::<T>() {
-                Ok(value) => Ok(value),
-                Err(_) => Err(format!("Could not convert property '{}' value '{}' to expected type", key, property.value)),
+    fn session_info(&self) -> &SessionInfo;
+    fn set_session_info(&mut self, session_info: &SessionInfo);
+
+    fn clr(&self) -> &ClrProfilerInfo;
+    fn set_clr_profiler_info(&mut self, clr_profiler_info: &ClrProfilerInfo);
+
+    fn init(&mut self, event: ffi::COR_PRF_MONITOR, clr_profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    {
+        self.set_clr_profiler_info(&clr_profiler_info);
+
+        match self.clr().set_event_mask(event) {
+            Ok(_) => match SessionInfo::init(client_data, client_data_length) {
+                Ok(s) => {
+                    self.set_session_info(&s);
+                    Ok(())
+                },
+                Err(err) => {
+                    error!("{}", err);
+                    Err(ffi::E_FAIL)
+                }
             },
-            None => Err(format!("Could not find property '{}'", key)),
+            Err(hresult) => {
+                error!("Error setting event mask: {:x}", hresult);
+                Err(hresult)
+            } 
         }
     }
 }
 
 pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
 {
-    let profiler_info = profiler.profiler_info().clone();
+    let profiler_info = profiler.clr().clone();
 
     std::thread::spawn(move || {
         if thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max).is_err() {
@@ -99,25 +113,3 @@ pub fn init_logging() {
 //         ]
 //     ).unwrap();
 // }
-
-pub fn init_session(data: *const std::os::raw::c_void, data_length: u32) -> Result<SessionInfo, ffi::HRESULT> {
-
-    if data_length <= 0 {
-        error!("Data should be non empty to carry the session ID");
-        return Err(ffi::E_FAIL);
-    }
-
-    let buffer: &[u8] = unsafe { std::slice::from_raw_parts(data as *const u8, data_length as usize) };
-    let session_info_result: Result<SessionInfo, protobuf::Error> = protobuf::Message::parse_from_bytes(&buffer);
-
-    match session_info_result {
-        Ok(session_info) => {
-            info!("Successfully parsed session with ID {}", session_info.uuid);
-            Ok(session_info)
-        },
-        Err(_) => {
-            error!("Failed to parse session ID from FFI data");
-            Err(ffi::E_FAIL)
-        }
-    }
-}

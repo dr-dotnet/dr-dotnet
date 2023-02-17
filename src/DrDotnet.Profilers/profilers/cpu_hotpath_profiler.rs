@@ -3,21 +3,22 @@ use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 
 use crate::api::*;
-use crate::report::*;
+use crate::macros::*;
 use crate::profilers::*;
 
 #[derive(Default)]
 pub struct CpuHotpathProfiler {
-    profiler_info: Option<ProfilerInfo>,
+    clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     detached: Arc<AtomicBool>,
     calls: Arc<Mutex<DashMap<usize, AtomicIsize>>>,
 }
 
 impl Profiler for CpuHotpathProfiler {
+    profiler_getset!();
 
-    fn profiler_metadata() -> ProfilerMetadata {
-        return ProfilerMetadata {
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
             name: "CPU Hotpath Profiler".to_owned(),
             description: "Lists CPU hotpaths.".to_owned(),
@@ -25,19 +26,11 @@ impl Profiler for CpuHotpathProfiler {
             ..std::default::Default::default()
         }
     }
-
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
-    }
-
-    fn session_info(&self) -> &SessionInfo {
-        &self.session_info
-    }
 }
 
 impl CpuHotpathProfiler {
 
-    fn print_callstack(profiler_info: ProfilerInfo, calls: std::sync::MutexGuard<DashMap<usize, AtomicIsize>>)
+    fn print_callstack(profiler_info: ClrProfilerInfo, calls: std::sync::MutexGuard<DashMap<usize, AtomicIsize>>)
     {
         let pinfo = profiler_info.clone();
         
@@ -66,27 +59,14 @@ impl CorProfilerCallback2 for CpuHotpathProfiler {}
 
 impl CorProfilerCallback3 for CpuHotpathProfiler
 {
-    fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        self.profiler_info = Some(profiler_info);
-
-        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT) {
-            Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
-        }
-
-        match init_session(client_data, client_data_length) {
-            Ok(s) => {
-                self.session_info = s;
-                Ok(())
-            },
-            Err(err) => Err(err)
-        }
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT, profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
-        let profiler_info = self.profiler_info().clone();
+        let profiler_info = self.clr().clone();
 
         self.detached.store(false, std::sync::atomic::Ordering::Relaxed);
 
@@ -122,7 +102,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
 
         let detached = self.detached.clone();
         let session_info = self.session_info.clone();
-        let profiler_info = self.profiler_info().clone();
+        let clr = self.clr().clone();
         let calls = self.calls.clone();
 
         let callback = Box::new(move || {
@@ -137,7 +117,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
     
             use itertools::Itertools;
     
-            let profiler_info = profiler_info.clone();
+            let clr = clr.clone();
     
             let calls = calls.lock().unwrap();
     
@@ -145,7 +125,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler
                 let method_id = *method.key();
                 let name = match method_id {
                     0 => "unmanaged".to_owned(),
-                    _ =>  unsafe { extensions::get_full_method_name(&profiler_info, *method.key()) }
+                    _ =>  unsafe { clr.get_full_method_name(*method.key()) }
                 };
                 report.write_line(format!("- {}: {}", name, method.value().load(Ordering::Relaxed)));
             }

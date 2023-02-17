@@ -7,7 +7,7 @@ public abstract class ProfilerTests
 {
     public abstract Guid ProfilerGuid { get; }
 
-    public ProfilerMetadata GetProfiler()
+    public ProfilerInfo GetProfiler()
     {
         Logger logger = new Logger();
         ProfilersDiscovery profilersDiscovery = new ProfilersDiscovery(logger);

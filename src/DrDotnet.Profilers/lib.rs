@@ -1,5 +1,5 @@
 mod profilers;
-mod report;
+mod session;
 mod interop;
 mod macros;
 mod utils;

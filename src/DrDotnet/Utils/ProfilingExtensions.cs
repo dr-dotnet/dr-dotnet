@@ -60,7 +60,7 @@ public static class ProfilingExtensions
         return profilerDll;
     }
 
-    public static Guid StartProfilingSession(ProfilerMetadata profiler, int processId, ILogger logger)
+    public static Guid StartProfilingSession(ProfilerInfo profiler, int processId, ILogger logger)
     {
         string profilerDll = GetTmpProfilerLibrary();
         var sessionId = Guid.NewGuid();

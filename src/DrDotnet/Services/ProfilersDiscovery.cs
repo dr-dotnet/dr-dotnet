@@ -7,19 +7,19 @@ namespace DrDotnet;
 public class ProfilersDiscovery : IProfilerDiscovery
 {
     private ILogger _logger;
-    private List<ProfilerMetadata> _profilers;
+    private List<ProfilerInfo> _profilers;
 
     public ProfilersDiscovery(ILogger logger)
     {
         _logger = logger;
     }
 
-    public List<ProfilerMetadata> GetProfilers(bool listUnreleasedProfilers = false)
+    public List<ProfilerInfo> GetProfilers(bool listUnreleasedProfilers = false)
     {
         if (_profilers != null)
             return _profilers;
 
-        var profilers = new List<ProfilerMetadata>();
+        var profilers = new List<ProfilerInfo>();
 
         var interopProfilers = NativeProfilersInterface.GetAvailableProfilers();
 

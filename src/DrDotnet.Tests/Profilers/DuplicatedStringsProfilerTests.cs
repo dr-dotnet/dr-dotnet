@@ -30,7 +30,7 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
     {
         Logger logger = new();
         SessionsDiscovery sessionsDiscovery = new(logger);
-        ProfilerMetadata profiler = GetProfiler();
+        ProfilerInfo profiler = GetProfiler();
 
         List<string> list = new();
         for (int i = 0; i < 666; i++)

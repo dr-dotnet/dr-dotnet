@@ -13,7 +13,7 @@ public class Session
 
     public DateTime Timestamp { get; set; }
 
-    public ProfilerMetadata Profiler { get; set; }
+    public ProfilerInfo Profiler { get; set; }
 
     private string _sessionFilePath;
 

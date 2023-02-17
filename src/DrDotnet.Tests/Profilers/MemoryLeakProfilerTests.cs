@@ -31,7 +31,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
     {
         Logger logger = new Logger();
         SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        ProfilerMetadata profiler = GetProfiler();
+        ProfilerInfo profiler = GetProfiler();
 
         Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
 

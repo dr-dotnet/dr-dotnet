@@ -2,21 +2,17 @@ use std::path::{PathBuf, Path};
 use std::io::BufWriter;
 use std::fs::File;
 use std::io::Write;
+use std::str::FromStr;
 
 use crate::rust_protobuf_protos::interop::*;
 
-pub trait Session {
-    fn create_session_json(&self);
-    fn create_report(&self, filename: String) -> Report;
-    fn get_root_directory() -> String;
-    fn get_directory(session_id: &String) -> String;
-}
+use crate::session::Report;
 
-impl Session for SessionInfo {
+impl SessionInfo {
 
     // Returns a Session from its UID and ProfilerData.
     // If the Session report is not present on the disk, it will be written at the same time.
-    fn create_session_json(&self) {
+    pub fn create_session_json(&self) {
 
         // Serialize to JSON
         let json = protobuf_json_mapping::print_to_string(self).unwrap();
@@ -30,38 +26,53 @@ impl Session for SessionInfo {
     }
 
     // Create a new report for a given Session, ready to be filled up.
-    fn create_report(&self, filename: String) -> Report {
+    pub fn create_report(&self, filename: String) -> Report {
         self.create_session_json(); // Could be done once instead of once per report written
         let path = PathBuf::from(format!(r"{}/{}", SessionInfo::get_directory(&self.uuid), filename));
         let file = File::create(&path).unwrap();
         return Report { writer: BufWriter::new(file) };
     }
 
-    fn get_root_directory() -> String {
+    pub fn get_root_directory() -> String {
         let directory_path = format!(r"{}/dr-dotnet", std::env::temp_dir().into_os_string().into_string().unwrap());
         std::fs::create_dir_all(&directory_path).ok();
         return directory_path;
     }
     
     // Returns the directy path for this Session.
-    fn get_directory(session_id: &String) -> String {
+    pub fn get_directory(session_id: &String) -> String {
         let directory_path = format!(r"{}/{}", SessionInfo::get_root_directory(), session_id.to_string());
         std::fs::create_dir_all(&directory_path).ok();
         return directory_path;
     }
-}
 
-// A Session can contain several reports, which are usually files like markdown summaries or charts.
-pub struct Report {
-    pub writer: BufWriter<File>,
-}
+    pub fn init(data: *const std::os::raw::c_void, data_length: u32) -> Result<Self, &'static str> {
 
-impl Report {
-    pub fn write_line(&mut self, text: String) {
-        self.writer.write(format!("{}\r\n", text).as_bytes()).unwrap();
+        if data_length <= 0 {
+            return Err("Data should be non empty to carry the session ID");
+        }
+    
+        let buffer: &[u8] = unsafe { std::slice::from_raw_parts(data as *const u8, data_length as usize) };
+        let session_info_result: Result<SessionInfo, protobuf::Error> = protobuf::Message::parse_from_bytes(&buffer);
+    
+        match session_info_result {
+            Ok(session_info) => {
+                info!("Successfully parsed session with ID {}", session_info.uuid);
+                Ok(session_info)
+            },
+            Err(_) => {
+                Err("Failed to parse session ID from FFI data")
+            }
+        }
     }
 
-    pub fn new_line(&mut self) {
-        self.writer.write(b"\r\n").unwrap();
+    pub fn get_parameter<T: FromStr>(&self, key: &str) -> Result<T, String>{
+        match self.parameters.iter().find(|&x| x.key == key) {
+            Some(property) => match property.value.parse::<T>() {
+                Ok(value) => Ok(value),
+                Err(_) => Err(format!("Could not convert property '{}' value '{}' to expected type", key, property.value)),
+            },
+            None => Err(format!("Could not find property '{}'", key)),
+        }
     }
 }

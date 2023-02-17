@@ -4,11 +4,11 @@ use itertools::Itertools;
 
 use crate::api::*;
 use crate::api::ffi::{ClassID, HRESULT, ObjectID};
-use crate::report::*;
+use crate::macros::*;
 use crate::profilers::*;
 
 pub struct DuplicatedStringsProfiler {
-    profiler_info: Option<ProfilerInfo>,
+    clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     string_object_ids: Vec<ObjectID>,
     str_counts: HashMap<String, u64>,
@@ -20,7 +20,7 @@ pub struct DuplicatedStringsProfiler {
 impl Default for DuplicatedStringsProfiler {
     fn default() -> Self {
         DuplicatedStringsProfiler {
-            profiler_info: None,
+            clr_profiler_info: Default::default(),
             session_info: Default::default(),
             string_object_ids: Default::default(),
             str_counts: Default::default(),
@@ -32,23 +32,16 @@ impl Default for DuplicatedStringsProfiler {
 }
 
 impl Profiler for DuplicatedStringsProfiler {
+    profiler_getset!();
 
-    fn profiler_metadata() -> ProfilerMetadata {
-        return ProfilerMetadata {
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
             uuid: "bdaba522-104c-4343-8952-036bed81527d".to_owned(),
             name: "Duplicated Strings".to_owned(),
             description: "For now, just duplicated strings and their occurence".to_owned(),
             is_released: true,
             ..std::default::Default::default()
         }
-    }
-
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
-    }
-
-    fn session_info(&self) -> &SessionInfo {
-        &self.session_info
     }
 }
 
@@ -69,9 +62,9 @@ impl CorProfilerCallback for DuplicatedStringsProfiler
                 }
             },
             None => {
-                let pinfo = self.profiler_info();
-                let type_name = match pinfo.get_class_id_info(class_id) {
-                    Ok(class_info) => extensions::get_type_name(pinfo, class_info.module_id, class_info.token),
+                let clr = self.clr();
+                let type_name = match clr.get_class_id_info(class_id) {
+                    Ok(class_info) => clr.get_type_name(class_info.module_id, class_info.token),
                     _ => "unknown".to_owned()
                 };
 
@@ -90,7 +83,7 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
     {
-        info!("GC started on gen {} for reason {:?}", extensions::get_gc_gen(&generation_collected), reason);
+        info!("GC started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
         
         // Start recording object 
         if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED 
@@ -106,12 +99,12 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         self.record_object_references = false;
 
         // Disable profiling to free some resources
-        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
+        match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:x}", hresult)
         }
 
-        let str_layout = match self.profiler_info().get_string_layout_2() {
+        let str_layout = match self.clr().get_string_layout_2() {
             Ok(str_layout) => str_layout,
             Err(hresult) => {
                 error!("Error getting string layout: {:x}", hresult);
@@ -122,13 +115,13 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         // Process the recorded objects
         for object_id in self.string_object_ids.iter() {
             // Get string value and increment it's count
-            let str = get_string_value(&str_layout, object_id);
+            let str = ClrProfilerInfo::get_string_value(&str_layout, object_id);
             let count = self.str_counts.entry(str).or_insert(0);
             *count += 1;
         }
 
         // We're done, we can detach :)
-        let profiler_info = self.profiler_info().clone();
+        let profiler_info = self.clr().clone();
         profiler_info.request_profiler_detach(3000).ok();
         
         Ok(())
@@ -137,29 +130,16 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
 
 impl CorProfilerCallback3 for DuplicatedStringsProfiler
 {
-    fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
-        self.profiler_info = Some(profiler_info);
-        
-        match self.profiler_info().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
-            Ok(_) => info!("Succeed to register profiler for COR_PRF_MONITOR_GC events"),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
-        }
-
-        match init_session(client_data, client_data_length) {
-            Ok(s) => {
-                self.session_info = s;
-                Ok(())
-            },
-            Err(err) => Err(err)
-        }
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
     {
         // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
-        let p_clone = self.profiler_info().clone();
+        let p_clone = self.clr().clone();
         let _ = thread::spawn(move || {
             debug!("Force GC");
             match p_clone.force_gc() {

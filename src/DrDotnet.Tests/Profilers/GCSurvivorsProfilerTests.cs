@@ -30,7 +30,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
     {
         Logger logger = new Logger();
         SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        ProfilerMetadata profiler = GetProfiler();
+        ProfilerInfo profiler = GetProfiler();
 
         using var service = new AllocationSimulation(1_000_000, 100_000);
         await Task.Delay(3000);

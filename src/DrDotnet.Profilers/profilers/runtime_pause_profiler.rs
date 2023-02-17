@@ -1,8 +1,8 @@
-use crate::api::*;
 use chrono::{DateTime, Utc};
 use std::time::{Instant, Duration};
+use crate::api::*;
 
-use crate::report::*;
+use crate::macros::*;
 use crate::profilers::*;
 
 #[derive(Clone)]
@@ -16,7 +16,7 @@ pub struct RuntimePause {
 }
 
 pub struct RuntimePauseProfiler {
-    profiler_info: Option<ProfilerInfo>,
+    clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     profiling_start: Instant,
     profiling_end: Instant,
@@ -27,7 +27,7 @@ pub struct RuntimePauseProfiler {
 impl Default for RuntimePauseProfiler {
     fn default() -> RuntimePauseProfiler {
         RuntimePauseProfiler {
-            profiler_info: None,
+            clr_profiler_info: ClrProfilerInfo::default(),
             session_info: SessionInfo::default(),
             profiling_start: Instant::now(),
             profiling_end: Instant::now(),
@@ -38,23 +38,16 @@ impl Default for RuntimePauseProfiler {
 }
 
 impl Profiler for RuntimePauseProfiler {
+    profiler_getset!();
 
-    fn profiler_metadata() -> ProfilerMetadata {
-        return ProfilerMetadata {
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E85".to_owned(),
             name: "Runtime Profiler".to_owned(),
             description: "Measures the impact of runtime pauses on response time".to_owned(),
             is_released: true,
             ..std::default::Default::default()
         }
-    }
-
-    fn profiler_info(&self) -> &ProfilerInfo {
-        self.profiler_info.as_ref().unwrap()
-    }
-
-    fn session_info(&self) -> &SessionInfo {
-        &self.session_info
     }
 }
 
@@ -124,7 +117,7 @@ impl CorProfilerCallback2 for RuntimePauseProfiler {
             let mut current_pause = self.current_pause.clone().unwrap();
 
             current_pause.gc_reason = Some(reason);
-            current_pause.gc_gen = Some(extensions::get_gc_gen(&generation_collected));
+            current_pause.gc_gen = Some(ClrProfilerInfo::get_gc_gen(&generation_collected));
 
             self.current_pause = Some(current_pause);
         }
@@ -144,21 +137,10 @@ impl CorProfilerCallback2 for RuntimePauseProfiler {
 }
 
 impl CorProfilerCallback3 for RuntimePauseProfiler {
-    fn initialize_for_attach(&mut self, profiler_info: ProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.profiler_info = Some(profiler_info);
-
-        match self.profiler_info().set_event_mask_2(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS, ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_BASIC_GC) {
-            Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
-        }
-        
-        match init_session(client_data, client_data_length) {
-            Ok(s) => {
-                self.session_info = s;
-                Ok(())
-            },
-            Err(err) => Err(err)
-        }
+    
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    {
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS, profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>

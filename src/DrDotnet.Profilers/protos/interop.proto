@@ -16,7 +16,7 @@ message ProfilerParameter {
     string value = 5;
 }
 
-message ProfilerMetadata {
+message ProfilerInfo {
     string uuid = 1;
     string name = 2;
     string description = 3;
@@ -24,8 +24,8 @@ message ProfilerMetadata {
     repeated ProfilerParameter parameters = 5;
 }
 
-message ProfilersMetadata {
-    repeated ProfilerMetadata profilers = 1;
+message ProfilersInfo {
+    repeated ProfilerInfo profilers = 1;
 }
 
 message SessionInfo {

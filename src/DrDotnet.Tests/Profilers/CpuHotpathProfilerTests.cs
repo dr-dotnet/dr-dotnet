@@ -30,7 +30,7 @@ public class CpuHotpathProfilerTests : ProfilerTests
     {
         Logger logger = new Logger();
         SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        ProfilerMetadata profiler = GetProfiler();
+        ProfilerInfo profiler = GetProfiler();
 
         using var service1 = new FibonacciSimulation();
         using var service2 = new FibonacciSimulation();

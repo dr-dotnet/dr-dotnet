@@ -35,7 +35,7 @@ else
 }
 
 @code {
-    private List<ProfilerMetadata> _profilers;
+    private List<ProfilerInfo> _profilers;
 
     [Parameter]
     public int ProcessId { get; set; }
@@ -49,7 +49,7 @@ else
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as ProfilerMetadata)!.Uuid}", true);
+        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as ProfilerInfo)!.Uuid}", true);
     }
 
     public void OnBackClick(object data)
