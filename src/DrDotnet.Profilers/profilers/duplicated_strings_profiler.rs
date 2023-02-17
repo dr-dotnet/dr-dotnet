@@ -7,28 +7,14 @@ use crate::api::ffi::{ClassID, HRESULT, ObjectID};
 use crate::macros::*;
 use crate::profilers::*;
 
+#[derive(Default)]
 pub struct DuplicatedStringsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     string_object_ids: Vec<ObjectID>,
     str_counts: HashMap<String, u64>,
     string_class_id: Option<ClassID>,
-    record_object_references: bool,
-    number_of_str_to_print: usize
-}
-
-impl Default for DuplicatedStringsProfiler {
-    fn default() -> Self {
-        DuplicatedStringsProfiler {
-            clr_profiler_info: Default::default(),
-            session_info: Default::default(),
-            string_object_ids: Default::default(),
-            str_counts: Default::default(),
-            string_class_id: None,
-            record_object_references: false,
-            number_of_str_to_print: 100,
-        }
-    }
+    record_object_references: bool
 }
 
 impl Profiler for DuplicatedStringsProfiler {
@@ -38,8 +24,18 @@ impl Profiler for DuplicatedStringsProfiler {
         return ProfilerInfo {
             uuid: "bdaba522-104c-4343-8952-036bed81527d".to_owned(),
             name: "Duplicated Strings".to_owned(),
-            description: "For now, just duplicated strings and their occurence".to_owned(),
+            description: "List strings object with the same value by count".to_owned(),
             is_released: true,
+            parameters: vec![
+                ProfilerParameter {
+                    name: "Top".to_owned(),
+                    key: "top_count".to_owned(),
+                    description: "The number of string to list in the report.".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "100".to_owned(),
+                    ..std::default::Default::default()
+                }
+            ],
             ..std::default::Default::default()
         }
     }
@@ -160,7 +156,9 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
 
         report.write_line(format!("# Duplicate strings Report"));
 
-        for i in self.str_counts.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()).take(self.number_of_str_to_print) {
+        let count_of_str_to_print = self.session_info().get_parameter::<usize>("top_count").unwrap();
+        
+        for i in self.str_counts.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()).take(count_of_str_to_print) {
             report.write_line(format!("- #({}) \"{}\"", i.1, i.0));
         }
 
