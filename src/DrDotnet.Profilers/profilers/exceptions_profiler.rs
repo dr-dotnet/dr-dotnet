@@ -36,7 +36,11 @@ impl Profiler for ExceptionsProfiler {
     }
 }
 
-impl CorProfilerCallback for ExceptionsProfiler
+impl CorProfilerCallbackAll for ExceptionsProfiler {
+    
+}
+
+impl CorProfilerCallback1 for ExceptionsProfiler
 {
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
     {

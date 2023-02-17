@@ -9,7 +9,7 @@ use crate::{
 };
 use std::ffi::c_void;
 
-pub trait CorProfilerCallback : Default {
+pub trait CorProfilerCallback1 : Default {
     fn initialize(&mut self, profiler_info: ClrProfilerInfo) -> Result<(), HRESULT> {
         Ok(())
     }

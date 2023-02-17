@@ -84,7 +84,7 @@ impl RuntimePauseProfiler {
     }
 }
 
-impl CorProfilerCallback for RuntimePauseProfiler {
+impl CorProfilerCallback1 for RuntimePauseProfiler {
     fn runtime_suspend_started(&mut self, suspend_reason: ffi::COR_PRF_SUSPEND_REASON) -> Result<(), ffi::HRESULT> {
         self.current_pause = Some(RuntimePause {
             time: Utc::now(),

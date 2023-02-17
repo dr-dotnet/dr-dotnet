@@ -3,10 +3,9 @@ use crate::{
     ffi::{
         mdMethodDef, CorProfilerFunctionControl, FunctionID, ModuleID, ObjectID, ReJITID, HRESULT,
     },
-    CorProfilerCallback3,
 };
 
-pub trait CorProfilerCallback4: CorProfilerCallback3 {
+pub trait CorProfilerCallback4 {
     fn rejit_compilation_started(
         &mut self,
         function_id: FunctionID,

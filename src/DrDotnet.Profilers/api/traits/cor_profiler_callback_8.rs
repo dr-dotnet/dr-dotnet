@@ -1,10 +1,9 @@
 #![allow(unused_variables)]
 use crate::{
     ffi::{FunctionID, HRESULT, LPCBYTE},
-    CorProfilerCallback7,
 };
 
-pub trait CorProfilerCallback8: CorProfilerCallback7 {
+pub trait CorProfilerCallback8 {
     fn dynamic_method_jit_compilation_started(
         &mut self,
         function_id: FunctionID,

@@ -25,7 +25,8 @@ use std::fs::File;
 use crate::api::*;
 use crate::rust_protobuf_protos::interop::*;
 
-pub trait Profiler : CorProfilerCallback9 + CorProfilerCallback8 {
+pub trait Profiler : CorProfilerCallbackAll {
+
     fn profiler_info() -> ProfilerInfo;
 
     fn session_info(&self) -> &SessionInfo;

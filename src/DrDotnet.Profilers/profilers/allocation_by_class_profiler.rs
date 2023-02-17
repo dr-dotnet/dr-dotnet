@@ -27,7 +27,7 @@ impl Profiler for AllocationByClassProfiler {
     }
 }
 
-impl CorProfilerCallback for AllocationByClassProfiler
+impl CorProfilerCallback1 for AllocationByClassProfiler
 {
     fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT>
     {

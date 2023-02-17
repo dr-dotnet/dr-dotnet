@@ -2,7 +2,7 @@
 use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, CorProfilerInfo};
 use crate::{
     ffi::*,
-    traits::CorProfilerCallback9,
+    traits::*,
     ClrProfilerInfo,
 };
 use std::{
@@ -33,7 +33,7 @@ pub struct CorProfilerCallback<T: CorProfilerCallback9> {
     profiler: T,
 }
 
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: CorProfilerCallbackAll> CorProfilerCallback<T> {
     pub fn new<'b>(profiler: T) -> &'b mut CorProfilerCallback<T> {
         info!("CorProfilerCallback<T>::new");
         let cor_profiler_callback = CorProfilerCallback {
@@ -163,7 +163,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 }
 
 // IUnknown
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: CorProfilerCallbackAll> CorProfilerCallback<T> {
     pub unsafe extern "system" fn query_interface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
         let uuid: uuid::Uuid = GUID::into(*riid);
         debug!("CorProfilerCallback<T>::QueryInterface({})", uuid);
@@ -210,7 +210,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 }
 
 // ICorProfilerCallback
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: CorProfilerCallbackAll> CorProfilerCallback<T> {
     pub unsafe extern "system" fn Initialize(
         &mut self,
         pICorProfilerInfoUnk: *const CorProfilerInfo,
@@ -926,7 +926,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 }
 
 // ICorProfilerCallback2
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: CorProfilerCallbackAll> CorProfilerCallback<T> {
     pub unsafe extern "system" fn ThreadNameChanged(
         &mut self,
         threadId: ThreadID,

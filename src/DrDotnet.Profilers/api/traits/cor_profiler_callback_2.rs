@@ -3,11 +3,10 @@ use crate::{
     ffi::{
         GCHandleID, ObjectID, ThreadID, BOOL, COR_PRF_FINALIZER_FLAGS, COR_PRF_GC_REASON,
         COR_PRF_GC_ROOT_FLAGS, COR_PRF_GC_ROOT_KIND, HRESULT, UINT_PTR,
-    },
-    CorProfilerCallback,
+    }
 };
 
-pub trait CorProfilerCallback2: CorProfilerCallback {
+pub trait CorProfilerCallback2 {
     fn thread_name_changed(&mut self, thread_id: ThreadID, name: &str) -> Result<(), HRESULT> {
         Ok(())
     }

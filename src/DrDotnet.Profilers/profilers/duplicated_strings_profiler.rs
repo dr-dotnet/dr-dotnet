@@ -45,7 +45,7 @@ impl Profiler for DuplicatedStringsProfiler {
     }
 }
 
-impl CorProfilerCallback for DuplicatedStringsProfiler
+impl CorProfilerCallback1 for DuplicatedStringsProfiler
 {
     fn object_references(&mut self, object_id: ObjectID, class_id: ClassID, _object_ref_ids: &[ObjectID]) -> Result<(), HRESULT> {
         

@@ -1,8 +1,8 @@
 #![allow(unused_variables)]
-use crate::{ffi::HRESULT, CorProfilerCallback2, ClrProfilerInfo};
+use crate::{ffi::HRESULT, ClrProfilerInfo};
 use std::ffi::c_void;
 
-pub trait CorProfilerCallback3: CorProfilerCallback2 {
+pub trait CorProfilerCallback3 {
     fn initialize_for_attach(
         &mut self,
         profiler_info: ClrProfilerInfo,

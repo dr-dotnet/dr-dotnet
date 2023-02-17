@@ -53,7 +53,7 @@ impl CpuHotpathProfiler {
     }
 }
 
-impl CorProfilerCallback for CpuHotpathProfiler {}
+impl CorProfilerCallback1 for CpuHotpathProfiler {}
 
 impl CorProfilerCallback2 for CpuHotpathProfiler {}
 

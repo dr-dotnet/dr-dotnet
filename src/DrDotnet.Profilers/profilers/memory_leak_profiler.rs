@@ -163,7 +163,7 @@ impl MemoryLeakProfiler
     }
 }
 
-impl CorProfilerCallback for MemoryLeakProfiler
+impl CorProfilerCallback1 for MemoryLeakProfiler
 {
     fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
     {
