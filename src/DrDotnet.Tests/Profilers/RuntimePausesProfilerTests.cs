@@ -30,10 +30,10 @@ public class RuntimePausesProfilerTests : ProfilerTests
     public async Task Profiler_Counts_Runtime_Pauses()
     {
         Logger logger = new Logger();
-        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
         // Intentionally allocates memory
         int i = 0;
@@ -56,7 +56,7 @@ public class RuntimePausesProfilerTests : ProfilerTests
             }
         });
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
 

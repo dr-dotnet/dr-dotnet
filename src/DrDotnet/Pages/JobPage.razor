@@ -4,6 +4,7 @@
 
 @inject NavigationManager _navigationManager
 @inject IProfilerDiscovery _profilerDiscovery
+@inject IProcessDiscovery _processDiscovery
 @inject ISessionDiscovery _sessionDiscovery
 @inject ILogger _logger
 
@@ -79,7 +80,7 @@
 @code {
 
     private bool Started { get; set; }
-    private Session Session { get; set; }
+    private SessionInfo Session { get; set; }
 
     [Parameter]
     public string ProcessId { get; set; }
@@ -103,9 +104,10 @@
         try
         {
             _logger.LogInformation("Start profiling!");
-            var sessionId = ProfilingExtensions.StartProfilingSession(_profiler, int.Parse(ProcessId), _logger);
+            var session = ProfilingExtensions.StartProfilingSession(_profiler, _processDiscovery.GetProcessInfoFromPid(int.Parse(ProcessId)), _logger);
             _logger.LogInformation("Successfully attached to process!");
-            Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
+            await session.AwaitUntilCompletion();
+            Session = session;
         }
         catch (Exception e)
         {

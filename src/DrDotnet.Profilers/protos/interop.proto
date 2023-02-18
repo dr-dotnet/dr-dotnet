@@ -30,5 +30,7 @@ message ProfilersInfo {
 
 message SessionInfo {
     string uuid = 1;
-    repeated ProfilerParameter parameters = 2;
+    string process_name = 2;
+    string timestamp = 3;
+    ProfilerInfo profiler = 4;
 }

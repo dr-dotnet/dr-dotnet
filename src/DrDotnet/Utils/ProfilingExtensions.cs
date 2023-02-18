@@ -60,25 +60,22 @@ public static class ProfilingExtensions
         return profilerDll;
     }
 
-    public static Guid StartProfilingSession(ProfilerInfo profiler, int processId, ILogger logger)
+    public static SessionInfo StartProfilingSession(ProfilerInfo profiler, ProcessInfo process, ILogger logger)
     {
         string profilerDll = GetTmpProfilerLibrary();
-        var sessionId = Guid.NewGuid();
 
         logger.LogInformation("Profiler library path: '{profilerDll}'", profilerDll);
         logger.LogInformation("Profiler version: '{version}'", VersionUtils.CurrentVersion);
 
-        DiagnosticsClient client = new DiagnosticsClient(processId);
+        DiagnosticsClient client = new DiagnosticsClient(process.Pid);
 
-        SessionInfo sessionInfo = new SessionInfo();
-        sessionInfo.Uuid = sessionId.ToString();
-        sessionInfo.Parameters.AddRange(profiler.Parameters);
+        SessionInfo sessionInfo = new SessionInfo(profiler, process.ManagedAssemblyName);
         byte[] sessionInfoSerialized = sessionInfo.ToByteArray();
         
         client.AttachProfiler(TimeSpan.FromSeconds(10), profiler.Guid, profilerDll, sessionInfoSerialized);
 
-        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", profiler.Guid, sessionId, processId);
+        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", profiler.Guid, sessionInfo.SessionId, process.Pid);
 
-        return sessionId;
+        return sessionInfo;
     }
 }

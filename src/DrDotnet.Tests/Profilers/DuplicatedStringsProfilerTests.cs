@@ -28,8 +28,8 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Lists_Duplicated_Strings()
     {
-        Logger logger = new();
-        SessionsDiscovery sessionsDiscovery = new(logger);
+        Logger logger = new Logger();
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
         List<string> list = new();
@@ -38,9 +38,9 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
             list.Add(new string('6',6));
         }
 
-        Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 

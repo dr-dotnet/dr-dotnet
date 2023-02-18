@@ -15,14 +15,14 @@
     </MatTableHeader>
     <MatTableRow>
         <td>@context.ProcessName</td>
-        <td>@context.Timestamp</td>
+        <td>@context.TimestampDate</td>
         <td>@context.Profiler?.Name</td>
     </MatTableRow>
 </MatTable>
 
 @code
 {
-    IEnumerable<Session> _sessions;
+    IEnumerable<SessionInfo> _sessions;
 
     protected override void OnInitialized()
     {
@@ -33,7 +33,7 @@
 
     public void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/sessions/{(data as Session).SessionId}", true);
+        _navigationManager.NavigateTo($"/sessions/{(data as SessionInfo).SessionId}", true);
     }
 
     public void OnNewSessionClicked(object data)

@@ -29,7 +29,7 @@ public class CpuHotpathProfilerTests : ProfilerTests
     public async Task Profiler_Lists_Cpu_Hotpaths()
     {
         Logger logger = new Logger();
-        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
         using var service1 = new FibonacciSimulation();
@@ -39,9 +39,9 @@ public class CpuHotpathProfilerTests : ProfilerTests
         
         await Task.Delay(3000);
   
-        Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 

@@ -29,15 +29,15 @@ public class GCSurvivorsProfilerTests : ProfilerTests
     public async Task Profiler_Detects_GC_Survivors_Referenced_From_Gen2()
     {
         Logger logger = new Logger();
-        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
         using var service = new AllocationSimulation(1_000_000, 100_000);
         await Task.Delay(3000);
 
-        Guid sessionId = ProfilingExtensions.StartProfilingSession(profiler, Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 
