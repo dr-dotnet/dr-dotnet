@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -29,10 +30,10 @@ public class MemoryLeakProfilerTests : ProfilerTests
     public async Task Profiler_Detects_Memory_Leaks()
     {
         Logger logger = new Logger();
-        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        Profiler profiler = GetProfiler();
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
+        ProfilerInfo profiler = GetProfiler();
 
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
         // Intentionally allocates memory
         int i = 0;
@@ -57,7 +58,7 @@ public class MemoryLeakProfilerTests : ProfilerTests
         // Warmup
         await Task.Delay(1000);
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 

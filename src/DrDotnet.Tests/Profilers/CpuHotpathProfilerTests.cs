@@ -3,9 +3,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using DrDotnet.Tests.Simulations;
+using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -29,8 +29,8 @@ public class CpuHotpathProfilerTests : ProfilerTests
     public async Task Profiler_Lists_Cpu_Hotpaths()
     {
         Logger logger = new Logger();
-        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        Profiler profiler = GetProfiler();
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
+        ProfilerInfo profiler = GetProfiler();
 
         using var service1 = new FibonacciSimulation();
         using var service2 = new FibonacciSimulation();
@@ -39,9 +39,9 @@ public class CpuHotpathProfilerTests : ProfilerTests
         
         await Task.Delay(3000);
   
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 

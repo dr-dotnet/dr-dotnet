@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+enum ParameterType {
+    UNKNOWN = 0;
+    STRING = 1;
+    INT = 2;
+    FLOAT = 3;
+    BOOLEAN = 4;
+}
+
+message ProfilerParameter {
+    string key = 1;
+    string name = 2;
+    ParameterType type = 3;
+    string description = 4;
+    string value = 5;
+}
+
+message ProfilerInfo {
+    string uuid = 1;
+    string name = 2;
+    string description = 3;
+    bool is_released = 4;
+    repeated ProfilerParameter parameters = 5;
+}
+
+message ProfilersInfo {
+    repeated ProfilerInfo profilers = 1;
+}
+
+message SessionInfo {
+    string uuid = 1;
+    string process_name = 2;
+    string timestamp = 3;
+    ProfilerInfo profiler = 4;
+}

@@ -5,12 +5,12 @@ use crate::{
         COR_PRF_JIT_CACHE, COR_PRF_SUSPEND_REASON, COR_PRF_TRANSITION_REASON, DWORD, GUID, HRESULT,
         REFGUID, UINT_PTR,
     },
-    ProfilerInfo,
+    ClrProfilerInfo,
 };
 use std::ffi::c_void;
 
 pub trait CorProfilerCallback : Default {
-    fn initialize(&mut self, profiler_info: ProfilerInfo) -> Result<(), HRESULT> {
+    fn initialize(&mut self, profiler_info: ClrProfilerInfo) -> Result<(), HRESULT> {
         Ok(())
     }
 

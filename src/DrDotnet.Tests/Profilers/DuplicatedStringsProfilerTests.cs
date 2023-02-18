@@ -4,9 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using DrDotnet.Tests.Simulations;
+using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -29,9 +28,9 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Lists_Duplicated_Strings()
     {
-        Logger logger = new();
-        SessionsDiscovery sessionsDiscovery = new(logger);
-        Profiler profiler = GetProfiler();
+        Logger logger = new Logger();
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
+        ProfilerInfo profiler = GetProfiler();
 
         List<string> list = new();
         for (int i = 0; i < 666; i++)
@@ -39,9 +38,9 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
             list.Add(new string('6',6));
         }
 
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 

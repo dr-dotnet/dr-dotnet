@@ -25,26 +25,122 @@ use crate::{
 use std::{mem::MaybeUninit, ptr};
 use uuid::Uuid;
 use widestring::U16CString;
+use std::slice;
+use crate::*;
 
 #[derive(Clone)]
-pub struct ProfilerInfo {
+pub struct ClrProfilerInfo {
     info: *const FFICorProfilerInfo,
 }
 
-unsafe impl Send for ProfilerInfo {}
-
-impl ProfilerInfo {
-    pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
-        ProfilerInfo {
-            info: cor_profiler_info,
-        }
-    }
-    fn info(&self) -> &FFICorProfilerInfo {
-        unsafe { self.info.as_ref().unwrap() }
+impl Default for ClrProfilerInfo {
+    fn default() -> Self {
+        Self { info: core::ptr::null() }
     }
 }
 
-impl CorProfilerInfo for ProfilerInfo {
+unsafe impl Send for ClrProfilerInfo {}
+
+impl ClrProfilerInfo {
+
+    pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
+        ClrProfilerInfo {
+            info: cor_profiler_info,
+        }
+    }
+
+    fn info(&self) -> &FFICorProfilerInfo {
+        unsafe { self.info.as_ref().unwrap() }
+    }
+
+    pub fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
+        match self.get_module_metadata(module_id, CorOpenFlags::ofRead) {
+            Ok(metadata) =>
+            match metadata.get_type_def_props(td) {
+                Ok(type_props) => type_props.name,
+                Err(hresult) => {
+                    warn!("metadata.get_type_def_props({}) failed (0x{})", td, format!("{:01$x}", hresult, 8));
+                    "unknown_0002".to_owned()
+                }
+            }, 
+            Err(hresult) => {
+                warn!("info.get_module_metadata({}) failed (0x{})", module_id, format!("{:01$x}", hresult, 8));
+                "unknown_0001".to_owned()
+            }
+        }
+    }
+
+    pub unsafe fn get_method_name(clr_profiler_info: &ClrProfilerInfo, method_id: FunctionID) -> String {
+        match clr_profiler_info.get_token_and_metadata_from_function(method_id) {
+            Ok(f) =>
+            match f.metadata_import.get_method_props(f.token) {
+                Ok(method_props) => method_props.name,
+                Err(hresult) => {
+                    warn!("metadata_import.get_method_props({}) failed (0x{})", f.token, format!("{:01$x}", hresult, 8));
+                    "unknown_0004".to_owned()
+                }
+            },
+            Err(hresult) => {
+                warn!("info.get_token_and_metadata_from_function({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                "unknown_0003".to_owned()
+            }
+        }
+    }
+
+    pub unsafe fn get_full_method_name(&self, method_id: FunctionID) -> String {
+        match self.get_function_info(method_id) {
+            Ok(function_info) =>
+            match self.get_token_and_metadata_from_function(method_id) {
+                Ok(f) =>
+                match f.metadata_import.get_method_props(f.token) {
+                    Ok(method_props) => format!("{}.{}", self.get_type_name(function_info.module_id, method_props.class_token), method_props.name),
+                    Err(hresult) => {
+                        warn!("metadata_import.get_method_props({}) failed (0x{})", f.token, format!("{:01$x}", hresult, 8));
+                        "unknown_0004".to_owned()
+                    }
+                },
+                Err(hresult) => {
+                    warn!("info.get_token_and_metadata_from_function({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                    "unknown_0003".to_owned()
+                }
+            },
+            Err(hresult) => {
+                warn!("info.get_function_info({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                "unknown_0002".to_owned()
+            }
+        }
+    }
+
+    pub fn get_gc_gen(generation_collected: &[ffi::BOOL]) -> i8 {
+        let mut max_gen: i8 = -1;
+        for gen in generation_collected {
+            if *gen == 1 {
+                max_gen += 1;
+            }
+        }
+        return max_gen;
+    }
+
+    pub fn get_string_value(str_layout: &StringLayout, object_id: &ObjectID) -> String {
+        
+        let ptr = (*object_id + str_layout.buffer_offset as usize) as *const u16;
+        let len = (*object_id + str_layout.string_length_offset as usize) as *const DWORD;
+        // Could also be written as
+        // let ptr = (*object_id as *const u8).offset(str_layout.buffer_offset as isize) as *const u16;
+        // let len = (*object_id as *const u8).offset(str_layout.string_length_offset as isize) as *const DWORD;
+        
+        let slice = unsafe { slice::from_raw_parts(ptr, *len as usize) };
+        String::from_utf16_lossy(slice).to_owned()
+        
+        // TODO: Benchmark widestring::U16CString::from_ptr_unchecked against String::from_utf16_lossy
+        // unsafe {
+        //     let str_len: u32 = *len_ptr;
+        //     return widestring::U16CString::from_ptr_unchecked(str_ptr, str_len as usize).to_string_lossy()
+        // };
+    }
+}
+
+impl CorProfilerInfo for ClrProfilerInfo {
     fn get_class_from_object(&self, object_id: ObjectID) -> Result<ClassID, HRESULT> {
         let mut class_id = MaybeUninit::uninit();
         let hr = unsafe {
@@ -548,7 +644,7 @@ impl CorProfilerInfo for ProfilerInfo {
     }
 }
 
-impl CorProfilerInfo2 for ProfilerInfo {
+impl CorProfilerInfo2 for ClrProfilerInfo {
     fn do_stack_snapshot(
         &self,
         thread: ThreadID,
@@ -1082,7 +1178,7 @@ impl CorProfilerInfo2 for ProfilerInfo {
     }
 }
 
-impl CorProfilerInfo3 for ProfilerInfo {
+impl CorProfilerInfo3 for ClrProfilerInfo {
     fn enum_jited_functions(&self) -> Result<&mut CorProfilerFunctionEnum, HRESULT> {
         let mut function_enum = MaybeUninit::uninit();
         let hr = unsafe { self.info().EnumJITedFunctions(function_enum.as_mut_ptr()) };
@@ -1456,7 +1552,7 @@ impl CorProfilerInfo3 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo4 for ProfilerInfo {
+impl CorProfilerInfo4 for ClrProfilerInfo {
     fn enum_threads(&self) -> Result<&mut CorProfilerThreadEnum, HRESULT> {
         let mut thread_enum = MaybeUninit::uninit();
         let hr = unsafe { self.info().EnumThreads(thread_enum.as_mut_ptr()) };
@@ -1667,7 +1763,7 @@ impl CorProfilerInfo4 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo5 for ProfilerInfo {
+impl CorProfilerInfo5 for ClrProfilerInfo {
     fn get_event_mask_2(&self) -> Result<EventMask2, HRESULT> {
         let mut events_low = MaybeUninit::uninit();
         let mut events_high = MaybeUninit::uninit();
@@ -1701,7 +1797,7 @@ impl CorProfilerInfo5 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo6 for ProfilerInfo {
+impl CorProfilerInfo6 for ClrProfilerInfo {
     fn enum_ngen_module_methods_inlining_this_method(
         &self,
         inliners_module_id: ModuleID,
@@ -1733,7 +1829,7 @@ impl CorProfilerInfo6 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo7 for ProfilerInfo {
+impl CorProfilerInfo7 for ClrProfilerInfo {
     fn apply_metadata(&self, module_id: ModuleID) -> Result<(), HRESULT> {
         let hr = unsafe { self.info().ApplyMetaData(module_id) };
         match hr {
@@ -1782,7 +1878,7 @@ impl CorProfilerInfo7 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo8 for ProfilerInfo {
+impl CorProfilerInfo8 for ClrProfilerInfo {
     fn is_function_dynamic(&self, function_id: FunctionID) -> Result<bool, HRESULT> {
         let mut is_dynamic = MaybeUninit::uninit();
         let hr = unsafe {
@@ -1872,7 +1968,7 @@ impl CorProfilerInfo8 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo9 for ProfilerInfo {
+impl CorProfilerInfo9 for ClrProfilerInfo {
     fn get_native_code_start_addresses(
         &self,
         function_id: FunctionID,
@@ -1974,7 +2070,7 @@ impl CorProfilerInfo9 for ProfilerInfo {
         }
     }
 }
-impl CorProfilerInfo10 for ProfilerInfo {
+impl CorProfilerInfo10 for ClrProfilerInfo {
     fn enumerate_object_references(
         &self,
         object_id: ObjectID,

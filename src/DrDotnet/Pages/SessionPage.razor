@@ -22,7 +22,7 @@
             <h4 class="mat-h4">@Session.ProcessName</h4>
             <h5 class="mat-h5">@Session.Timestamp</h5>
         </div>
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="ProfilerId: @Session.Profiler.ProfilerId">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="ProfilerId: @Session.Profiler.Uuid">
             <h4 class="mat-h4">Profiler</h4>
             <h5 class="mat-h5">@Session.Profiler.Name</h5>
             @Session.Profiler.Description
@@ -49,8 +49,8 @@
     [Parameter]
     public string SessionId { get; set; }
 
-    private Session _session;
-    public Session Session {
+    private SessionInfo _session;
+    public SessionInfo Session {
         get
         {
             if (_session== null)

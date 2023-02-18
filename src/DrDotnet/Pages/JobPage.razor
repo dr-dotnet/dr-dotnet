@@ -4,6 +4,7 @@
 
 @inject NavigationManager _navigationManager
 @inject IProfilerDiscovery _profilerDiscovery
+@inject IProcessDiscovery _processDiscovery
 @inject ISessionDiscovery _sessionDiscovery
 @inject ILogger _logger
 
@@ -16,13 +17,44 @@
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6">
             <h4 class="mat-h4">@_profiler.Name</h4>
         </div>
+        
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6 mat-body1">
-            @_profiler.ProfilerId
+            @_profiler.Uuid
         </div>
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
             @_profiler.Description
         </div>
+        
+        @if (_profiler.Parameters.Count > 0)
+        {
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
+                <h4 class="mat-h5">Parameters</h4>
+            </div>
+            
+            @foreach (ProfilerParameter parameter in _profiler.Parameters)
+            {
+                <p>
+                    <MatTooltip Tooltip="@parameter.Description">           
+                        @switch (parameter.Type)
+                        {
+                            case ParameterType.String:
+                                <MatTextField RefBack="@context" @bind-Value="@parameter.Value" Label="@parameter.Name"></MatTextField> 
+                                break;
+                            case ParameterType.Int:
+                                <MatTextField RefBack="@context" @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MatTextField>
+                                break;
+                            case ParameterType.Float:
+                                <MatTextField RefBack="@context" @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MatTextField>
+                                break;
+                            case ParameterType.Boolean:
+                                <MatCheckbox RefBack="@context" @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MatCheckbox>
+                                break;
+                        }       
+                    </MatTooltip>
+                </p>
+            }
+        }
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
             @if (Started)
@@ -48,7 +80,7 @@
 @code {
 
     private bool Started { get; set; }
-    private Session Session { get; set; }
+    private SessionInfo Session { get; set; }
 
     [Parameter]
     public string ProcessId { get; set; }
@@ -56,13 +88,13 @@
     [Parameter]
     public string ProfilerId { get; set; }
 
-    public Profiler _profiler;
+    public ProfilerInfo _profiler;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.ProfilerId.ToString() == ProfilerId).First();
+        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.Uuid == ProfilerId).First();
     }
 
     private async Task OnRunAnalysisClicked(object data)
@@ -72,9 +104,10 @@
         try
         {
             _logger.LogInformation("Start profiling!");
-            var sessionId = _profiler.StartProfilingSession(int.Parse(ProcessId), _logger);
+            var session = ProfilingExtensions.StartProfilingSession(_profiler, _processDiscovery.GetProcessInfoFromPid(int.Parse(ProcessId)), _logger);
             _logger.LogInformation("Successfully attached to process!");
-            Session = await _sessionDiscovery.AwaitUntilCompletion(sessionId);
+            await session.AwaitUntilCompletion();
+            Session = session;
         }
         catch (Exception e)
         {

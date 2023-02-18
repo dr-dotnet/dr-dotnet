@@ -75,4 +75,14 @@ public class ProcessDiscovery : IProcessDiscovery
 
         return dotnetProcesses;
     }
+
+    public ProcessInfo GetProcessInfoFromPid(int pid)
+    {
+        if (TryGetManagedAssemblyNameFromPid(pid, out string assemblyName, out string version))
+        {
+            return new ProcessInfo { Pid = pid, ManagedAssemblyName = assemblyName, Version = version };
+        }
+
+        return null;
+    }
 }

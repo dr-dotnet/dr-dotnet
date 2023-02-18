@@ -4,14 +4,16 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_EnableDiagnostics": "0"
       }
     },
     "DrDotnet.Web": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_EnableDiagnostics": "0"
       },
       "dotnetRunMessages": "true",
       "applicationUrl": "http://localhost:92"
@@ -22,7 +24,8 @@
       "launchUrl": "http://localhost:92",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:92"
+        "ASPNETCORE_URLS": "http://localhost:92",
+        "DOTNET_EnableDiagnostics": "0"
       },
       "distributionName": ""
     }

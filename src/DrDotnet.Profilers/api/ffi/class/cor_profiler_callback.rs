@@ -3,7 +3,7 @@ use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, Co
 use crate::{
     ffi::*,
     traits::CorProfilerCallback9,
-    ProfilerInfo,
+    ClrProfilerInfo,
 };
 use std::{
     ffi::c_void,
@@ -219,7 +219,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             // TODO: Add logging to indicate we got a null ptr for cor_profiler_info
             return E_FAIL;
         }
-        let profiler_info = ProfilerInfo::new(pICorProfilerInfoUnk);
+        let profiler_info = ClrProfilerInfo::new(pICorProfilerInfoUnk);
 
         let result = self.profiler.initialize(profiler_info);
         match result {
@@ -1045,7 +1045,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             // TODO: Add logging to indicate we got a null ptr for cor_profiler_info
             return E_FAIL;
         }
-        let profiler_info = ProfilerInfo::new(pCorProfilerInfoUnk);
+        let profiler_info = ClrProfilerInfo::new(pCorProfilerInfoUnk);
 
         let result = self
             .profiler

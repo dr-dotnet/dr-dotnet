@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -28,10 +29,10 @@ public class ExceptionsProfilerTests : ProfilerTests
     public async Task Profiler_Counts_Exceptions()
     {
         Logger logger = new Logger();
-        SessionsDiscovery sessionsDiscovery = new SessionsDiscovery(logger);
-        Profiler profiler = GetProfiler();
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
+        ProfilerInfo profiler = GetProfiler();
 
-        Guid sessionId = profiler.StartProfilingSession(Process.GetCurrentProcess().Id, logger);
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
         // Intentionally throws (handled) exceptions
         ThreadPool.QueueUserWorkItem(async _ =>
@@ -45,7 +46,7 @@ public class ExceptionsProfilerTests : ProfilerTests
             }
         });
 
-        var session = await sessionsDiscovery.AwaitUntilCompletion(sessionId);
+        await session.AwaitUntilCompletion();
 
         var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
 

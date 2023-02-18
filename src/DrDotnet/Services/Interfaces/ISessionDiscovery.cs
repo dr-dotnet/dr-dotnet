@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace DrDotnet
 {
     public interface ISessionDiscovery
     {
-        List<Session> GetSessions();
+        List<SessionInfo> GetSessions();
 
-        Session GetSession(Guid sessionId);
-
-        Task<Session> AwaitUntilCompletion(Guid sessionId);
+        SessionInfo GetSession(Guid sessionId);
     }
 }
