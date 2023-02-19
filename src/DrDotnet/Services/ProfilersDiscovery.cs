@@ -1,18 +1,11 @@
 ﻿using System.Collections.Generic;
 using DrDotnet.Utils;
-using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
 
 public class ProfilersDiscovery : IProfilerDiscovery
 {
-    private ILogger _logger;
-    private List<ProfilerInfo> _profilers;
-
-    public ProfilersDiscovery(ILogger logger)
-    {
-        _logger = logger;
-    }
+    private List<ProfilerInfo>? _profilers;
 
     public List<ProfilerInfo> GetProfilers(bool listUnreleasedProfilers = false)
     {

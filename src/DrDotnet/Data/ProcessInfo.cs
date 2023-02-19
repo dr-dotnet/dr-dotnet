@@ -2,7 +2,7 @@
 
 public class ProcessInfo
 {
-    public int Pid { get; init; }
-    public string ManagedAssemblyName { get; init; }
-    public string Version { get; init; }
+    public required int Id { get; init; }
+    public required string ManagedAssemblyName { get; init; }
+    public required string Version { get; init; }
 }

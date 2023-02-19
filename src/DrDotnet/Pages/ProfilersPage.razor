@@ -1,26 +1,13 @@
 ﻿@page "/profilers/{ProcessId:int}"
 
-@using DrDotnet.Utils;
-@using Microsoft.Diagnostics.NETCore.Client;
-@using System.IO;
+@inject IProfilerDiscovery ProfilersDiscovery;
+@inject NavigationManager NavigationManager;
 
-@inject IProfilerDiscovery _profilersDiscovery;
-@inject NavigationManager _navigationManager;
-@inject IJSRuntime _jsRuntime;
-
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
-
-<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Take Dump" OnClick="DownloadFileFromStream" Style="float: right;"></MatButton>
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
 <h3 class="mat-h3">Profilers</h3>
 
-@if (_profilers == null)
-{
-    <h3 class="mat-subtitle1">Listing available profilers...</h3>
-}
-else
-{
-    <MatTable Items="@_profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
+<MatTable Items="@Profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Name</th>
         <th style="min-width:300px;">Id</th>
@@ -31,46 +18,28 @@ else
         <td>@context.Uuid</td>
         <td>@context.Description</td>
     </MatTableRow>
-    </MatTable>
-}
+</MatTable>
 
 @code {
-    private List<ProfilerInfo> _profilers;
+    private IList<ProfilerInfo> Profilers { get; set; } = Array.Empty<ProfilerInfo>();
 
     [Parameter]
-    public int ProcessId { get; set; }
+    public required int ProcessId { get; init; }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-         _profilers = _profilersDiscovery.GetProfilers();
+        Profilers = ProfilersDiscovery.GetProfilers();
     }
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/job/{ProcessId}/{(data as ProfilerInfo)!.Uuid}", true);
+        NavigationManager.NavigateTo($"/job/{ProcessId}/{(data as ProfilerInfo)!.Uuid}", true);
     }
 
-    public void OnBackClick(object data)
+    private void OnBackClick(object data)
     {
-        _navigationManager.NavigateTo("/processes", true);
-    }
-    
-    private async Task DownloadFileFromStream()
-    {
-        var client = new DiagnosticsClient(ProcessId);
-
-        var fileName = $"coredump_{DateTime.UtcNow}.dmp";
-
-        var dumpFilePath = Path.Combine(PathUtils.DrDotnetBaseDirectory, fileName);
-        
-        client.WriteDump(DumpType.Normal, dumpFilePath, WriteDumpFlags.None);
-        
-        Stream fileStream = File.OpenRead(dumpFilePath);
-            
-        using var streamRef = new DotNetStreamReference(stream: fileStream, leaveOpen: true);
-
-        await _jsRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        NavigationManager.NavigateTo("/processes", true);
     }
 } 

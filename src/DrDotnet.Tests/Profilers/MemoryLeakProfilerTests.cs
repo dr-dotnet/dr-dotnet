@@ -12,7 +12,7 @@ namespace DrDotnet.Tests.Profilers;
 
 public class MemoryLeakProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E83}");
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E83}");
 
     [Test]
     [Order(0)]

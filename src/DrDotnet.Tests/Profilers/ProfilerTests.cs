@@ -5,12 +5,11 @@ namespace DrDotnet.Tests.Profilers;
 
 public abstract class ProfilerTests
 {
-    public abstract Guid ProfilerGuid { get; }
+    protected abstract Guid ProfilerGuid { get; }
 
-    public ProfilerInfo GetProfiler()
+    protected ProfilerInfo GetProfiler()
     {
-        Logger logger = new Logger();
-        ProfilersDiscovery profilersDiscovery = new ProfilersDiscovery(logger);
+        ProfilersDiscovery profilersDiscovery = new ProfilersDiscovery();
         var profilers = profilersDiscovery.GetProfilers(true);
         var profiler = profilers.FirstOrDefault(x => x.Guid == ProfilerGuid);
 

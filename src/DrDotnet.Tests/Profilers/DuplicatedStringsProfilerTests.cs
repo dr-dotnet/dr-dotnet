@@ -11,7 +11,7 @@ namespace DrDotnet.Tests.Profilers;
 
 public class DuplicatedStringsProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{bdaba522-104c-4343-8952-036bed81527d}");
+    protected override Guid ProfilerGuid => new Guid("{bdaba522-104c-4343-8952-036bed81527d}");
 
     [Test]
     [Order(0)]

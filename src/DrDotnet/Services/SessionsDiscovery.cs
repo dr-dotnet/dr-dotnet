@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -9,7 +8,7 @@ namespace DrDotnet;
 
 public class SessionsDiscovery : ISessionDiscovery
 {
-    private ILogger _logger;
+    private readonly ILogger _logger;
 
     public SessionsDiscovery(ILogger logger)
     {

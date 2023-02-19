@@ -11,7 +11,7 @@ namespace DrDotnet.Tests.Profilers;
 
 public class GCSurvivorsProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E86}");
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E86}");
 
     [Test]
     [Order(0)]

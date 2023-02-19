@@ -1,15 +1,16 @@
 ﻿@using Microsoft.Extensions.Logging
 @using DrDotnet.Utils
+
 @inherits LayoutComponentBase
 
-@inject ILogger _logger;
+@inject ILogger Logger;
 
 <div class="page">
     <div class="main">
         <div class="top-row px-4">
             <b style="flex-grow: 1;">Dr.Dotnet</b>
             <i>Version @VersionUtils.CurrentVersion</i>
-            <MatButton OnClick="@OpenDialog" Icon="receipt" Style="">Logs</MatButton>
+            <MatButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MatButton>
             <MatButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MatButton>
         </div>
 
@@ -19,43 +20,37 @@
     </div>
 </div>
 
-<MatDialog @bind-IsOpen="@dialogIsOpen">
+<MatDialog @bind-IsOpen="@IsLogDialogOpen">
     <MatDialogTitle>Logs</MatDialogTitle>
     <MatDialogContent>
-        <textarea id="logs" style="height: 70vh; width: 85vw;" @bind="AllLogs" @bind:event="oninput" />
+        <textarea id="logs" style="height: 70vh; width: 85vw;" @bind="AllLogs" @bind:event="oninput"></textarea>
     </MatDialogContent>
     <MatDialogActions>
-        <MatButton OnClick="@(e => { dialogIsOpen = false; })">Close</MatButton>
+        <MatButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MatButton>
     </MatDialogActions>
 </MatDialog>
  
 @code
 {
-    bool dialogIsOpen = false;
-    string name = null;
+    private bool IsLogDialogOpen { get; set; } = false;
 
-    void OpenDialog()
+    void OpenLogs()
     {
-        dialogIsOpen = true;
+        IsLogDialogOpen = true;
     }
 
-    void OkClick()
-    {
-        dialogIsOpen = false;
-    }
-
-    public string AllLogs
+    private string? AllLogs
     {
         get
         {
-            return (_logger as Logger)?.GetAllLogs();
+            return (Logger as Logger)?.GetAllLogs();
         }
         set { /* readonly */ }
     }
 
     private void OnMessageLogged(string message)
     {
-        if (dialogIsOpen)
+        if (IsLogDialogOpen)
         {
             InvokeAsync(StateHasChanged);
         }
@@ -66,8 +61,7 @@
         base.OnInitialized();
 
         // This is dogshit but I'll adress that later
-        Logger logger = _logger as Logger;
-        if (logger != null)
+        if (Logger is Logger logger)
         {
             logger.MessageLogged += OnMessageLogged;
         }
