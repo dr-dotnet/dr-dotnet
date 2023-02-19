@@ -1,37 +1,27 @@
 ﻿@page "/processes"
 
-@inject IProcessDiscovery _processDiscovery
-@inject NavigationManager _navigationManager
+@inject IProcessDiscovery ProcessDiscovery
+@inject NavigationManager NavigationManager
 
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
 <h3 class="mat-h3">Dotnet Processes</h3>
 
-@if (_processes == null)
-{
-    <div class="mat-elevation-z5" style="padding: 20px;">
-        <h3 class="mat-subtitle1">Scanning processes...</h3>
-        <MatProgressBar Progress="@Progress"></MatProgressBar>
-    </div>
-}
-else
-{
-    <MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
+<MatTable Items="@_processes" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Id</th>
         <th>Managed Assembly Name</th>
         <th>Runtime Version</th>
     </MatTableHeader>
     <MatTableRow>
-        <td>@context.Pid</td>
+        <td>@context.Id</td>
         <td>@context.ManagedAssemblyName</td>
         <td>@context.Version</td>
     </MatTableRow>
-    </MatTable>
-}
+</MatTable>
 
 @code {
-    private List<ProcessInfo> _processes;
+    private IList<ProcessInfo> _processes = Array.Empty<ProcessInfo>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -42,7 +32,7 @@ else
 
     private void ScanProcesses()
     {
-        _processes = _processDiscovery.GetDotnetProcesses(OnProgress);
+        _processes = ProcessDiscovery.GetDotnetProcesses(OnProgress);
 
         StateHasChanged();
     }
@@ -57,11 +47,11 @@ else
 
     private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/profilers/{(data as ProcessInfo).Pid}", true);
+        NavigationManager.NavigateTo($"/profilers/{(data as ProcessInfo)!.Id}", true);
     }
 
-    public void OnBackClick(object data)
+    private void OnBackClick(object data)
     {
-        _navigationManager.NavigateTo("/", true);
+        NavigationManager.NavigateTo("/", true);
     }
 } 

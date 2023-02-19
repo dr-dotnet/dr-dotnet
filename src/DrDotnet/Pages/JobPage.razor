@@ -1,38 +1,38 @@
-﻿@page "/job/{ProcessId}/{ProfilerId}"
+﻿@page "/job/{ProcessId:int}/{ProfilerId:guid}"
+
 @using DrDotnet.Utils;
 @using Microsoft.Extensions.Logging
 
-@inject NavigationManager _navigationManager
-@inject IProfilerDiscovery _profilerDiscovery
-@inject IProcessDiscovery _processDiscovery
-@inject ISessionDiscovery _sessionDiscovery
-@inject ILogger _logger
+@inject NavigationManager NavigationManager
+@inject IProfilerDiscovery ProfilerDiscovery
+@inject IProcessDiscovery ProcessDiscovery
+@inject ILogger Logger
 
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
 <h3 class="mat-h3">Job</h3>
 
 <div class="mat-layout-grid">
     <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6">
-            <h4 class="mat-h4">@_profiler.Name</h4>
+            <h4 class="mat-h4">@Profiler.Name</h4>
         </div>
         
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6 mat-body1">
-            @_profiler.Uuid
+            @Profiler.Uuid
         </div>
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
-            @_profiler.Description
+            @Profiler.Description
         </div>
         
-        @if (_profiler.Parameters.Count > 0)
+        @if (Profiler.Parameters.Count > 0)
         {
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
                 <h4 class="mat-h5">Parameters</h4>
             </div>
             
-            @foreach (ProfilerParameter parameter in _profiler.Parameters)
+            @foreach (ProfilerParameter parameter in Profiler.Parameters)
             {
                 <p>
                     <MatTooltip Tooltip="@parameter.Description">           
@@ -57,21 +57,21 @@
         }
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
-            @if (Started)
+            @switch (State)
             {
-                <h3 class="mat-subtitle1">Analysis in progress, please wait...</h3>
-                <MatProgressBar Indeterminate="true"></MatProgressBar>
-            }
-            else
-            {
-                if (Session != null)
-                {
-                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="View session results" OnClick="OnViewSessionResultsClicked" Style="float: right;"></MatButton>
-                }
-                else
-                {
-                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"></MatButton>
-                }
+                case JobState.NotStarted:
+                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"/>
+                    break;
+                case JobState.InProgress:
+                    <h3 class="mat-subtitle1">Analysis in progress, please wait...</h3>
+                    <MatProgressBar Indeterminate="true"/>
+                    break;
+                case JobState.Completed:
+                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="View session results" OnClick="OnViewSessionResultsClicked" Style="float: right;"/>
+                    break;
+                case JobState.Failed:
+                    <h3 class="mat-subtitle1">Job failed. Check out logs for more information.</h3>
+                    break;
             }
         </div>
     </div>
@@ -79,51 +79,69 @@
 
 @code {
 
-    private bool Started { get; set; }
-    private SessionInfo Session { get; set; }
+    [Parameter]
+    public required int ProcessId { get; init; }
 
     [Parameter]
-    public string ProcessId { get; set; }
+    public required Guid ProfilerId { get; init; }
 
-    [Parameter]
-    public string ProfilerId { get; set; }
+    private JobState State { get; set; } = JobState.NotStarted;
+    private SessionInfo? Session { get; set; }
 
-    public ProfilerInfo _profiler;
+    private ProfilerInfo? _profiler;
+
+    // ReSharper disable once ConvertToAutoProperty
+    private ProfilerInfo Profiler
+    {
+        get => _profiler!;
+        set => _profiler = value;
+    }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
-        _profiler = _profilerDiscovery.GetProfilers().Where(x => x.Uuid == ProfilerId).First();
+        
+        Profiler = ProfilerDiscovery.GetProfilers().FirstOrDefault(x => x.Guid == ProfilerId)!;
     }
 
     private async Task OnRunAnalysisClicked(object data)
     {
-        Started = true;
-
         try
         {
-            _logger.LogInformation("Start profiling!");
-            var session = ProfilingExtensions.StartProfilingSession(_profiler, _processDiscovery.GetProcessInfoFromPid(int.Parse(ProcessId)), _logger);
-            _logger.LogInformation("Successfully attached to process!");
-            await session.AwaitUntilCompletion();
-            Session = session;
+            ProcessInfo process = ProcessDiscovery.GetProcessInfoFromPid(ProcessId)!;
+
+            State = JobState.InProgress;
+            
+            // Todo check profiler and check process
+            Logger.LogInformation("Start profiling!");
+            Session = ProfilingExtensions.StartProfilingSession(Profiler, process, Logger);
+            Logger.LogInformation("Successfully attached to process!");
+            await Session.AwaitUntilCompletion();
+            
+            State = JobState.Completed;
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Could not attach to process {ProcessId}", ProcessId);
+            State = JobState.Failed;
+            Logger.LogError(e, "Could not attach to process {ProcessId}", ProcessId);
         }
-
-        Started = false;
     }
 
-    public void OnViewSessionResultsClicked(object data)
+    private void OnViewSessionResultsClicked(object data)
     {
-        _navigationManager.NavigateTo($"/sessions/{Session.SessionId}", true);
+        NavigationManager.NavigateTo($"/sessions/{Session!.Guid}", true);
     }
 
-    public void OnBackClick(object data)
+    private void OnBackClick(object data)
     {
-        _navigationManager.NavigateTo($"/profilers/{ProcessId}", true);
+        NavigationManager.NavigateTo($"/profilers/{ProcessId}", true);
+    }
+    
+    public enum JobState
+    {
+        NotStarted,
+        InProgress,
+        Completed,
+        Failed
     }
 } 

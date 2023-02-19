@@ -1,6 +1,7 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ public class ProcessDiscovery : IProcessDiscovery
         _logger = logger;
     }
 
-    private bool TryGetManagedAssemblyNameFromPid(int pid, out string assemblyName, out string version)
+    private bool TryGetManagedAssemblyNameFromPid(int pid, [NotNullWhen(true)] out string? assemblyName, [NotNullWhen(true)] out string? version)
     {
         assemblyName = null;
         version = null;
@@ -26,12 +27,12 @@ public class ProcessDiscovery : IProcessDiscovery
             // Todo: Fill a PR on dotnet/diagnostics to open up this API and avoid relying on internal members
             var client = new DiagnosticsClient(pid);
             var methodInfo = typeof(DiagnosticsClient).GetMethod("GetProcessInfo", BindingFlags.Instance | BindingFlags.NonPublic);
-            var processInfo = methodInfo.Invoke(client, null);
-            var assemblyNameProperty = processInfo.GetType().GetProperty("ManagedEntrypointAssemblyName", BindingFlags.Instance | BindingFlags.Public);
+            var processInfo = methodInfo!.Invoke(client, null);
+            var assemblyNameProperty = processInfo!.GetType().GetProperty("ManagedEntrypointAssemblyName", BindingFlags.Instance | BindingFlags.Public);
             var clrProductVersionProperty = processInfo.GetType().GetProperty("ClrProductVersionString", BindingFlags.Instance | BindingFlags.Public);
             
-            assemblyName = assemblyNameProperty.GetGetMethod().Invoke(processInfo, null) as string;
-            version = clrProductVersionProperty.GetGetMethod().Invoke(processInfo, null) as string;
+            assemblyName = (assemblyNameProperty!.GetGetMethod()!.Invoke(processInfo, null) as string)!;
+            version = (clrProductVersionProperty!.GetGetMethod()!.Invoke(processInfo, null) as string)!;
 
             return true;
         }
@@ -58,12 +59,12 @@ public class ProcessDiscovery : IProcessDiscovery
             
                 _logger.LogInformation($"- Process Id: {processes[i]}");
                 
-                if (!TryGetManagedAssemblyNameFromPid(processes[i], out string assemblyName, out string version))
+                if (!TryGetManagedAssemblyNameFromPid(processes[i], out string? assemblyName, out string? version))
                 {
                     continue;
                 }
 
-                dotnetProcesses.Add(new ProcessInfo { Pid = processes[i], ManagedAssemblyName = assemblyName, Version = version });
+                dotnetProcesses.Add(new ProcessInfo { Id = processes[i], ManagedAssemblyName = assemblyName, Version = version });
             }
         
             _logger.LogInformation("Finished listing dotnet processes.");
@@ -76,11 +77,11 @@ public class ProcessDiscovery : IProcessDiscovery
         return dotnetProcesses;
     }
 
-    public ProcessInfo GetProcessInfoFromPid(int pid)
+    public ProcessInfo? GetProcessInfoFromPid(int pid)
     {
-        if (TryGetManagedAssemblyNameFromPid(pid, out string assemblyName, out string version))
+        if (TryGetManagedAssemblyNameFromPid(pid, out string? assemblyName, out string? version))
         {
-            return new ProcessInfo { Pid = pid, ManagedAssemblyName = assemblyName, Version = version };
+            return new ProcessInfo { Id = pid, ManagedAssemblyName = assemblyName, Version = version };
         }
 
         return null;

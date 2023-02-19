@@ -1,16 +1,16 @@
 ﻿@page "/"
 
-@inject ISessionDiscovery _sessionDiscovery;
-@inject NavigationManager _navigationManager
+@inject ISessionDiscovery SessionDiscovery;
+@inject NavigationManager NavigationManager
 
-<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"></MatButton>
+<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"/>
 
 <h3 class="mat-h3">Recent Sessions</h3>
 
-<MatTable Items="@_sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
+<MatTable Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
         <th>Process</th>
-        <th style="min-width:300px;">Date</th>
+        <th style="min-width:300px;">Date (UTC)</th>
         <th>Profiler</th>
     </MatTableHeader>
     <MatTableRow>
@@ -22,22 +22,22 @@
 
 @code
 {
-    IEnumerable<SessionInfo> _sessions;
+    private IEnumerable<SessionInfo> Sessions { get; set; } = Array.Empty<SessionInfo>();
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        _sessions = _sessionDiscovery.GetSessions().OrderByDescending(x => x.Timestamp);
+        Sessions = SessionDiscovery.GetSessions().OrderByDescending(x => x.Timestamp);
     }
 
-    public void OnSelectionChanged(object data)
+    private void OnSelectionChanged(object data)
     {
-        _navigationManager.NavigateTo($"/sessions/{(data as SessionInfo).SessionId}", true);
+        NavigationManager.NavigateTo($"/sessions/{(data as SessionInfo)!.Guid}", true);
     }
 
-    public void OnNewSessionClicked(object data)
+    private void OnNewSessionClicked(object data)
     {
-        _navigationManager.NavigateTo("/processes/", true);
+        NavigationManager.NavigateTo("/processes/", true);
     }
 }

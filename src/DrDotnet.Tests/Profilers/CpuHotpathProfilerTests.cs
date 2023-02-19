@@ -11,7 +11,7 @@ namespace DrDotnet.Tests.Profilers;
 
 public class CpuHotpathProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-A485B2056E71}");
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-A485B2056E71}");
 
     [Test]
     [Order(0)]

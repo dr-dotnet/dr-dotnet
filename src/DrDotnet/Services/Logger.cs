@@ -6,7 +6,7 @@ namespace DrDotnet;
 
 public class Logger : ILogger
 {
-    public event Action<string> MessageLogged;
+    public event Action<string>? MessageLogged;
 
     private StringBuilder _allLogs = new();
 
@@ -37,7 +37,7 @@ public class Logger : ILogger
         var logMessage = $"[{logLevel}][{DateTime.Now}] {message}\n";
         if (exception != null)
         {
-            logMessage += exception.ToString() +"\n";
+            logMessage += exception +"\n";
         }
         
         MessageLogged?.Invoke(logMessage);

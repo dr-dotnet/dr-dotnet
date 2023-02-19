@@ -11,7 +11,7 @@ namespace DrDotnet.Tests.Profilers;
 
 public class AllocationByClassProfilerTests : ProfilerTests
 {
-    public override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E84}");
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E84}");
 
     [Test]
     public void Runtime_Version_Is_At_Least_6_0_3()

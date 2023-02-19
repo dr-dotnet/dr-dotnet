@@ -1,24 +1,22 @@
-﻿@page "/sessions/{SessionId}"
+﻿@page "/sessions/{SessionId:guid}"
 
-@inject ILogger _logger;
-@inject ISessionDiscovery _sessionDiscovery;
-@inject NavigationManager _navigationManager;
-@inject IJSRuntime _jsRuntime;
+@inject ISessionDiscovery SessionDiscovery;
+@inject NavigationManager NavigationManager;
+@inject IJSRuntime JsRuntime;
 
 @using Markdig;
 @using System.IO;
 @using System.IO.Compression;
-@using Microsoft.Extensions.Logging;
 
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"></MatIconButton>
+<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
-<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Download" OnClick="DownloadFileFromStream" Style="float: right;"></MatButton>
+<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Download" OnClick="DownloadFileFromStream" Style="float: right;"/>
 
 <h3 class="mat-h3">Session</h3>
 
 <div class="mat-layout-grid">
     <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
-        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="SessionId: @Session.SessionId">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="Guid: @Session.Guid">
             <h4 class="mat-h4">@Session.ProcessName</h4>
             <h5 class="mat-h5">@Session.Timestamp</h5>
         </div>
@@ -47,21 +45,12 @@
 @code {
 
     [Parameter]
-    public string SessionId { get; set; }
+    public required Guid SessionId { get; init; }
 
-    private SessionInfo _session;
-    public SessionInfo Session {
-        get
-        {
-            if (_session== null)
-            {
-                _session = _sessionDiscovery.GetSession(new Guid(SessionId));
-            }
-            return _session;
-        }
-    }
+    private SessionInfo? _session;
+    private SessionInfo Session => _session ??= SessionDiscovery.GetSession(SessionId);
 
-    public static MarkupString MarkdownFileToMarkup(FileInfo markdownFile)
+    private static MarkupString MarkdownFileToMarkup(FileInfo markdownFile)
     {
         var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
@@ -70,9 +59,9 @@
         return new MarkupString(htmlContent);
     }
 
-    public void OnBackClick(object data)
+    private void OnBackClick(object data)
     {
-        _navigationManager.NavigateTo("/", true);
+        NavigationManager.NavigateTo("/", true);
     }
     
     private async Task DownloadFileFromStream()
@@ -90,6 +79,6 @@
         
         using var streamRef = new DotNetStreamReference(stream: memoryStream, leaveOpen: true);
 
-        await _jsRuntime.InvokeVoidAsync("downloadFileFromStream", $"session-{Session.SessionId}.zip", streamRef);
+        await JsRuntime.InvokeVoidAsync("downloadFileFromStream", $"session-{Session.Guid}.zip", streamRef);
     }
 }

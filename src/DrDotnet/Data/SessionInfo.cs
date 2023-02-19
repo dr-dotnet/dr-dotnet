@@ -18,16 +18,16 @@ public partial class SessionInfo
         Timestamp = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture);
     }
     
-    public Guid SessionId => new(Uuid);
+    public Guid Guid => new(Uuid);
 
     public DateTime TimestampDate => DateTime.Parse(Timestamp, CultureInfo.InvariantCulture);
 
     public IEnumerable<FileInfo> EnumerateFiles()
     {
-        return new FileInfo(Path).Directory.EnumerateFiles();
+        return new FileInfo(Path).Directory!.EnumerateFiles();
     }
 
-    public string Path => GetPath(SessionId);
+    public string Path => GetPath(Guid);
 
     public static SessionInfo FromPath(string sessionFilePath)
     {
@@ -42,7 +42,7 @@ public partial class SessionInfo
         var jsonString = File.ReadAllText(sessionFilePath);
         var session = JsonSerializer.Deserialize<SessionInfo>(jsonString, options);
 
-        return session;
+        return session!;
     }
     
     public static string GetPath(Guid sessionId)

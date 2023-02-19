@@ -1,6 +1,5 @@
 ﻿using Microsoft.Diagnostics.NETCore.Client;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -24,7 +23,7 @@ public static class ProfilingExtensions
         _ => throw new NotImplementedException()
     };
 
-    private static string TmpProfilerLibrary;
+    private static string? _tmpProfilerLibrary;
 
     /// <summary>
     /// Path of the profilers library in the shared temporary folder
@@ -32,7 +31,7 @@ public static class ProfilingExtensions
     /// <returns></returns>
     public static string GetTmpProfilerLibrary()
     {
-        if (TmpProfilerLibrary == null)
+        if (_tmpProfilerLibrary == null)
         {
             string profilerDll = GetLocalProfilerLibrary();
             string tmpProfilerDll = Path.Combine(PathUtils.DrDotnetBaseDirectory, ProfilerLibraryName);
@@ -43,9 +42,9 @@ public static class ProfilingExtensions
             File.Delete(tmpProfilerDll);
             File.Copy(profilerDll, tmpProfilerDll, false);
 
-            TmpProfilerLibrary = tmpProfilerDll;
+            _tmpProfilerLibrary = tmpProfilerDll;
         }
-        return TmpProfilerLibrary;
+        return _tmpProfilerLibrary;
     }
 
     /// <summary>
@@ -55,8 +54,8 @@ public static class ProfilingExtensions
     public static string GetLocalProfilerLibrary()
     {
         string strExeFilePath = Assembly.GetExecutingAssembly().Location;
-        string strWorkPath = Path.GetDirectoryName(strExeFilePath);
-        string profilerDll = Path.Combine(strWorkPath, ProfilerLibraryName);
+        string? strWorkPath = Path.GetDirectoryName(strExeFilePath);
+        string profilerDll = Path.Combine(strWorkPath!, ProfilerLibraryName);
         return profilerDll;
     }
 
@@ -67,14 +66,14 @@ public static class ProfilingExtensions
         logger.LogInformation("Profiler library path: '{profilerDll}'", profilerDll);
         logger.LogInformation("Profiler version: '{version}'", VersionUtils.CurrentVersion);
 
-        DiagnosticsClient client = new DiagnosticsClient(process.Pid);
+        DiagnosticsClient client = new DiagnosticsClient(process.Id);
 
         SessionInfo sessionInfo = new SessionInfo(profiler, process.ManagedAssemblyName);
         byte[] sessionInfoSerialized = sessionInfo.ToByteArray();
         
         client.AttachProfiler(TimeSpan.FromSeconds(10), profiler.Guid, profilerDll, sessionInfoSerialized);
 
-        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", profiler.Guid, sessionInfo.SessionId, process.Pid);
+        logger.LogInformation("Attached profiler {ProfilerId} with session {sessionId} to process {processId}", profiler.Guid, sessionInfo.Guid, process.Id);
 
         return sessionInfo;
     }

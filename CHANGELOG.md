@@ -1,3 +1,7 @@
+# 0.2.1
+- Enable Nullable Reference Types
+- Uniformize code style
+
 # 0.2.0
 - Allow parametrization of profilers
 - Switch from FFIDJI to rust-protobuf for interoperability
