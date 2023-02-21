@@ -124,15 +124,12 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
     }
 }
 
-impl CorProfilerCallback3 for DuplicatedStringsProfiler
-{
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
-    {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, profiler_info, client_data, client_data_length)
+impl CorProfilerCallback3 for DuplicatedStringsProfiler {
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
         let p_clone = self.clr().clone();
@@ -150,8 +147,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler
         Ok(())
     }
 
-    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
         let mut report = self.session_info.create_report("summary.md".to_owned());
 
         report.write_line(format!("# Duplicate strings Report"));
