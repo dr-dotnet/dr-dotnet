@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 use std::time::{Instant, Duration};
 use crate::api::*;
 
@@ -44,43 +45,10 @@ impl Profiler for RuntimePauseProfiler {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E85".to_owned(),
             name: "Runtime Profiler".to_owned(),
-            description: "Measures the impact of runtime pauses on response time".to_owned(),
+            description: "Lists runtime pauses and their durations (like blocking garbage collections)".to_owned(),
             is_released: true,
             ..std::default::Default::default()
         }
-    }
-}
-
-impl RuntimePauseProfiler {
-    fn get_durations(&self, interval: Duration) -> Vec<Duration> {
-        let mut current = self.profiling_start;
-        let mut last_start = self.gc_pauses[0].start;
-        let mut i: usize = 0;
-        let mut durations = Vec::new();
-        'outer: while current < self.profiling_end {
-            current = current.checked_add(interval).unwrap();
-            let mut duration= Duration::ZERO;
-            while last_start < current {
-                if self.gc_pauses[i].end < current {
-                    duration += self.gc_pauses[i].end - last_start;
-                    i += 1;
-                    if  i >= self.gc_pauses.len() {
-                        break 'outer
-                    }
-                    last_start = self.gc_pauses[i].start;
-                }
-                else
-                {
-                    duration += current - last_start;
-                    last_start = current;
-                }
-            }
-            durations.push(duration);
-        }
-        
-        durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-        return durations;
     }
 }
 
@@ -111,47 +79,35 @@ impl CorProfilerCallback for RuntimePauseProfiler {
 
 impl CorProfilerCallback2 for RuntimePauseProfiler {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
-        
         if self.current_pause.is_some() {
-
             let mut current_pause = self.current_pause.clone().unwrap();
-
             current_pause.gc_reason = Some(reason);
             current_pause.gc_gen = Some(ClrProfilerInfo::get_gc_gen(&generation_collected));
-
             self.current_pause = Some(current_pause);
         }
         else {
             error!("Garbage collection started but there is no current pause tracked");
         }
-        
         Ok(())
     }
 
     fn garbage_collection_finished(&mut self) -> Result<(), ffi::HRESULT> {
-        // let current = Instant::now();
-        // let gc_pause = RuntimePause { start: self.last_start, end: current, reason: self.last_suspend_reason.clone(), gc_reason: self.last_gc_reason.clone() };
-        // self.gc_pauses.push(gc_pause);
         Ok(())
     }
 }
 
 impl CorProfilerCallback3 for RuntimePauseProfiler {
-    
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
-    {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS, profiler_info, client_data, client_data_length)
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS, Some(ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_BASIC_GC), profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         self.profiling_start = Instant::now();
         detach_after_duration::<RuntimePauseProfiler>(&self, 20, None);
         Ok(())
     }
 
-    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
         self.profiling_end = Instant::now();
 
         let mut report = self.session_info.create_report("summary.md".to_owned());
@@ -171,58 +127,43 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
         
         if self.gc_pauses.len() > 0
         {
-            let max_time_spent = self.gc_pauses
+            let pauses_sorted = self.gc_pauses
                 .iter()
                 .map(|pause| pause.end - pause.start)
-                .max()
-                .unwrap();
+                .sorted()
+                .collect_vec();
 
-            report.write_line(format!("- Longuest pause: {}ms", max_time_spent.as_millis()));
+            report.write_line(format!("- Longuest pause time: {}ms", pauses_sorted.last().unwrap().as_millis()));
+
+            let avg_time_spent = self.gc_pauses
+                .iter()
+                .map(|pause| pause.end - pause.start)
+                .sum::<Duration>() / self.gc_pauses.len() as u32;
+
+            report.write_line(format!("- Average pause time: {}ms", avg_time_spent.as_millis()));
+
+            report.write_line(format!("## Quantiles"));
+
+            report.write_line(format!("- 50p (median): {}ms", pauses_sorted[(0.50f64 * (pauses_sorted.len() as f64)).floor() as usize].as_millis()));
+            report.write_line(format!("- 95p: {}ms", pauses_sorted[(0.95f64 * (pauses_sorted.len() as f64)).floor() as usize].as_millis()));
+            report.write_line(format!("- 99p: {}ms", pauses_sorted[(0.99f64 * (pauses_sorted.len() as f64)).floor() as usize].as_millis()));
+
+            report.write_line(format!("## All Pauses"));
+            report.new_line();
+            report.write_line(format!("Iteration | Time (UTC) | Pause Reason | Duration (ms)"));
+            report.write_line(format!("-: | -: | -: | -:"));
+            
+            let mut i = 1;
+            for pause in self.gc_pauses.iter() {
+                let reason: String = match &pause.gc_reason {
+                    Some(gc_reason) => format!("{:?} ({:?} Gen {})", pause.reason, gc_reason, pause.gc_gen.unwrap()),
+                    None => format!("kk{:?}", pause.reason)
+                };
+                report.write_line(format!("{} | {} | {} | {}", i, pause.time, reason, (pause.end - pause.start).as_millis()));
+                i += 1;
+            }
         }
 
-        report.write_line(format!("## Quantiles"));
-        
-        report.write_line(format!("Suspending the runtime will inevitably increase latency of an application. The symptoms depends on the type of application. For instance, for a backend application, that means increased response time."));
-        report.write_line(format!("It is however not an easy task to quantify the impact of a suspended runtime, because it depends on how often it occurs and for how long the runtime is paused."));
-        report.write_line(format!("One interesting approach is to measure the pause time quantiles accordingly to a time frame."));
-        report.new_line();
-        report.write_line(format!("**For instance:** Let's say for a backend application we have a latency of about 200ms each for 100 consecutive requests. We can measure how much pause time we have on a 200ms time interval and compute a quantile based of the results."));
-        report.write_line(format!("In this example, a 95p for 200ms of 50ms means that for 95 of the requests, less than 50ms was wasted, but more than 50ms was wasted in runtime pause for the remaining 5 requests."));
-        
-        report.new_line();
-        report.write_line(format!("Interval | 50p | 95p | 99p"));
-        report.write_line(format!("-: | -: | -: | -:"));
-        
-        let mut write_row = |duration: Duration| {
-            let durations = self.get_durations(duration);
-            let quantile_99p = durations[(0.99f64 * (durations.len() as f64)).floor() as usize];
-            let quantile_95p = durations[(0.95f64 * (durations.len() as f64)).floor() as usize];
-            let quantile_50p = durations[(0.50f64 * (durations.len() as f64)).floor() as usize];
-            report.write_line(format!("{}ms | {}ms | {}ms | {}ms", duration.as_millis(), quantile_50p.as_millis(), quantile_95p.as_millis(), quantile_99p.as_millis()));
-        };
-        
-        write_row(Duration::from_millis(1000));
-        write_row(Duration::from_millis(750));
-        write_row(Duration::from_millis(500));
-        write_row(Duration::from_millis(250));
-        write_row(Duration::from_millis(100));
-        write_row(Duration::from_millis(50));
-        
-        report.write_line(format!("## All Pauses"));
-        report.new_line();
-        report.write_line(format!("Iteration | Time (UTC) | Pause Reason | Duration (ms)"));
-        report.write_line(format!("-: | -: | -: | -:"));
-        
-        let mut i = 1;
-        for pause in self.gc_pauses.iter() {
-            let reason: String = match &pause.gc_reason {
-                Some(gc_reason) => format!("{:?} ({:?} Gen {})", pause.reason, gc_reason, pause.gc_gen.unwrap()),
-                None => format!("{:?}", pause.reason)
-            };
-            report.write_line(format!("{} | {} | {} | {}", i, pause.time, reason, (pause.end - pause.start).as_millis()));
-            i += 1;
-        }
-        
         info!("Report written");
 
         Ok(())

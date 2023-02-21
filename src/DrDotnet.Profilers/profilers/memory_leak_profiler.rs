@@ -301,23 +301,19 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
     }
 }
 
-impl CorProfilerCallback3 for MemoryLeakProfiler
-{
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
-    {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, profiler_info, client_data, client_data_length)
+impl CorProfilerCallback3 for MemoryLeakProfiler {
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         // Security timeout
         detach_after_duration::<MemoryLeakProfiler>(&self, 320, None);
 
         Ok(())
     }
 
-    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
         let mut report = self.session_info.create_report("summary.md".to_owned());
 
         if self.serialized_survivor_branches.len() == 0 {
@@ -338,11 +334,9 @@ impl CorProfilerCallback3 for MemoryLeakProfiler
     }
 }
 
-impl CorProfilerCallback4 for MemoryLeakProfiler
-{
+impl CorProfilerCallback4 for MemoryLeakProfiler {
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
-    {
+    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT> {
         info!("Surviving references 2 ({} objects survived)", object_ids.len());
 
         if self.finished {
@@ -385,8 +379,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler
     }
 
     // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-movedreferences2-method
-    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
-    {
+    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT> {
         info!("Moved references 2 ({} objects moved)", old_object_ids.len());
 
         if self.finished {

@@ -50,7 +50,7 @@ public class RuntimePausesProfilerTests : ProfilerTests
                 }
                 if (i % 1000 == 0)
                 {
-                    GC.Collect();
+                    GC.Collect(Random.Shared.Next(1, 5));
                     Interlocked.Increment(ref collections);
                 }
             }

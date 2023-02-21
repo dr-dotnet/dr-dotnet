@@ -27,10 +27,8 @@ impl Profiler for AllocationByClassProfiler {
     }
 }
 
-impl CorProfilerCallback for AllocationByClassProfiler
-{
-    fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT>
-    {
+impl CorProfilerCallback for AllocationByClassProfiler {
+    fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT> {
         // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo10-enumerateobjectreferences-method
         for i in 0..class_ids.len() {
             
@@ -53,31 +51,25 @@ impl CorProfilerCallback for AllocationByClassProfiler
     }
 }
 
-impl CorProfilerCallback2 for AllocationByClassProfiler
-{
-    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
-    {
+impl CorProfilerCallback2 for AllocationByClassProfiler {
+    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
         self.collections += 1;
 
         Ok(())
     }
 }
 
-impl CorProfilerCallback3 for AllocationByClassProfiler
-{
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
-    {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, profiler_info, client_data, client_data_length)
+impl CorProfilerCallback3 for AllocationByClassProfiler {
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         detach_after_duration::<AllocationByClassProfiler>(&self, 10, None);
         Ok(())
     }
 
-    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
         let mut report = self.session_info.create_report("summary.md".to_owned());
 
         report.write_line(format!("# Allocations Report"));

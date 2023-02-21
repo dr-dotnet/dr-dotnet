@@ -1,3 +1,7 @@
+# 0.2.2
+- Improve Runtime Pause profiler to show GC information
+- Ease usage of COR_PRF_HIGH_MONITOR flags
+
 # 0.2.1
 - Enable Nullable Reference Types
 - Uniformize code style

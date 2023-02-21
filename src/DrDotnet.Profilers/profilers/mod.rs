@@ -34,11 +34,16 @@ pub trait Profiler : CorProfilerCallback9 {
     fn clr(&self) -> &ClrProfilerInfo;
     fn set_clr_profiler_info(&mut self, clr_profiler_info: &ClrProfilerInfo);
 
-    fn init(&mut self, event: ffi::COR_PRF_MONITOR, clr_profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    fn init(&mut self, event: ffi::COR_PRF_MONITOR, high_event: Option<ffi::COR_PRF_HIGH_MONITOR>, clr_profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
         self.set_clr_profiler_info(&clr_profiler_info);
 
-        match self.clr().set_event_mask(event) {
+        let high_event_s = match high_event {
+            Some(e) => e,
+            None => ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE
+        };
+
+        match self.clr().set_event_mask_2(event, high_event_s) {
             Ok(_) => match SessionInfo::init(client_data, client_data_length) {
                 Ok(s) => {
                     self.set_session_info(&s);
