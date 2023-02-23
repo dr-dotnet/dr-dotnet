@@ -14,4 +14,9 @@ pub const E_POINTER: HRESULT = 0x8000_4003;
 pub const COR_E_INVALIDPROGRAM: HRESULT = 0x8013_153A;
 pub const COR_E_INVALIDOPERATION: HRESULT = 0x8013_1509;
 pub const COR_E_INDEXOUTOFRANGE: HRESULT = 0x8;
+/// The specified ClassID cannot be inspected by this function because it is an array
 pub const CORPROF_E_CLASSID_IS_ARRAY: HRESULT = 0x80131365;
+/// A profiler can not walk a thread that is currently executing unmanaged code
+pub const CORPROF_E_STACKSNAPSHOT_UNMANAGED_CTX: HRESULT = 0x8013135F;
+/// A stackwalk at this point may cause dead locks or data corruption
+pub const CORPROF_E_STACKSNAPSHOT_UNSAFE: HRESULT = 0x80131360;
