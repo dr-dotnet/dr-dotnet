@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use dashmap::DashMap;
 use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 
 use crate::api::*;
-use crate::api::ffi::HRESULT;
+use crate::api::ffi::{HRESULT, HResult};
 use crate::macros::*;
 use crate::profilers::*;
 
@@ -35,7 +36,9 @@ impl CpuHotpathProfiler {
     {
         let pinfo = profiler_info.clone();
 
-        let (mut nbThreads, mut nbUnmanagedCtxError, mut nbUnsafeError, mut nbOkCalls) = (0, 0, 0, 0);
+        // Variables to debug do_stack_snapshot calls
+        let mut nbThreads = 0;
+        let mut errors: HashMap<HRESULT, i32> = HashMap::new();
         
         for managed_thread_id in pinfo.enum_threads().unwrap() {
             nbThreads += 1;
@@ -50,14 +53,11 @@ impl CpuHotpathProfiler {
                 ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, 
                 method_ids_ptr_c, 
                 std::ptr::null(), 0){
-                Ok(_) => {
-                    nbOkCalls += 1;
-                }
+                Ok(_) => {}
                 Err(e) => {
-                    match e {
-                        ffi::CORPROF_E_STACKSNAPSHOT_UNMANAGED_CTX => nbUnmanagedCtxError += 1,
-                        ffi::CORPROF_E_STACKSNAPSHOT_UNSAFE => nbUnsafeError += 1,
-                        _ => {}
+                    match errors.get(&e) {
+                        Some(nb) => { errors.insert(e, nb + 1);},
+                        None => { errors.insert(e, 1); }
                     }
                 }
             };    
@@ -69,9 +69,10 @@ impl CpuHotpathProfiler {
                 }
             }
         }
-
-        debug!("Nb threads: {}, Nb do_stack_snapshot successful: {}, Nb UNMANAGED_CTX error: {}, Nb UNSAFE error: {}", 
-            nbThreads, nbOkCalls, nbUnmanagedCtxError, nbUnsafeError);
+        
+        let nb_errors: i32 = errors.values().sum();
+        debug!("Nb threads: {nbThreads}, do_stack_snapshot failed {nb_errors} time(s) with error(s): {}",
+            errors.iter().map(|(k, v)| format!("{}:{v}", HResult {value:*k})).collect::<Vec<String>>().join(","));
     }
 }
 
