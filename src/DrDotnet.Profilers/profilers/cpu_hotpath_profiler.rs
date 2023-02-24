@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use dashmap::DashMap;
 use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 
 use crate::api::*;
+use crate::api::ffi::{HRESULT, HResult};
 use crate::macros::*;
 use crate::profilers::*;
 
@@ -33,15 +35,32 @@ impl CpuHotpathProfiler {
     fn print_callstack(profiler_info: ClrProfilerInfo, calls: std::sync::MutexGuard<DashMap<usize, AtomicIsize>>)
     {
         let pinfo = profiler_info.clone();
+
+        // Variables to debug do_stack_snapshot calls
+        let mut nbThreads = 0;
+        let mut errors: HashMap<HRESULT, i32> = HashMap::new();
         
         for managed_thread_id in pinfo.enum_threads().unwrap() {
-            
+            nbThreads += 1;
             let method_ids = Vec::<ffi::FunctionID>::new();
             
             // We must pass this data as a pointer for callback to mutate it with actual method ids from stack walking
             let method_ids_ptr_c = &method_ids as *const Vec<ffi::FunctionID> as *mut std::ffi::c_void;
-
-            _ = pinfo.do_stack_snapshot(managed_thread_id, crate::utils::stack_snapshot_callback, ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, method_ids_ptr_c, std::ptr::null(), 0);    
+            
+            match pinfo.do_stack_snapshot(
+                managed_thread_id, 
+                crate::utils::stack_snapshot_callback, 
+                ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, 
+                method_ids_ptr_c, 
+                std::ptr::null(), 0){
+                Ok(_) => {}
+                Err(e) => {
+                    match errors.get(&e) {
+                        Some(nb) => { errors.insert(e, nb + 1);},
+                        None => { errors.insert(e, 1); }
+                    }
+                }
+            };    
 
             for method_id in method_ids {
                 match calls.get_mut(&method_id) {
@@ -50,6 +69,11 @@ impl CpuHotpathProfiler {
                 }
             }
         }
+        
+        let nb_errors: i32 = errors.values().sum();
+        debug!("Nb threads: {nbThreads}, do_stack_snapshot failed {nb_errors} time(s) with error(s): {}",
+            errors.iter().map(|(k, v)| format!("{}:{v}", HResult {value:*k})).collect::<Vec<String>>().join(","));
+
     }
 }
 

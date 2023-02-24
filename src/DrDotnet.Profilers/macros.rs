@@ -56,3 +56,21 @@ macro_rules! profiler_getset {
 }
 
 pub(crate) use profiler_getset;
+
+#[macro_export]
+#[cfg(debug_assertions)]
+macro_rules! debug_only {
+    ({$($statement:stmt);*$(;)*}) => {
+        $($statement);*;
+    };
+}
+
+#[macro_export]
+#[cfg(not(debug_assertions))]
+macro_rules! debug_only {
+    ({$($statement:stmt);*$(;)*}) => {
+        // Excluded from release build
+    };
+}
+
+pub(crate) use debug_only;
