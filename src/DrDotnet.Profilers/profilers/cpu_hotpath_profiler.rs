@@ -73,6 +73,7 @@ impl CpuHotpathProfiler {
         let nb_errors: i32 = errors.values().sum();
         debug!("Nb threads: {nbThreads}, do_stack_snapshot failed {nb_errors} time(s) with error(s): {}",
             errors.iter().map(|(k, v)| format!("{}:{v}", HResult {value:*k})).collect::<Vec<String>>().join(","));
+
     }
 }
 
