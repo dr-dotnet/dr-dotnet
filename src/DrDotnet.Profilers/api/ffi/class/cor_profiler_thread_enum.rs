@@ -48,7 +48,7 @@ impl Iterator for CorProfilerThreadEnum {
             let mut ids = MaybeUninit::uninit();
             let mut fetched = MaybeUninit::uninit();
 
-            if self.Next(1, ids.as_mut_ptr(), fetched.as_mut_ptr()) == 0 {
+            if self.Next(1, ids.as_mut_ptr(), fetched.as_mut_ptr()) == HRESULT::S_OK {
                 Some(*ids.as_ptr())
             }
             else {

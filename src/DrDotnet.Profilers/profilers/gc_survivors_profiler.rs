@@ -182,7 +182,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
         info!("Roots to process: {}", self.root_references.len());

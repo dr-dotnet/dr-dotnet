@@ -11,7 +11,7 @@ use crate::{
         COR_DEBUG_IL_TO_NATIVE_MAP, COR_FIELD_OFFSET, COR_IL_MAP, COR_PRF_CODE_INFO,
         COR_PRF_ELT_INFO, COR_PRF_EX_CLAUSE_INFO, COR_PRF_FRAME_INFO, COR_PRF_GC_GENERATION_RANGE,
         COR_PRF_HIGH_MONITOR, COR_PRF_MODULE_FLAGS, COR_PRF_MONITOR, COR_PRF_REJIT_FLAGS,
-        COR_PRF_SNAPSHOT_INFO, COR_PRF_STATIC_TYPE, DWORD, GUID, HANDLE, HRESULT, LPCBYTE, S_OK,
+        COR_PRF_SNAPSHOT_INFO, COR_PRF_STATIC_TYPE, DWORD, GUID, HANDLE, HRESULT, LPCBYTE, HRESULT::S_OK,
         UINT_PTR, ULONG, ULONG32, WCHAR,
     },
     AppDomainInfo, ArrayClassInfo, ArrayObjectInfo, AssemblyInfo, ClassInfo, ClassInfo2,
@@ -59,12 +59,12 @@ impl ClrProfilerInfo {
             match metadata.get_type_def_props(td) {
                 Ok(type_props) => type_props.name,
                 Err(hresult) => {
-                    warn!("metadata.get_type_def_props({}) failed (0x{})", td, format!("{:01$x}", hresult, 8));
+                    warn!("metadata.get_type_def_props({}) failed ({:?})", td, hresult);
                     "unknown_0002".to_owned()
                 }
             }, 
             Err(hresult) => {
-                warn!("info.get_module_metadata({}) failed (0x{})", module_id, format!("{:01$x}", hresult, 8));
+                warn!("info.get_module_metadata({}) failed ({:?})", module_id, hresult);
                 "unknown_0001".to_owned()
             }
         }
@@ -76,12 +76,12 @@ impl ClrProfilerInfo {
             match f.metadata_import.get_method_props(f.token) {
                 Ok(method_props) => method_props.name,
                 Err(hresult) => {
-                    warn!("metadata_import.get_method_props({}) failed (0x{})", f.token, format!("{:01$x}", hresult, 8));
+                    warn!("metadata_import.get_method_props({}) failed ({:?})", f.token, hresult);
                     "unknown_0004".to_owned()
                 }
             },
             Err(hresult) => {
-                warn!("info.get_token_and_metadata_from_function({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                warn!("info.get_token_and_metadata_from_function({}) failed ({:?})", method_id, hresult);
                 "unknown_0003".to_owned()
             }
         }
@@ -95,17 +95,17 @@ impl ClrProfilerInfo {
                 match f.metadata_import.get_method_props(f.token) {
                     Ok(method_props) => format!("{}.{}", self.get_type_name(function_info.module_id, method_props.class_token), method_props.name),
                     Err(hresult) => {
-                        warn!("metadata_import.get_method_props({}) failed (0x{})", f.token, format!("{:01$x}", hresult, 8));
+                        warn!("metadata_import.get_method_props({}) failed ({:?})", f.token, hresult);
                         "unknown_0004".to_owned()
                     }
                 },
                 Err(hresult) => {
-                    warn!("info.get_token_and_metadata_from_function({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                    warn!("info.get_token_and_metadata_from_function({}) failed ({:?})", method_id, hresult);
                     "unknown_0003".to_owned()
                 }
             },
             Err(hresult) => {
-                warn!("info.get_function_info({}) failed (0x{})", method_id, format!("{:01$x}", hresult, 8));
+                warn!("info.get_function_info({}) failed ({:?})", method_id, hresult);
                 "unknown_0002".to_owned()
             }
         }
@@ -148,7 +148,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
                 .GetClassFromObject(object_id, class_id.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let class_id = unsafe { class_id.assume_init() };
                 Ok(class_id)
             }
@@ -159,7 +159,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let mut events = MaybeUninit::uninit();
         let hr = unsafe { self.info().GetEventMask(events.as_mut_ptr()) };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let events = unsafe { events.assume_init() };
                 Ok(COR_PRF_MONITOR::from_bits(events).unwrap())
             }
@@ -170,7 +170,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let mut function_id = MaybeUninit::uninit();
         let hr = unsafe { self.info().GetFunctionFromIP(ip, function_id.as_mut_ptr()) };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let function_id = unsafe { function_id.assume_init() };
                 Ok(function_id)
             }
@@ -184,7 +184,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
                 .GetHandleFromThread(thread_id, handle.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let handle = unsafe { handle.assume_init() };
                 Ok(handle)
             }
@@ -204,7 +204,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let element_type = unsafe { element_type.assume_init() };
                 let element_class_id = unsafe {
                     if !element_class_id.as_ptr().is_null() {
@@ -230,7 +230,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
                 .GetThreadInfo(thread_id, win_32_thread_id.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let win_32_thread_id = unsafe { win_32_thread_id.assume_init() };
                 Ok(win_32_thread_id)
             }
@@ -241,7 +241,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let mut thread_id = MaybeUninit::uninit();
         let hr = unsafe { self.info().GetCurrentThreadID(thread_id.as_mut_ptr()) };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let thread_id = unsafe { thread_id.assume_init() };
                 Ok(thread_id)
             }
@@ -256,7 +256,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
                 .GetClassIDInfo(class_id, module_id.as_mut_ptr(), token.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let module_id = unsafe { module_id.assume_init() };
                 let token = unsafe { token.assume_init() };
                 Ok(ClassInfo { module_id, token })
@@ -277,7 +277,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let class_id = unsafe { class_id.assume_init() };
                 let module_id = unsafe { module_id.assume_init() };
                 let token = unsafe { token.assume_init() };
@@ -294,7 +294,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let events = events.bits();
         let hr = unsafe { self.info().SetEventMask(events) };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -312,7 +312,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
                 .SetEnterLeaveFunctionHooks(func_enter, func_leave, func_tailcall)
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -320,7 +320,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let func = func as *const FunctionIDMapper;
         let hr = unsafe { self.info().SetFunctionIDMapper(func) };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -339,7 +339,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let metadata_import = unsafe { metadata_import.assume_init() };
                 let token = unsafe { token.assume_init() };
                 let metadata_import = super::MetadataImport::new(metadata_import);
@@ -382,7 +382,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let base_load_address = unsafe { base_load_address.assume_init() };
                 let file_name = U16CString::from_vec_with_nul(name_buffer)
                     .unwrap()
@@ -415,7 +415,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let metadata_import = unsafe { metadata_import.assume_init().as_mut().unwrap() };
                 let metadata_import = MetadataImport::new(metadata_import);
                 Ok(metadata_import)
@@ -440,7 +440,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let method_header = unsafe { method_header.assume_init() };
                 let method_size = unsafe { method_size.assume_init() };
                 Ok(IlFunctionBody {
@@ -462,7 +462,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let malloc = unsafe { malloc.assume_init().as_mut().unwrap() };
                 Ok(malloc)
             }
@@ -481,7 +481,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -513,7 +513,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let name = U16CString::from_vec_with_nul(name_buffer)
                     .unwrap()
                     .to_string_lossy();
@@ -554,7 +554,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let name = U16CString::from_vec_with_nul(name_buffer)
                     .unwrap()
                     .to_string_lossy();
@@ -572,7 +572,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
     fn force_gc(&self) -> Result<(), HRESULT> {
         let hr = unsafe { self.info().ForceGC() };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -592,7 +592,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -604,7 +604,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let context_id = unsafe { context_id.assume_init() };
                 Ok(context_id)
             }
@@ -638,7 +638,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(map),
+            HRESULT::S_OK => Ok(map),
             _ => Err(hr),
         }
     }
@@ -666,7 +666,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -685,7 +685,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
                 .SetEnterLeaveFunctionHooks2(func_enter, func_leave, func_tailcall)
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -732,7 +732,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let class_id = unsafe { class_id.assume_init() };
                 let module_id = unsafe { module_id.assume_init() };
                 let token = unsafe { token.assume_init() };
@@ -778,7 +778,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let class_size_bytes = unsafe { class_size_bytes.assume_init() };
                 Ok(ClassLayout {
                     field_offset,
@@ -825,7 +825,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let module_id = unsafe { module_id.assume_init() };
                 let token = unsafe { token.assume_init() };
                 let parent_class_id = unsafe { parent_class_id.assume_init() };
@@ -837,7 +837,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
                 })
             }
             _ => {
-                warn!("info.get_class_id_info_2({}) failed (0x{})", class_id, format!("{:01$x}", hr, 8));
+                warn!("info.get_class_id_info_2({}) failed ({:?})", class_id, hr);
                 Err(hr)
             },
         }
@@ -870,7 +870,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(code_info),
+            HRESULT::S_OK => Ok(code_info),
             _ => Err(hr),
         }
     }
@@ -897,7 +897,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let class_id = unsafe { class_id.assume_init() };
                 Ok(class_id)
             }
@@ -929,7 +929,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let function_id = unsafe { function_id.assume_init() };
                 Ok(function_id)
             }
@@ -959,7 +959,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let data = unsafe { data.assume_init() };
                 Ok(ArrayObjectInfo {
                     dimension_sizes,
@@ -979,7 +979,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let buffer_offset = unsafe { buffer_offset.assume_init() };
                 Ok(buffer_offset)
             }
@@ -995,7 +995,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let app_domain_id = unsafe { app_domain_id.assume_init() };
                 Ok(app_domain_id)
             }
@@ -1015,7 +1015,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let address = unsafe { address.assume_init() };
                 Ok(address)
             }
@@ -1040,7 +1040,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let address = unsafe { address.assume_init() };
                 Ok(address)
             }
@@ -1065,7 +1065,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let address = unsafe { address.assume_init() };
                 Ok(address)
             }
@@ -1090,7 +1090,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let address = unsafe { address.assume_init() };
                 Ok(address)
             }
@@ -1110,7 +1110,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let field_info = unsafe { field_info.assume_init() };
                 Ok(field_info)
             }
@@ -1139,7 +1139,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(ranges),
+            HRESULT::S_OK => Ok(ranges),
             _ => Err(hr),
         }
     }
@@ -1154,7 +1154,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let range = unsafe { range.assume_init() };
                 Ok(range)
             }
@@ -1169,7 +1169,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let exception_clause_info = unsafe { exception_clause_info.assume_init() };
                 Ok(exception_clause_info)
             }
@@ -1184,7 +1184,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         let hr = unsafe { self.info().EnumJITedFunctions(function_enum.as_mut_ptr()) };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let function_enum = unsafe { function_enum.assume_init().as_mut().unwrap() };
                 Ok(function_enum)
             }
@@ -1201,7 +1201,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1214,7 +1214,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         let hr = unsafe { self.info().SetFunctionIDMapper2(func, client_data) };
 
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1229,7 +1229,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let string_length_offset = unsafe { string_length_offset.assume_init() };
                 let buffer_offset = unsafe { buffer_offset.assume_init() };
                 Ok(StringLayout {
@@ -1254,7 +1254,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
                 .SetEnterLeaveFunctionHooks3(func_enter_3, func_leave_3, func_tailcall_3)
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1276,7 +1276,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1299,7 +1299,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let frame_info = unsafe { frame_info.assume_init() };
                 let argument_info_length = unsafe { argument_info_length.assume_init() };
                 // TODO: Is there any tricky stuff we need to do to allocate the correct size for the argument_info struct?
@@ -1330,7 +1330,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let frame_info = unsafe { frame_info.assume_init() };
                 let retval_range = unsafe { retval_range.assume_init() };
                 Ok(FunctionLeave3Info {
@@ -1353,7 +1353,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let frame_info = unsafe { frame_info.assume_init() };
                 Ok(frame_info)
             }
@@ -1365,7 +1365,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         let hr = unsafe { self.info().EnumModules(module_enum.as_mut_ptr()) };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let module_enum = unsafe { module_enum.assume_init().as_mut().unwrap() };
                 Ok(module_enum)
             }
@@ -1415,7 +1415,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let clr_instance_id = unsafe { clr_instance_id.assume_init() };
                 let runtime_type = unsafe { runtime_type.assume_init() };
                 let major_version = unsafe { major_version.assume_init() };
@@ -1457,7 +1457,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let address = unsafe { address.assume_init() };
                 Ok(address)
             }
@@ -1494,7 +1494,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(app_domains_buffer),
+            HRESULT::S_OK => Ok(app_domains_buffer),
             _ => Err(hr),
         }
     }
@@ -1533,7 +1533,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let base_load_address = unsafe { base_load_address.assume_init() };
                 let assembly_id = unsafe { assembly_id.assume_init() };
                 let module_flags = unsafe { module_flags.assume_init() };
@@ -1558,7 +1558,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         let hr = unsafe { self.info().EnumThreads(thread_enum.as_mut_ptr()) };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let thread_enum = unsafe { thread_enum.assume_init().as_mut().unwrap() };
                 Ok(thread_enum)
             }
@@ -1569,7 +1569,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         let hr = unsafe { self.info().InitializeCurrentThread() };
 
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1587,7 +1587,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1611,7 +1611,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(statuses_buffer),
+            HRESULT::S_OK => Ok(statuses_buffer),
             _ => Err(hr),
         }
     }
@@ -1648,7 +1648,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(code_info),
+            HRESULT::S_OK => Ok(code_info),
             _ => Err(hr),
         }
     }
@@ -1660,7 +1660,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
                 .GetFunctionFromIP2(ip, function_id.as_mut_ptr(), rejit_id.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let function_id = unsafe { function_id.assume_init() };
                 let rejit_id = unsafe { rejit_id.assume_init() };
                 Ok(FunctionAndRejit {
@@ -1697,7 +1697,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(rejit_ids),
+            HRESULT::S_OK => Ok(rejit_ids),
             _ => Err(hr),
         }
     }
@@ -1731,7 +1731,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(map),
+            HRESULT::S_OK => Ok(map),
             _ => Err(hr),
         }
     }
@@ -1740,7 +1740,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         let hr = unsafe { self.info().EnumJITedFunctions2(function_enum.as_mut_ptr()) };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let function_enum = unsafe { function_enum.assume_init().as_mut().unwrap() };
                 Ok(function_enum)
             }
@@ -1755,7 +1755,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let object_size = unsafe { object_size.assume_init() };
                 Ok(object_size)
             }
@@ -1772,7 +1772,7 @@ impl CorProfilerInfo5 for ClrProfilerInfo {
                 .GetEventMask2(events_low.as_mut_ptr(), events_high.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let events_low = unsafe { events_low.assume_init() };
                 let events_high = unsafe { events_high.assume_init() };
                 Ok(EventMask2 {
@@ -1792,7 +1792,7 @@ impl CorProfilerInfo5 for ClrProfilerInfo {
         let events_high = events_high.bits();
         let hr = unsafe { self.info().SetEventMask2(events_low, events_high) };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1816,7 +1816,7 @@ impl CorProfilerInfo6 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let incomplete_data = unsafe { incomplete_data.assume_init() };
                 let incomplete_data = incomplete_data > 0;
                 let method_enum = unsafe { method_enum.assume_init().as_mut().unwrap() };
@@ -1833,7 +1833,7 @@ impl CorProfilerInfo7 for ClrProfilerInfo {
     fn apply_metadata(&self, module_id: ModuleID) -> Result<(), HRESULT> {
         let hr = unsafe { self.info().ApplyMetaData(module_id) };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -1844,7 +1844,7 @@ impl CorProfilerInfo7 for ClrProfilerInfo {
                 .GetInMemorySymbolsLength(module_id, symbol_bytes.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let symbol_bytes = unsafe { symbol_bytes.assume_init() };
                 Ok(symbol_bytes)
             }
@@ -1869,7 +1869,7 @@ impl CorProfilerInfo7 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let symbol_bytes_read = unsafe { symbol_bytes_read.assume_init() };
                 unsafe { buffer.set_len(symbol_bytes_read as usize) };
                 Ok(buffer)
@@ -1886,7 +1886,7 @@ impl CorProfilerInfo8 for ClrProfilerInfo {
                 .IsFunctionDynamic(function_id, is_dynamic.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let is_dynamic = unsafe { is_dynamic.assume_init() };
                 let is_dynamic = is_dynamic > 0;
                 Ok(is_dynamic)
@@ -1902,7 +1902,7 @@ impl CorProfilerInfo8 for ClrProfilerInfo {
                 .GetFunctionFromIP3(ip, function_id.as_mut_ptr(), rejit_id.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let function_id = unsafe { function_id.assume_init() };
                 let rejit_id = unsafe { rejit_id.assume_init() };
                 Ok(FunctionAndRejit {
@@ -1950,7 +1950,7 @@ impl CorProfilerInfo8 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let module_id = unsafe { module_id.assume_init() };
                 let sig = unsafe { sig.assume_init() };
                 let sig_length = unsafe { sig_length.assume_init() };
@@ -2000,7 +2000,7 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(addresses_buffer),
+            HRESULT::S_OK => Ok(addresses_buffer),
             _ => Err(hr),
         }
     }
@@ -2031,7 +2031,7 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(map),
+            HRESULT::S_OK => Ok(map),
             _ => Err(hr),
         }
     }
@@ -2065,7 +2065,7 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(code_info),
+            HRESULT::S_OK => Ok(code_info),
             _ => Err(hr),
         }
     }
@@ -2083,7 +2083,7 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
         };
 
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
@@ -2094,7 +2094,7 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
                 .IsFrozenObject(object_id, is_frozen.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let is_frozen = unsafe { is_frozen.assume_init() };
                 let is_frozen = is_frozen > 0;
                 Ok(is_frozen)
@@ -2109,7 +2109,7 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
                 .GetLOHObjectSizeThreshold(threshold.as_mut_ptr())
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let threshold = unsafe { threshold.assume_init() };
                 Ok(threshold)
             }
@@ -2135,21 +2135,21 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
             )
         };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
     fn suspend_runtime(&self) -> Result<(), HRESULT> {
         let hr = unsafe { self.info().SuspendRuntime() };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
     fn resume_runtime(&self) -> Result<(), HRESULT> {
         let hr = unsafe { self.info().ResumeRuntime() };
         match hr {
-            S_OK => Ok(()),
+            HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }

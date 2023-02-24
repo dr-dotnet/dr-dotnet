@@ -34,7 +34,7 @@ unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::RE
     debug!("DllGetClassObject(rclsid: {:?}, riid: {:?})", rclsid, riid);
 
     if ppv.is_null() {
-        return ffi::E_FAIL;
+        return ffi::HRESULT::E_FAIL;
     }
     
     return attach(rclsid, riid, ppv);

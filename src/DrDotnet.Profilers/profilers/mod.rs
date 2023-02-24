@@ -51,11 +51,11 @@ pub trait Profiler : CorProfilerCallback9 {
                 },
                 Err(err) => {
                     error!("{}", err);
-                    Err(ffi::E_FAIL)
+                    Err(ffi::HRESULT::E_FAIL)
                 }
             },
             Err(hresult) => {
-                error!("Error setting event mask: {:x}", hresult);
+                error!("Error setting event mask: {:?}", hresult);
                 Err(hresult)
             } 
         }

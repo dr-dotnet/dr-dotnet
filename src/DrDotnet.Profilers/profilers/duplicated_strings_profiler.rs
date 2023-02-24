@@ -97,13 +97,13 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
         let str_layout = match self.clr().get_string_layout_2() {
             Ok(str_layout) => str_layout,
             Err(hresult) => {
-                error!("Error getting string layout: {:x}", hresult);
+                error!("Error getting string layout: {:?}", hresult);
                 return Err(hresult);
             }
         };
@@ -137,7 +137,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
             debug!("Force GC");
             match p_clone.force_gc() {
                 Ok(_) => debug!("GC Forced!"),
-                Err(hresult) => error!("Error forcing GC: {:x}", hresult)
+                Err(hresult) => error!("Error forcing GC: {:?}", hresult)
             };
         }).join();
         
