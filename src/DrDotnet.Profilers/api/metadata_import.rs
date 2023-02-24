@@ -1,7 +1,7 @@
 use crate::{
     ffi::{
         mdMethodDef, CorMethodAttr, CorMethodImpl, MetaDataImport as FFIMetaDataImport, HRESULT,
-        S_OK, WCHAR, CorTypeAttr,
+        HRESULT::S_OK, WCHAR, CorTypeAttr,
     },
     MetadataImportTrait, MethodProps, TypeProps,
 };
@@ -67,7 +67,7 @@ impl MetadataImportTrait for MetadataImport {
             )
         };
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let class_token = unsafe { class_token.assume_init() };
                 let name = U16CString::from_vec_with_nul(name_buffer)
                     .unwrap()
@@ -124,7 +124,7 @@ impl MetadataImportTrait for MetadataImport {
         };
 
         match hr {
-            S_OK => {
+            HRESULT::S_OK => {
                 let name = U16CString::from_vec_with_nul(name_buffer)
                     .unwrap()
                     .to_string_lossy();

@@ -148,7 +148,7 @@ impl MemoryLeakProfiler
                     _ => "unknown2".to_owned()
                 }
             }
-            Err(error) => format!("error:{}", error)
+            Err(error) => format!("error: {:?}", error)
         };
 
         if array_dimension > 0 {
@@ -257,7 +257,7 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:x}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
         // Post-process tracked persisting references
@@ -375,7 +375,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
         }
 
         // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
-        Err(ffi::HRESULT::MAX)
+        Err(ffi::HRESULT::E_FAIL)
     }
 
     // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-movedreferences2-method
@@ -430,7 +430,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
         info!("Updated {} moved refs", moved_tracked_refs);
 
         // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
-        Err(ffi::HRESULT::MAX)
+        Err(ffi::HRESULT::E_FAIL)
     }
 }
 

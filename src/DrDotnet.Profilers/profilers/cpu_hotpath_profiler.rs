@@ -4,7 +4,7 @@ use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 
 use crate::api::*;
-use crate::api::ffi::{HRESULT, HResult};
+use crate::api::ffi::HRESULT;
 use crate::macros::*;
 use crate::profilers::*;
 
@@ -72,7 +72,7 @@ impl CpuHotpathProfiler {
         
         let nb_errors: i32 = errors.values().sum();
         debug!("Nb threads: {nbThreads}, do_stack_snapshot failed {nb_errors} time(s) with error(s): {}",
-            errors.iter().map(|(k, v)| format!("{}:{v}", HResult {value:*k})).collect::<Vec<String>>().join(","));
+            errors.iter().map(|(k, v)| format!("{:?}:{v}", *k)).collect::<Vec<String>>().join(","));
 
     }
 }

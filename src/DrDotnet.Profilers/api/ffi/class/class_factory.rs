@@ -58,10 +58,10 @@ where
         if *riid == IUnknown::IID || *riid == IClassFactory::IID {
             *ppvObject = self as *mut ClassFactory<T> as LPVOID;
             self.AddRef();
-            S_OK
+            HRESULT::S_OK
         } else {
             *ppvObject = ptr::null_mut();
-            E_NOINTERFACE
+            HRESULT::E_NOINTERFACE
         }
     }
 
@@ -90,12 +90,12 @@ where
         debug!("IClassFactory::CreateInstance({})", uuid);
         
         *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T> as LPVOID;
-        S_OK
+        HRESULT::S_OK
     }
 
     pub extern "system" fn LockServer(&mut self, _fLock: BOOL) -> HRESULT {
         debug!("IClassFactory::LockServer");
-        S_OK
+        HRESULT::S_OK
     }
 }
 

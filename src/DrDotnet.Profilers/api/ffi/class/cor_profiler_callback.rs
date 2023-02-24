@@ -181,10 +181,10 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         {
             *ppvObject = self as *mut CorProfilerCallback<T> as LPVOID;
             self.add_ref();
-            S_OK
+            HRESULT::S_OK
         } else {
             *ppvObject = ptr::null_mut();
-            E_NOINTERFACE
+            HRESULT::E_NOINTERFACE
         }
     }
 
@@ -217,20 +217,20 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         if pICorProfilerInfoUnk.is_null() {
             // TODO: Add logging to indicate we got a null ptr for cor_profiler_info
-            return E_FAIL;
+            return HRESULT::E_FAIL;
         }
         let profiler_info = ClrProfilerInfo::new(pICorProfilerInfoUnk);
 
         let result = self.profiler.initialize(profiler_info);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(hr) => hr,
         }
     }
     pub unsafe extern "system" fn Shutdown(&mut self) -> HRESULT {
         let result = self.profiler.shutdown();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -240,7 +240,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.app_domain_creation_started(appDomainId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -253,7 +253,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .app_domain_creation_finished(appDomainId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -263,7 +263,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.app_domain_shutdown_started(appDomainId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -276,7 +276,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .app_domain_shutdown_finished(appDomainId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -286,7 +286,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.assembly_load_started(assemblyId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -297,7 +297,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.assembly_load_finished(assemblyId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -307,7 +307,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.assembly_unload_started(assemblyId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -318,14 +318,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.assembly_unload_finished(assemblyId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ModuleLoadStarted(&mut self, moduleId: ModuleID) -> HRESULT {
         let result = self.profiler.module_load_started(moduleId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -336,14 +336,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.module_load_finished(moduleId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ModuleUnloadStarted(&mut self, moduleId: ModuleID) -> HRESULT {
         let result = self.profiler.module_unload_started(moduleId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -354,7 +354,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.module_unload_finished(moduleId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -367,14 +367,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .module_attached_to_assembly(moduleId, AssemblyId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ClassLoadStarted(&mut self, classId: ClassID) -> HRESULT {
         let result = self.profiler.class_load_started(classId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -385,14 +385,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.class_load_finished(classId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ClassUnloadStarted(&mut self, classId: ClassID) -> HRESULT {
         let result = self.profiler.class_unload_started(classId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -403,7 +403,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.class_unload_finished(classId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -413,7 +413,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.function_unload_started(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -426,7 +426,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .jit_compilation_started(functionId, fIsSafeToBlock.is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -442,7 +442,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             fIsSafeToBlock.is_positive(),
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -455,7 +455,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .jit_cached_function_search_started(functionId, (*pbUseCachedFunction).is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -468,14 +468,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .jit_cached_function_search_finished(functionId, result);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn JITFunctionPitched(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.jit_function_pitched(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -489,21 +489,21 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             self.profiler
                 .jit_inlining(callerId, calleeId, (*pfShouldInline).is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ThreadCreated(&mut self, threadId: ThreadID) -> HRESULT {
         let result = self.profiler.thread_created(threadId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ThreadDestroyed(&mut self, threadId: ThreadID) -> HRESULT {
         let result = self.profiler.thread_destroyed(threadId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -516,14 +516,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .thread_assigned_to_os_thread(managedThreadId, osThreadId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RemotingClientInvocationStarted(&mut self) -> HRESULT {
         let result = self.profiler.remoting_client_invocation_started();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -536,7 +536,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .remoting_client_sending_message(*pCookie, fIsAsync.is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -549,14 +549,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .remoting_client_receiving_reply(*pCookie, fIsAsync.is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RemotingClientInvocationFinished(&mut self) -> HRESULT {
         let result = self.profiler.remoting_client_invocation_finished();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -569,21 +569,21 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .remoting_server_receiving_message(*pCookie, fIsAsync.is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RemotingServerInvocationStarted(&mut self) -> HRESULT {
         let result = self.profiler.remoting_server_invocation_started();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RemotingServerInvocationReturned(&mut self) -> HRESULT {
         let result = self.profiler.remoting_server_invocation_returned();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -596,7 +596,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .remoting_server_sending_reply(*pCookie, fIsAsync.is_positive());
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -609,7 +609,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .unmanaged_to_managed_transition(functionId, reason);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -622,7 +622,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .managed_to_unmanaged_transition(functionId, reason);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -632,49 +632,49 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.runtime_suspend_started(suspendReason);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RuntimeSuspendFinished(&mut self) -> HRESULT {
         let result = self.profiler.runtime_suspend_finished();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RuntimeSuspendAborted(&mut self) -> HRESULT {
         let result = self.profiler.runtime_suspend_aborted();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RuntimeResumeStarted(&mut self) -> HRESULT {
         let result = self.profiler.runtime_resume_started();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RuntimeResumeFinished(&mut self) -> HRESULT {
         let result = self.profiler.runtime_resume_finished();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RuntimeThreadSuspended(&mut self, threadId: ThreadID) -> HRESULT {
         let result = self.profiler.runtime_thread_suspended(threadId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn RuntimeThreadResumed(&mut self, threadId: ThreadID) -> HRESULT {
         let result = self.profiler.runtime_thread_resumed(threadId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -697,7 +697,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             cObjectIDRangeLength,
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -708,7 +708,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.object_allocated(objectId, classId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -722,7 +722,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         let cObjects: &[ULONG] = slice::from_raw_parts(cObjects, cClassCount as usize);
         let result = self.profiler.objects_allocated_by_class(classIds, cObjects);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -738,7 +738,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .object_references(objectId, classId, objectRefIds);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -750,14 +750,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         let rootRefIds: &[ObjectID] = slice::from_raw_parts(rootRefIds, cRootRefs as usize);
         let result = self.profiler.root_references(rootRefIds);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionThrown(&mut self, thrownObjectId: ObjectID) -> HRESULT {
         let result = self.profiler.exception_thrown(thrownObjectId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -767,14 +767,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_search_function_enter(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionSearchFunctionLeave(&mut self) -> HRESULT {
         let result = self.profiler.exception_search_function_leave();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -784,14 +784,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_search_filter_enter(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionSearchFilterLeave(&mut self) -> HRESULT {
         let result = self.profiler.exception_search_filter_leave();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -801,7 +801,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_search_catcher_found(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -811,7 +811,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_os_handler_enter(__unused);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -821,7 +821,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_os_handler_leave(__unused);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -831,14 +831,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_unwind_function_enter(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionUnwindFunctionLeave(&mut self) -> HRESULT {
         let result = self.profiler.exception_unwind_function_leave();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -848,14 +848,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_unwind_finally_enter(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionUnwindFinallyLeave(&mut self) -> HRESULT {
         let result = self.profiler.exception_unwind_finally_leave();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -866,14 +866,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.exception_catcher_enter(functionId, objectId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionCatcherLeave(&mut self) -> HRESULT {
         let result = self.profiler.exception_catcher_leave();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -891,7 +891,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             cSlots,
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -905,21 +905,21 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             self.profiler
                 .com_classic_vtable_destroyed(wrappedClassId, implementedIID, pVTable);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionCLRCatcherFound(&mut self) -> HRESULT {
         let result = self.profiler.exception_clr_catcher_found();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn ExceptionCLRCatcherExecute(&mut self) -> HRESULT {
         let result = self.profiler.exception_clr_catcher_execute();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -936,7 +936,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         let name = U16String::from_ptr(name, cchName as usize).to_string_lossy();
         let result = self.profiler.thread_name_changed(threadId, &name);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -952,7 +952,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .garbage_collection_started(generationCollected, reason);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -970,14 +970,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .surviving_references(objectIDRangeStart, cObjectIDRangeLength);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn GarbageCollectionFinished(&mut self) -> HRESULT {
         let result = self.profiler.garbage_collection_finished();
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -991,7 +991,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             objectID,
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1013,7 +1013,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .root_references_2(rootRefIds, rootKinds, rootFlags, rootIds);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1024,14 +1024,14 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.handle_created(handleId, initialObjectId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
     pub unsafe extern "system" fn HandleDestroyed(&mut self, handleId: GCHandleID) -> HRESULT {
         let result = self.profiler.handle_destroyed(handleId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1043,7 +1043,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         if pCorProfilerInfoUnk.is_null() {
             // TODO: Add logging to indicate we got a null ptr for cor_profiler_info
-            return E_FAIL;
+            return HRESULT::E_FAIL;
         }
         let profiler_info = ClrProfilerInfo::new(pCorProfilerInfoUnk);
 
@@ -1053,10 +1053,10 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         match result {
             Ok(_) => {
                 info!("Profiler successfully initialized");
-                S_OK
+                HRESULT::S_OK
             },
             Err(error) => {
-                info!("Profiler failed initializing {:x}", error);
+                info!("Profiler failed initializing {:?}", error);
                 error
             },
         }
@@ -1066,10 +1066,10 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         match result {
             Ok(_) => {
                 info!("Profiler successfully attached");
-                S_OK
+                HRESULT::S_OK
             },
             Err(error) => {
-                info!("Profiler failed attaching {:x}", error);
+                info!("Profiler failed attaching {:?}", error);
                 error
             },
         }
@@ -1079,10 +1079,10 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         match result {
             Ok(_) => {
                 info!("Profiler successfully detached");
-                S_OK
+                HRESULT::S_OK
             },
             Err(error) => {
-                info!("Profiler failed detaching {:x}", error);
+                info!("Profiler failed detaching {:?}", error);
                 error
             },
         }
@@ -1099,7 +1099,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             fIsSafeToBlock.is_positive(),
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1115,11 +1115,11 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
                 .profiler
                 .get_rejit_parameters(moduleId, methodId, pFunctionControl);
             match result {
-                Ok(_) => S_OK,
+                Ok(_) => HRESULT::S_OK,
                 Err(error) => error,
             }
         } else {
-            E_FAIL
+            HRESULT::E_FAIL
         }
     }
     pub unsafe extern "system" fn ReJITCompilationFinished(
@@ -1136,7 +1136,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             fIsSafeToBlock.is_positive(),
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1151,7 +1151,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .rejit_error(moduleId, methodId, functionId, hrStatus);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1174,7 +1174,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             cObjectIDRangeLength,
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1192,7 +1192,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             .profiler
             .surviving_references_2(objectIDRangeStart, cObjectIDRangeLength);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1212,7 +1212,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             rootIds,
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1228,11 +1228,11 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
                 .profiler
                 .get_assembly_references(&wszAssemblyPath, pAsmRefProvider);
             match result {
-                Ok(_) => S_OK,
+                Ok(_) => HRESULT::S_OK,
                 Err(error) => error,
             }
         } else {
-            E_FAIL
+            HRESULT::E_FAIL
         }
     }
     pub unsafe extern "system" fn ModuleInMemorySymbolsUpdated(
@@ -1241,7 +1241,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.module_in_memory_symbols_updated(moduleId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1259,7 +1259,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             cbILHeader,
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1275,7 +1275,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             fIsSafeToBlock.is_positive(),
         );
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
@@ -1285,7 +1285,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
     ) -> HRESULT {
         let result = self.profiler.dynamic_method_unloaded(functionId);
         match result {
-            Ok(_) => S_OK,
+            Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
