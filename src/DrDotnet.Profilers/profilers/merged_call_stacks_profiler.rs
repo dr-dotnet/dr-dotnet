@@ -149,8 +149,9 @@ impl Profiler for MergedCallStacksProfiler {
 
 impl MergedCallStacksProfiler {
 
-    fn print_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>)
+    fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>)
     {
+        info!("Starts building callstacks");
         let pinfo = profiler_info.clone();
         
         for managed_thread_id in pinfo.enum_threads().unwrap() {
@@ -195,54 +196,46 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
+        
         let profiler_info = self.clr().clone();
-
         let merged_stack = self.merged_stack.clone();
 
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(40));
-
+        let thread_handle = std::thread::spawn(move || {
+            
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
-            if profiler_info.suspend_runtime().is_ok()
-            {
+            if profiler_info.suspend_runtime().is_ok() {
+                
                 let k = merged_stack.lock().unwrap();
-                MergedCallStacksProfiler::print_callstacks(profiler_info.clone(), k);
-                if profiler_info.resume_runtime().is_err()
-                {
+                MergedCallStacksProfiler::build_callstacks(profiler_info.clone(), k);
+                
+                if profiler_info.resume_runtime().is_err() {
                     error!("Can't resume runtime!");
                 }
-            }
-            else
-            {
+            } else {
                 error!("Can't suspend runtime!");
             }
         });
         
-        let session_info = self.session_info.clone();
-        let clr = self.clr().clone();
-        let merged_stack = self.merged_stack.clone();
-
-        let callback = Box::new(move || {
-
-            let mut report = session_info.create_report("summary.md".to_owned());
-    
-            report.write_line(format!("# Merged Callstacks"));
-    
-            let merged_stack = merged_stack.lock().unwrap();
-
-            for mut stack in merged_stack.stacks.iter() {
-                stack.render(&clr, &mut report);
-            }
-    
-            info!("Report written");
-        });
-
-        detach_after_duration::<MergedCallStacksProfiler>(&self, 10, Some(callback));
-
-        Ok(())
+        if thread_handle.join().is_err() {
+            error!("Can't wait for the thread to finish!");
+        }
+        
+        self.clr().request_profiler_detach(3000)
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
+        
+        let mut report = self.session_info.create_report("summary.md".to_owned());
+
+        report.write_line(format!("# Merged Callstacks"));
+        
+        let merged_stack = self.merged_stack.lock().unwrap();
+        let clr = self.clr().clone();
+        
+        // for mut stack in merged_stack.stacks.iter() {
+        //     stack.render(&clr, &mut report);
+        // }
+        info!("Report written");
         Ok(())
     }
 }
