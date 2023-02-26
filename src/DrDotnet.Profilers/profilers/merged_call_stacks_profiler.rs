@@ -3,11 +3,13 @@ use dashmap::DashMap;
 use std::sync::{ Arc, Mutex };
 use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 use itertools::Itertools;
+use protobuf::well_known_types::timestamp::Timestamp;
 
 use crate::api::*;
 use crate::api::ffi::{FunctionID, HRESULT, ThreadID};
 use crate::macros::*;
 use crate::profilers::*;
+use crate::session::Report;
 
 #[derive(Default)]
 pub struct MergedCallStacksProfiler {
@@ -63,30 +65,71 @@ impl MergedStack {
         }
         let first_frame = first_frame.unwrap();
         
-        let merged_stack = self.stacks.iter()
+        let mut merged_stack = self.stacks.iter_mut()
             .find_or_first(|s| s.frame.fct_id == first_frame.fct_id);
         
         if merged_stack.is_none() {
-            let mut new_merged_stack = MergedStack {
-                thread_ids: Vec::<ThreadID>::new(),
-                stacks: Vec::<MergedStack>::new(),
-                frame: first_frame.clone(),
-            };
-            if index == stack_trace.len() -1 {
-                new_merged_stack.push_thread_id(thread_id);
-            } else {
-                new_merged_stack.add_stack(thread_id, stack_trace, Some(index + 1));
-            }
-            self.stacks.push(new_merged_stack);
-            return;
+            self.stacks.push(MergedStack::new(first_frame.clone()));
+            merged_stack = self.stacks.last_mut();
         }
         
-        let mut merged_stack = merged_stack.unwrap().clone();
+        let merged_stack = merged_stack.unwrap();
         if index == stack_trace.len() -1 {
             merged_stack.push_thread_id(thread_id);
         } else {
             merged_stack.add_stack(thread_id, stack_trace, Some(index + 1));
         }
+    }
+    
+    pub fn new(frame: StackFrame) -> Self {
+        MergedStack {
+            thread_ids: Vec::new(),
+            stacks: Vec::new(),
+            frame
+        }
+    }
+
+    pub fn render(&self, clr: &ClrProfilerInfo, report: &mut Report) {
+        self.render_stack(clr, report, 0);
+    }
+
+    fn render_stack(&self, clr: &ClrProfilerInfo, report: &mut Report, increment: usize) {
+        let padding = str::repeat(" ", 5);
+        let alignment = str::repeat(padding.as_str(), increment);
+
+        // if self.stacks.len() == 0 { 
+        //     let last_frame = self.frame;
+        // }
+
+        // if (stack.Stacks.Count == 0)
+        // {
+        //     var lastFrame = stack.Frame;
+        //     visitor.Write($"{Environment.NewLine}{alignment}");
+        //     visitor.WriteFrameSeparator($" ~~~~ {FormatThreadIdList(visitor, stack.ThreadIds)}");
+        //     visitor.WriteCount($"{Environment.NewLine}{alignment}{stack.ThreadIds.Count,Padding} ");
+        // 
+        //     RenderFrame(lastFrame, visitor);
+        //     return;
+        // }
+        // 
+        // foreach (var nextStackFrame in stack.Stacks.OrderBy(s => s.ThreadIds.Count))
+        // {
+        //     RenderStack(nextStackFrame, visitor,
+        //                 (nextStackFrame.ThreadIds.Count == stack.ThreadIds.Count) ? increment : increment + 1);
+        // }
+
+        report.write_line(format!("{alignment}{}{padding}", self.thread_ids.len()));
+
+        // var currentFrame = stack.Frame;
+        // visitor.WriteCount($"{Environment.NewLine}{alignment}{stack.ThreadIds.Count,Padding} ");
+
+        // RenderFrame(currentFrame, visitor);
+
+        let name = match self.frame.kind {
+            StackFrameType::Native => "unmanaged".to_owned(),
+            _ =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
+        };
+        report.write_line(format!("{name}"));
     }
 }
 
@@ -95,7 +138,7 @@ impl Profiler for MergedCallStacksProfiler {
 
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
-            uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
+            uuid: "9404d16c-b49e-11ed-afa1-0242ac120002".to_owned(),
             name: "Merged call stacks Profiler".to_owned(),
             description: "Display a view of threads merged call stacks. ".to_owned(),
             is_released: true,
@@ -185,18 +228,11 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
     
             report.write_line(format!("# Merged Callstacks"));
     
-            let clr = clr.clone();
-    
             let merged_stack = merged_stack.lock().unwrap();
-    
-            // for method in merged_stack.iter().sorted_by_key(|x| -x.value().load(Ordering::Relaxed)) {
-            //     let method_id = *method.key();
-            //     let name = match method_id {
-            //         0 => "unmanaged".to_owned(),
-            //         _ =>  unsafe { clr.get_full_method_name(*method.key()) }
-            //     };
-            //     report.write_line(format!("- {}: {}", name, method.value().load(Ordering::Relaxed)));
-            // }
+
+            for mut stack in merged_stack.stacks.iter() {
+                stack.render(&clr, &mut report);
+            }
     
             info!("Report written");
         });
