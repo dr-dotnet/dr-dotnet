@@ -12,6 +12,10 @@ impl Report {
         self.writer.write(format!("{}\r\n", text).as_bytes()).unwrap();
     }
 
+    pub fn write<S>(&mut self, text: S) where S: Into<String> {
+        self.writer.write(text.into().as_bytes()).unwrap();
+    }
+
     pub fn new_line(&mut self) {
         self.writer.write(b"\r\n").unwrap();
     }

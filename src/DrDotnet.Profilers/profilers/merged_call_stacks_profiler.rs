@@ -11,6 +11,10 @@ use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
 
+const PADDING: usize = 5;
+const NB_THREAD_IDS_TO_PRINT: usize = 4;
+
+
 #[derive(Default)]
 pub struct MergedCallStacksProfiler {
     clr_profiler_info: ClrProfilerInfo,
@@ -25,14 +29,14 @@ enum StackFrameType {
     Native
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 struct StackFrame {
     // display: Option<str>,
     kind: StackFrameType,
     fct_id: FunctionID,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 struct MergedStack {
     thread_ids: Vec<ThreadID>,
     stacks: Vec<MergedStack>,
@@ -89,47 +93,44 @@ impl MergedStack {
         }
     }
 
-    pub fn render(&self, clr: &ClrProfilerInfo, report: &mut Report) {
-        self.render_stack(clr, report, 0);
+    pub fn write_to(self, report: &mut Report, clr: &ClrProfilerInfo) {
+        self.write_stack(report, clr, 0);
     }
 
-    fn render_stack(&self, clr: &ClrProfilerInfo, report: &mut Report, increment: usize) {
-        let padding = str::repeat(" ", 5);
-        let alignment = str::repeat(padding.as_str(), increment);
+    fn write_stack(self, report: &mut Report, clr: &ClrProfilerInfo, increment: usize) {
+        let alignment = str::repeat(" ", PADDING * increment);
+        let new_line = format!("\r\n{alignment}");
 
-        // if self.stacks.len() == 0 { 
-        //     let last_frame = self.frame;
-        // }
-
-        // if (stack.Stacks.Count == 0)
-        // {
-        //     var lastFrame = stack.Frame;
-        //     visitor.Write($"{Environment.NewLine}{alignment}");
-        //     visitor.WriteFrameSeparator($" ~~~~ {FormatThreadIdList(visitor, stack.ThreadIds)}");
-        //     visitor.WriteCount($"{Environment.NewLine}{alignment}{stack.ThreadIds.Count,Padding} ");
-        // 
-        //     RenderFrame(lastFrame, visitor);
-        //     return;
-        // }
-        // 
-        // foreach (var nextStackFrame in stack.Stacks.OrderBy(s => s.ThreadIds.Count))
-        // {
-        //     RenderStack(nextStackFrame, visitor,
-        //                 (nextStackFrame.ThreadIds.Count == stack.ThreadIds.Count) ? increment : increment + 1);
-        // }
-
-        report.write_line(format!("{alignment}{}{padding}", self.thread_ids.len()));
-
-        // var currentFrame = stack.Frame;
-        // visitor.WriteCount($"{Environment.NewLine}{alignment}{stack.ThreadIds.Count,Padding} ");
-
-        // RenderFrame(currentFrame, visitor);
-
-        let name = match self.frame.kind {
+        if self.stacks.is_empty() {
+            let formatted_thread_ids_list = self.thread_ids[..NB_THREAD_IDS_TO_PRINT].iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
+            
+            let thread_ids = format!(" ~~~~ {formatted_thread_ids_list}", );
+            let thread_count = format!("{:>PADDING$}", self.thread_ids.len());
+            let frame = self.format_frame(clr);
+            
+            debug!("{new_line}{thread_ids}{new_line}{thread_count}{frame}");
+            
+            report.write(new_line.as_str());
+            report.write(thread_ids);
+            report.write(new_line.as_str());
+            report.write(thread_count);
+            report.write(frame);
+            return;
+        }
+        
+        for next_stack in self.stacks.into_iter()
+            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
+            let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
+            next_stack.write_stack(report, clr, if has_same_alignment {increment} else { increment + 1 });
+        }
+    }
+    
+    fn format_frame(self, clr: &ClrProfilerInfo) -> String {
+        debug!("type: {:?}, id:{:}", self.frame.kind, self.frame.fct_id);
+        match self.frame.kind {
             StackFrameType::Native => "unmanaged".to_owned(),
-            _ =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
-        };
-        report.write_line(format!("{name}"));
+            StackFrameType::Managed =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
+        }
     }
 }
 
@@ -224,18 +225,23 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
-        
         let mut report = self.session_info.create_report("summary.md".to_owned());
-
         report.write_line(format!("# Merged Callstacks"));
         
-        let merged_stack = self.merged_stack.lock().unwrap();
+        debug!("Hello");
+        let merged_stack = Arc::try_unwrap(self.merged_stack.clone()).unwrap().into_inner().unwrap();
+        debug!("Bye");
         let clr = self.clr().clone();
         
-        // for mut stack in merged_stack.stacks.iter() {
-        //     stack.render(&clr, &mut report);
-        // }
-        info!("Report written");
+        let nb_roots = merged_stack.stacks.len();
+        let mut nb_threads = 0;
+        
+        for stack in merged_stack.stacks.into_iter() {
+            nb_threads += stack.thread_ids.len();
+            stack.write_to(&mut report, &clr);
+        }
+        debug!("{} threads with {} roots", nb_threads, nb_roots);
+        report.write_line(format!("==> {} threads with {} roots", nb_threads, nb_roots));
         Ok(())
     }
 }
