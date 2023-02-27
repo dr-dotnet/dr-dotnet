@@ -101,15 +101,13 @@ impl MergedStack {
         let alignment = str::repeat(" ", PADDING * increment);
         let new_line = format!("\r\n{alignment}");
 
+        let formatted_thread_ids_list = self.thread_ids.get(0..NB_THREAD_IDS_TO_PRINT).unwrap_or_default().iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
+
+        let thread_ids = format!(" ~~~~ {formatted_thread_ids_list}");
+        let thread_count = format!("{:>PADDING$} ", self.thread_ids.len());
+        let frame = self.format_frame(clr);
+        
         if self.stacks.is_empty() {
-            let formatted_thread_ids_list = self.thread_ids.get(0..NB_THREAD_IDS_TO_PRINT).unwrap_or_default().iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
-            
-            let thread_ids = format!(" ~~~~ {formatted_thread_ids_list}", );
-            let thread_count = format!("{:>PADDING$}", self.thread_ids.len());
-            let frame = self.format_frame(clr);
-            
-            debug!("{new_line}{thread_ids}{new_line}{thread_count}{frame}");
-            
             report.write(new_line.as_str());
             report.write(thread_ids);
             report.write(new_line.as_str());
@@ -119,19 +117,23 @@ impl MergedStack {
         }
         
         for next_stack in self.stacks.iter()
-            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
+            .sorted_by(|a, b| Ord::cmp(&b.thread_ids.len(), &a.thread_ids.len())) {
             let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
             next_stack.write_stack(report, clr, if has_same_alignment {increment} else { increment + 1 });
         }
+        
+        report.write(new_line.as_str());
+        report.write(thread_count);
+        report.write(frame);
     }
     
     fn format_frame(&self, clr: &ClrProfilerInfo) -> String {
         debug!("type: {:?}, id:{:}", self.frame.kind, self.frame.fct_id);
         // match self.frame.kind {
-        //     StackFrameType::Native => "unmanaged".to_owned(),
+        //     StackFrameType::Native => "unmanaged".to_string(),
         //     StackFrameType::Managed =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
         // }
-        "test".to_string()
+        format!("type: {:?}, id:{:}", self.frame.kind, self.frame.fct_id)
     }
 }
 
@@ -238,7 +240,7 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
             stack.write_to(&mut report, &self.clr_profiler_info);
         }
         
-        report.write_line(format!("==> {} threads with {} roots", nb_threads, nb_roots));
+        report.write_line(format!("\n==> {} threads with {} roots", nb_threads, nb_roots));
         Ok(())
     }
 }
