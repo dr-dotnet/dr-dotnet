@@ -93,16 +93,16 @@ impl MergedStack {
         }
     }
 
-    pub fn write_to(self, report: &mut Report, clr: &ClrProfilerInfo) {
+    pub fn write_to(&self, report: &mut Report, clr: &ClrProfilerInfo) {
         self.write_stack(report, clr, 0);
     }
 
-    fn write_stack(self, report: &mut Report, clr: &ClrProfilerInfo, increment: usize) {
+    fn write_stack(&self, report: &mut Report, clr: &ClrProfilerInfo, increment: usize) {
         let alignment = str::repeat(" ", PADDING * increment);
         let new_line = format!("\r\n{alignment}");
 
         if self.stacks.is_empty() {
-            let formatted_thread_ids_list = self.thread_ids[..NB_THREAD_IDS_TO_PRINT].iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
+            let formatted_thread_ids_list = self.thread_ids.get(0..NB_THREAD_IDS_TO_PRINT).unwrap_or_default().iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
             
             let thread_ids = format!(" ~~~~ {formatted_thread_ids_list}", );
             let thread_count = format!("{:>PADDING$}", self.thread_ids.len());
@@ -118,19 +118,20 @@ impl MergedStack {
             return;
         }
         
-        for next_stack in self.stacks.into_iter()
+        for next_stack in self.stacks.iter()
             .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
             let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
             next_stack.write_stack(report, clr, if has_same_alignment {increment} else { increment + 1 });
         }
     }
     
-    fn format_frame(self, clr: &ClrProfilerInfo) -> String {
+    fn format_frame(&self, clr: &ClrProfilerInfo) -> String {
         debug!("type: {:?}, id:{:}", self.frame.kind, self.frame.fct_id);
-        match self.frame.kind {
-            StackFrameType::Native => "unmanaged".to_owned(),
-            StackFrameType::Managed =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
-        }
+        // match self.frame.kind {
+        //     StackFrameType::Native => "unmanaged".to_owned(),
+        //     StackFrameType::Managed =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
+        // }
+        "test".to_string()
     }
 }
 
@@ -175,7 +176,6 @@ impl MergedCallStacksProfiler {
                 let frame = StackFrame {
                     kind: if *method_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
                     fct_id: *method_id,
-                    // display: None
                 };
                 stack_trace.push(frame);
             }
@@ -228,19 +228,16 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
         let mut report = self.session_info.create_report("summary.md".to_owned());
         report.write_line(format!("# Merged Callstacks"));
         
-        debug!("Hello");
-        let merged_stack = Arc::try_unwrap(self.merged_stack.clone()).unwrap().into_inner().unwrap();
-        debug!("Bye");
-        let clr = self.clr().clone();
+        let merged_stack = self.merged_stack.lock().unwrap();
         
         let nb_roots = merged_stack.stacks.len();
         let mut nb_threads = 0;
         
-        for stack in merged_stack.stacks.into_iter() {
+        for stack in merged_stack.stacks.iter() {
             nb_threads += stack.thread_ids.len();
-            stack.write_to(&mut report, &clr);
+            stack.write_to(&mut report, &self.clr_profiler_info);
         }
-        debug!("{} threads with {} roots", nb_threads, nb_roots);
+        
         report.write_line(format!("==> {} threads with {} roots", nb_threads, nb_roots));
         Ok(())
     }
