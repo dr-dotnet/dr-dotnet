@@ -31,7 +31,7 @@ enum StackFrameType {
 
 #[derive(Default, Clone, Debug)]
 struct StackFrame {
-    // display: Option<str>,
+    display: Option<String>,
     kind: StackFrameType,
     fct_id: FunctionID,
 }
@@ -43,13 +43,22 @@ struct MergedStack {
     frame: StackFrame
 }
 
+impl StackFrame {
+    fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
+        match frame.kind {
+            StackFrameType::Native => "unmanaged".to_string(),
+            StackFrameType::Managed =>  unsafe { clr.get_full_method_name(frame.fct_id) }
+        }
+    }
+}
+
 impl MergedStack {
     
     pub fn push_thread_id(&mut self, thread_id: ThreadID) {
         self.thread_ids.push(thread_id);
     }
     
-    pub fn add_stack(&mut self, thread_id: ThreadID, stack_trace: Vec<StackFrame>, index: Option<usize>) {
+    pub fn add_stack(&mut self, clr: &ClrProfilerInfo, thread_id: ThreadID, stack_trace: Vec<StackFrame>, index: Option<usize>) {
         self.thread_ids.push(thread_id);
         
         let mut index = index.unwrap_or(0);
@@ -73,7 +82,7 @@ impl MergedStack {
             .find_or_first(|s| s.frame.fct_id == first_frame.fct_id);
         
         if merged_stack.is_none() {
-            self.stacks.push(MergedStack::new(first_frame.clone()));
+            self.stacks.push(MergedStack::new(&first_frame, clr));
             merged_stack = self.stacks.last_mut();
         }
         
@@ -81,23 +90,27 @@ impl MergedStack {
         if index == stack_trace.len() -1 {
             merged_stack.push_thread_id(thread_id);
         } else {
-            merged_stack.add_stack(thread_id, stack_trace, Some(index + 1));
+            merged_stack.add_stack(clr, thread_id, stack_trace, Some(index + 1));
         }
     }
     
-    pub fn new(frame: StackFrame) -> Self {
+    pub fn new(frame: &StackFrame, clr: &ClrProfilerInfo) -> Self {
         MergedStack {
             thread_ids: Vec::new(),
             stacks: Vec::new(),
-            frame
+            frame: StackFrame {
+                kind: frame.kind.clone(),
+                fct_id: frame.fct_id,
+                display: Some(StackFrame::format(frame, clr))
+            }
         }
     }
 
-    pub fn write_to(&self, report: &mut Report, clr: &ClrProfilerInfo) {
-        self.write_stack(report, clr, 0);
+    pub fn write_to(&self, report: &mut Report) {
+        self.write_stack(report, 0);
     }
 
-    fn write_stack(&self, report: &mut Report, clr: &ClrProfilerInfo, increment: usize) {
+    fn write_stack(&self, report: &mut Report, increment: usize) {
         let alignment = str::repeat(" ", PADDING * increment);
         let new_line = format!("\r\n{alignment}");
 
@@ -105,7 +118,7 @@ impl MergedStack {
 
         let thread_ids = format!(" ~~~~ {formatted_thread_ids_list}");
         let thread_count = format!("{:>PADDING$} ", self.thread_ids.len());
-        let frame = self.format_frame(clr);
+        let frame = self.frame.display.as_ref().unwrap();
         
         if self.stacks.is_empty() {
             report.write(new_line.as_str());
@@ -119,21 +132,12 @@ impl MergedStack {
         for next_stack in self.stacks.iter()
             .sorted_by(|a, b| Ord::cmp(&b.thread_ids.len(), &a.thread_ids.len())) {
             let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
-            next_stack.write_stack(report, clr, if has_same_alignment {increment} else { increment + 1 });
+            next_stack.write_stack(report, if has_same_alignment {increment} else { increment + 1 });
         }
         
         report.write(new_line.as_str());
         report.write(thread_count);
         report.write(frame);
-    }
-    
-    fn format_frame(&self, clr: &ClrProfilerInfo) -> String {
-        debug!("type: {:?}, id:{:}", self.frame.kind, self.frame.fct_id);
-        // match self.frame.kind {
-        //     StackFrameType::Native => "unmanaged".to_string(),
-        //     StackFrameType::Managed =>  unsafe { clr.get_full_method_name(self.frame.fct_id) }
-        // }
-        format!("type: {:?}, id:{:}", self.frame.kind, self.frame.fct_id)
     }
 }
 
@@ -178,13 +182,14 @@ impl MergedCallStacksProfiler {
                 let frame = StackFrame {
                     kind: if *method_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
                     fct_id: *method_id,
+                    display: None
                 };
                 stack_trace.push(frame);
             }
             
             if stack_trace.is_empty() { continue }
             
-            merged_stack.add_stack(managed_thread_id, stack_trace, None);
+            merged_stack.add_stack(&profiler_info, managed_thread_id, stack_trace, None);
         }
     }
 }
@@ -237,7 +242,7 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
         
         for stack in merged_stack.stacks.iter() {
             nb_threads += stack.thread_ids.len();
-            stack.write_to(&mut report, &self.clr_profiler_info);
+            stack.write_to(&mut report);
         }
         
         report.write_line(format!("\n==> {} threads with {} roots", nb_threads, nb_roots));
