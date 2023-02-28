@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::collections::HashMap;
 use dashmap::DashMap;
 use std::sync::{ Arc, Mutex };
@@ -12,6 +13,7 @@ use crate::profilers::*;
 use crate::session::Report;
 
 const PADDING: usize = 5;
+/// if < 0 will print all thread ids
 const NB_THREAD_IDS_TO_PRINT: usize = 4;
 
 
@@ -62,24 +64,10 @@ impl MergedStack {
         self.thread_ids.push(thread_id);
         
         let mut index = index.unwrap_or(0);
-
-        let mut first_frame: Option<&StackFrame> = None;
-        
-        for frame in &stack_trace[index..] {
-            if frame.kind == StackFrameType::Managed { 
-                first_frame = Some(frame);
-                break
-            }
-            index += 1;
-        }
-        
-        if first_frame.is_none() {
-            return; 
-        }
-        let first_frame = first_frame.unwrap();
+        let first_frame = &stack_trace[index];
         
         let mut merged_stack = self.stacks.iter_mut()
-            .find_or_first(|s| s.frame.fct_id == first_frame.fct_id);
+            .find(|s| s.frame.fct_id == first_frame.fct_id);
         
         if merged_stack.is_none() {
             self.stacks.push(MergedStack::new(&first_frame, clr));
@@ -113,10 +101,8 @@ impl MergedStack {
     fn write_stack(&self, report: &mut Report, increment: usize) {
         let alignment = str::repeat(" ", PADDING * increment);
         let new_line = format!("\r\n{alignment}");
-
-        let formatted_thread_ids_list = self.thread_ids.get(0..NB_THREAD_IDS_TO_PRINT).unwrap_or_default().iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
-
-        let thread_ids = format!(" ~~~~ {formatted_thread_ids_list}");
+        
+        let thread_ids = format!(" ~~~~ {}", self.format_thread_ids());
         let thread_count = format!("{:>PADDING$} ", self.thread_ids.len());
         let frame = self.frame.display.as_ref().unwrap();
         
@@ -138,6 +124,22 @@ impl MergedStack {
         report.write(new_line.as_str());
         report.write(thread_count);
         report.write(frame);
+    }
+    
+    fn format_thread_ids(&self) -> String {
+
+        let count = self.thread_ids.len();
+        let limit = min(count, NB_THREAD_IDS_TO_PRINT);
+
+        if limit < 0 {
+            return self.thread_ids.iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
+        }
+        
+        let mut result = self.thread_ids.get(..limit).unwrap_or_default().iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
+        if count > limit {
+            result += "...";
+        }
+        result
     }
 }
 
@@ -184,6 +186,8 @@ impl MergedCallStacksProfiler {
                     fct_id: *method_id,
                     display: None
                 };
+                //TODO: handle correctly native frame, for now we just ignore them
+                if frame.kind == StackFrameType::Native { continue } 
                 stack_trace.push(frame);
             }
             
@@ -243,6 +247,7 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
         for stack in merged_stack.stacks.iter() {
             nb_threads += stack.thread_ids.len();
             stack.write_to(&mut report);
+            report.write(format!("\n\n{}", str::repeat("_", 50)));
         }
         
         report.write_line(format!("\n==> {} threads with {} roots", nb_threads, nb_roots));
