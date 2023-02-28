@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::thread;
 use itertools::Itertools;
+use widestring::U16CString;
 
 use crate::api::*;
 use crate::api::ffi::{ClassID, HRESULT, ObjectID};
@@ -15,6 +16,15 @@ pub struct DuplicatedStringsProfiler {
     str_counts: HashMap<String, u64>,
     string_class_id: Option<ClassID>,
     record_object_references: bool
+}
+
+impl DuplicatedStringsProfiler {
+    pub fn count_utf16_bytes(str: &str) -> Result<usize, ()> {
+        match U16CString::from_str(str) {
+            Ok(str_utf16) => Ok(str_utf16.len() * 2),
+            Err(_) => Err(())
+        }
+    }
 }
 
 impl Profiler for DuplicatedStringsProfiler {
@@ -34,7 +44,15 @@ impl Profiler for DuplicatedStringsProfiler {
                     type_: ParameterType::INT.into(),
                     value: "100".to_owned(),
                     ..std::default::Default::default()
-                }
+                },
+                ProfilerParameter {
+                    name: "Maximum String Size".to_owned(),
+                    key: "max_string_display_size".to_owned(),
+                    description: "The maximum number of characters to display for a given string.".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "256".to_owned(),
+                    ..std::default::Default::default()
+                },
             ],
             ..std::default::Default::default()
         }
@@ -150,13 +168,43 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
         let mut report = self.session_info.create_report("summary.md".to_owned());
 
-        report.write_line(format!("# Duplicate strings Report"));
+        report.write_line(format!("# Duplicated Strings Report"));
 
         let count_of_str_to_print = self.session_info().get_parameter::<usize>("top_count").unwrap();
+        let max_string_display_size = self.session_info().get_parameter::<usize>("max_string_display_size").unwrap();
+
+        report.write_line(format!("Number of occurrences | Value | Wasted bytes"));
+        report.write_line(format!("-: | -: | -:"));
+
+        let mut i = 0;
+        let mut total_wasted_bytes: u64 = 0;
         
-        for i in self.str_counts.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()).take(count_of_str_to_print) {
-            report.write_line(format!("- #({}) \"{}\"", i.1, i.0));
+        for (value, count) in self.str_counts.iter().sorted_by(|a, b| a.1.cmp(b.1).reverse()) {
+            // Wasted bytes = (occurrences - 1) * (utf-16 size (dotnet uses utf-16) + length on 4 bytes)
+            let wasted_bytes = match DuplicatedStringsProfiler::count_utf16_bytes(value) {
+                Ok(size) => (count - 1) * (size as u64 + 4),
+                Err(()) => 0
+            };
+            total_wasted_bytes = total_wasted_bytes + wasted_bytes;
+            if i < count_of_str_to_print {
+                i = i + 1;
+                let mut truncated_string: String = if value.len() > max_string_display_size {
+                    let mut t_str = value.clone();
+                    t_str.truncate(max_string_display_size);
+                    t_str + "..."
+                } else {
+                    value.to_string()
+                };
+
+                // Replace EOT characters like newlines, tabs, ACK, EOT, NUL, ...
+                truncated_string = truncated_string.replace(|c: char| c < 17 as char, "�");
+                
+                report.write_line(format!("{} | {} | {}", count, truncated_string, if wasted_bytes > 0 { wasted_bytes.to_string() } else { "???".to_string() }));
+            }
         }
+
+        report.new_line();
+        report.write_line(format!("Total wasted bytes: {}", total_wasted_bytes));
 
         info!("Report written");
 
@@ -170,3 +218,20 @@ impl CorProfilerCallback6 for DuplicatedStringsProfiler {}
 impl CorProfilerCallback7 for DuplicatedStringsProfiler {}
 impl CorProfilerCallback8 for DuplicatedStringsProfiler {}
 impl CorProfilerCallback9 for DuplicatedStringsProfiler {}
+
+#[cfg(test)]
+mod tests {
+    use crate::profilers::DuplicatedStringsProfiler;
+
+    #[test]
+    fn count_string_utf16_bytes_ascii() {
+        // Each ascii characters take 2 bytes when utf-16 encoded
+        assert_eq!(DuplicatedStringsProfiler::count_utf16_bytes("1234").unwrap(), 8);
+    }
+
+    #[test]
+    fn count_string_utf16_bytes_unicode() {
+        // Special unicode characters can take more than 2 bytes when utf-16 encoded
+        assert_eq!(DuplicatedStringsProfiler::count_utf16_bytes("🐶❌😬😈").unwrap(), 14);
+    }
+}
