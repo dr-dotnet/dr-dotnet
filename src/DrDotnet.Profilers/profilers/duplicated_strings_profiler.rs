@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::thread;
 use itertools::Itertools;
 use widestring::U16CString;
+use thousands::{Separable, SeparatorPolicy, digits};
 
 use crate::api::*;
 use crate::api::ffi::{ClassID, HRESULT, ObjectID};
@@ -166,6 +167,12 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
+        let policy = SeparatorPolicy {
+            separator: ",",
+            groups:    &[3],
+            digits:    digits::ASCII_DECIMAL,
+        };
+        
         let mut report = self.session_info.create_report("summary.md".to_owned());
 
         report.write_line(format!("# Duplicated Strings Report"));
@@ -198,13 +205,13 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
 
                 // Replace EOT characters like newlines, tabs, ACK, EOT, NUL, ...
                 truncated_string = truncated_string.replace(|c: char| c < 17 as char, "�");
-                
-                report.write_line(format!("{} | `{}` | {}", count, truncated_string, if wasted_bytes > 0 { wasted_bytes.to_string() } else { "???".to_string() }));
+                let wasted_bytes_str = if wasted_bytes > 0 { wasted_bytes.separate_by_policy(policy) } else { "???".to_string() };
+                report.write_line(format!("{} | `{}` | {}", count, truncated_string, wasted_bytes_str));
             }
         }
 
         report.new_line();
-        report.write_line(format!("Total wasted bytes: {}", total_wasted_bytes));
+        report.write_line(format!("Total wasted bytes: {}", total_wasted_bytes.separate_by_policy(policy)));
 
         info!("Report written");
 
