@@ -50,7 +50,7 @@ impl Profiler for DuplicatedStringsProfiler {
                     key: "max_string_display_size".to_owned(),
                     description: "The maximum number of characters to display for a given string.".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "256".to_owned(),
+                    value: "128".to_owned(),
                     ..std::default::Default::default()
                 },
             ],
@@ -59,8 +59,8 @@ impl Profiler for DuplicatedStringsProfiler {
     }
 }
 
-impl CorProfilerCallback for DuplicatedStringsProfiler
-{
+impl CorProfilerCallback for DuplicatedStringsProfiler {
+    
     fn object_references(&mut self, object_id: ObjectID, class_id: ClassID, _object_ref_ids: &[ObjectID]) -> Result<(), HRESULT> {
         
         if !self.record_object_references {
@@ -93,10 +93,9 @@ impl CorProfilerCallback for DuplicatedStringsProfiler
     }
 }
 
-impl CorProfilerCallback2 for DuplicatedStringsProfiler
-{
-    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
-    {
+impl CorProfilerCallback2 for DuplicatedStringsProfiler {
+    
+    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
         info!("GC started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
         
         // Start recording object 
@@ -143,6 +142,7 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler
 }
 
 impl CorProfilerCallback3 for DuplicatedStringsProfiler {
+    
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
         self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
@@ -174,7 +174,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
         let max_string_display_size = self.session_info().get_parameter::<usize>("max_string_display_size").unwrap();
 
         report.write_line(format!("Number of occurrences | Value | Wasted bytes"));
-        report.write_line(format!("-: | -: | -:"));
+        report.write_line(format!(":- | :- | -:"));
 
         let mut i = 0;
         let mut total_wasted_bytes: u64 = 0;
@@ -199,7 +199,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
                 // Replace EOT characters like newlines, tabs, ACK, EOT, NUL, ...
                 truncated_string = truncated_string.replace(|c: char| c < 17 as char, "�");
                 
-                report.write_line(format!("{} | {} | {}", count, truncated_string, if wasted_bytes > 0 { wasted_bytes.to_string() } else { "???".to_string() }));
+                report.write_line(format!("{} | `{}` | {}", count, truncated_string, if wasted_bytes > 0 { wasted_bytes.to_string() } else { "???".to_string() }));
             }
         }
 

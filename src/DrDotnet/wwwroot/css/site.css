@@ -42,12 +42,12 @@ a, .btn-link {
     z-index: 1000;
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
 
 .mdc-dialog .mdc-dialog__surface {
     max-width: none !important;
@@ -55,4 +55,22 @@ a, .btn-link {
 
 #logs {
     font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+}
+
+.markdown table, .markdown th, .markdown td {
+    border: 1px solid #ddd;
+    border-collapse: collapse;
+    padding: 5px 10px 5px 10px;
+}
+
+.markdown tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.markdown thead tr {
+    background-color: #ddd;
+}
+
+code {
+    color: #6200ee;
 }
