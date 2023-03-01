@@ -1,3 +1,7 @@
+# 0.2.3
+- Add MergedCallstacks profiler
+- Improve DuplicatedStrings output UI
+
 # 0.2.2
 - Improve Runtime Pause profiler to show GC information
 - Ease usage of COR_PRF_HIGH_MONITOR flags
