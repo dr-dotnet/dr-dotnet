@@ -23,7 +23,9 @@ register!(
     MemoryLeakProfiler,
     RuntimePauseProfiler,
     CpuHotpathProfiler,
-    DuplicatedStringsProfiler);
+    DuplicatedStringsProfiler,
+    MergedCallStacksProfiler
+);
 
 // Actual COM entry point
 #[no_mangle]
