@@ -30,7 +30,7 @@ impl SessionInfo {
         self.create_session_json(); // Could be done once instead of once per report written
         let path = PathBuf::from(format!(r"{}/{}", SessionInfo::get_directory(&self.uuid), filename));
         let file = File::create(&path).unwrap();
-        return Report { writer: BufWriter::new(file) };
+        return Report { writer: BufWriter::new(file), filepath: path  };
     }
 
     pub fn get_root_directory() -> String {
