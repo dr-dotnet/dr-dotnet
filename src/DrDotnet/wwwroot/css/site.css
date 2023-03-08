@@ -58,28 +58,28 @@ a, .btn-link {
 }
 
 /* report markdown */
-.report-markdown table, .report-markdown th, .report-markdown td {
+.report table, .report th, .report td {
     border: 1px solid #ddd;
     border-collapse: collapse;
     padding: 5px 10px 5px 10px;
 }
-.report-markdown tr:nth-child(even) {
+.report tr:nth-child(even) {
     background-color: #fafafa;
 }
-.report-markdown thead tr {
+.report thead tr {
     background-color: #ddd;
 }
-.report-markdown code {
+.report code {
     color: #6200ee;
 }
 
 /* report html */
 /* https://codepen.io/ogxd/pen/vYzxZgm?editors=1100 */
-.report-html > details details {
+.report > details details {
     margin-left: 15px;
     position: relative;
 }
-.report-html > details details::after {
+.report > details details::after {
     content: "";
     position: absolute;
     top: -5px;
@@ -88,10 +88,10 @@ a, .btn-link {
     height: calc(28px + 10px);
     background-color: #c7d3df;
 }
-.report-html > details details:last-child::after {
+.report > details details:last-child::after {
     height: calc(28px / 2 + 5px);
 }
-.report-html > details details::before {
+.report > details details::before {
     content: "";
     position: absolute;
     top: calc(28px / 2);
@@ -100,10 +100,10 @@ a, .btn-link {
     height: 1px;
     background-color: #c7d3df;
 }
-.report-html > details details[open]:not(:last-child)::after {
+.report > details details[open]:not(:last-child)::after {
     height: calc(100% + 5px);
 }
-.report-html summary {
+.report summary {
     margin: 5px 0px 0px 0px;
     padding: 5px 10px;
     background-color: #f2f2f2;
@@ -112,15 +112,15 @@ a, .btn-link {
     color: #545f69;
     position: relative;
 }
-.report-html ul {
+.report ul {
     list-style-type: none;
     margin: 0;
     padding: 0;
 }
-.report-html span {
+.report span {
     float: right;
 }
-.report-html li {
+.report li {
     margin: 5px 0;
     padding: 5px 10px;
     background-color: #f2f2f2;
@@ -131,7 +131,7 @@ a, .btn-link {
     margin-left: 15px;
     position: relative;
 }
-.report-html li::after {
+.report li::after {
     content: "";
     position: absolute;
     top: -5px;
@@ -140,10 +140,10 @@ a, .btn-link {
     height: calc(28px + 10px);
     background-color: #c7d3df;
 }
-.report-html li:last-child::after {
+.report li:last-child::after {
     height: calc(28px / 2 + 5px);
 }
-.report-html li::before {
+.report li::before {
     content: "";
     position: absolute;
     top: calc(28px / 2);
@@ -152,9 +152,9 @@ a, .btn-link {
     height: 1px;
     background-color: #c7d3df;
 }
-.report-html li[open]:not(:last-child)::after {
+.report li[open]:not(:last-child)::after {
     height: calc(100% + 5px);
 }
-.report-html li:last-child {
+.report li:last-child {
     background-color: #ffeeee;
 }

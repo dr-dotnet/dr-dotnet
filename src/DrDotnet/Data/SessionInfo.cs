@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
@@ -22,9 +23,15 @@ public partial class SessionInfo
 
     public DateTime TimestampDate => DateTime.Parse(Timestamp, CultureInfo.InvariantCulture);
 
-    public IEnumerable<FileInfo> EnumerateFiles()
+    /// <summary>
+    /// Returns all reports (session.json is not included, because it's not a report per say)
+    /// </summary>
+    /// <returns>Reports generated during the profiling session</returns>
+    public IEnumerable<FileInfo> EnumerateReports()
     {
-        return new FileInfo(Path).Directory!.EnumerateFiles();
+        return new FileInfo(Path).Directory!.EnumerateFiles()
+            .Where(x => x.Name != SESSION_FILE_NAME)
+            .OrderBy(x => x.Name);
     }
 
     public string Path => GetPath(Guid);
