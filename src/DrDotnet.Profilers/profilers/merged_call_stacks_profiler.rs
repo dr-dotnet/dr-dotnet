@@ -98,15 +98,67 @@ impl MergedStack {
         self.write_stack(report, 0);
     }
 
+    fn write_html(&self, report: &mut Report, isSame: bool) {
+        
+        if self.stacks.is_empty() {
+            if !isSame {
+                report.write(format!("\n</details>\n"));
+                report.write(self.render_as_html_summary());
+                report.write(format!("\n<details>\n\t"));
+            } else {
+                report.write(self.render_as_html_li());
+            }
+            return;
+        }
+
+        if !isSame {
+            report.write(format!("\n</details>\n"));
+        }
+        
+        for next_stack in self.stacks.iter()
+            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
+            
+            let mut has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
+            
+            if has_same_alignment {
+                // Check that the next stack  of next_stack has also the same alignment
+                let next_next_stack = next_stack.stacks.iter()
+                    .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len()))
+                    .next();
+
+                if let Some (n) = next_next_stack{
+                    has_same_alignment = n.thread_ids.len() == self.thread_ids.len();
+                }
+            }
+
+            if has_same_alignment {
+                report.write(format!("\n</ul>\n"));
+            }
+            
+            next_stack.write_html(report, has_same_alignment);
+            
+            if has_same_alignment {
+                report.write(format!("\n<ul>\n"));
+            }
+        }
+
+        if isSame {
+            report.write(self.render_as_html_li());
+        } else {
+            report.write(self.render_as_html_summary());
+            report.write(format!("\n<details>\n\t"));
+        }
+    }
+
     fn write_stack(&self, report: &mut Report, increment: usize) {
         let alignment = str::repeat(" ", PADDING * increment);
         let new_line = format!("\r\n{alignment}");
         
-        let thread_ids = format!(" ~~~~ {}", self.format_thread_ids());
         let thread_count = format!("{:>PADDING$} ", self.thread_ids.len());
         let frame = self.frame.display.as_ref().unwrap();
-        
+
         if self.stacks.is_empty() {
+            let thread_ids = format!(" ~~~~ {}", self.format_thread_ids());
             report.write(new_line.as_str());
             report.write(thread_ids);
             report.write(new_line.as_str());
@@ -114,13 +166,13 @@ impl MergedStack {
             report.write(frame);
             return;
         }
-        
+
         for next_stack in self.stacks.iter()
             .sorted_by(|a, b| Ord::cmp(&b.thread_ids.len(), &a.thread_ids.len())) {
             let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
             next_stack.write_stack(report, if has_same_alignment {increment} else { increment + 1 });
         }
-        
+
         report.write(new_line.as_str());
         report.write(thread_count);
         report.write(frame);
@@ -140,6 +192,18 @@ impl MergedStack {
             result += "...";
         }
         result
+    }
+
+    pub fn render_as_html_summary(&self) -> String {
+        let frame = self.frame.display.as_ref().unwrap();
+        let thread_count = format!("{}", self.thread_ids.len());
+        format!("<summary><span>{thread_count}</span>{frame}</summary>")
+    }
+
+    pub fn render_as_html_li(&self) -> String {
+        let frame = self.frame.display.as_ref().unwrap();
+        let thread_count = format!("{}", self.thread_ids.len());
+        format!("<li><span>{thread_count}</span>{frame}</li>")
     }
 }
 
@@ -236,21 +300,31 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
-        let mut report = self.session_info.create_report("summary.md".to_owned());
+        let mut report = self.session_info.create_report("pstacks.md".to_owned());
         report.write_line(format!("# Merged Callstacks"));
+
+        let mut report_html = self.session_info.create_report("collapsible_pstacks.html".to_owned());
         
         let merged_stack = self.merged_stack.lock().unwrap();
         
-        let nb_roots = merged_stack.stacks.len();
-        let mut nb_threads = 0;
-        
-        for stack in merged_stack.stacks.iter() {
-            nb_threads += stack.thread_ids.len();
+        for stack in merged_stack.stacks.iter()
+            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
+            
             stack.write_to(&mut report);
             report.write(format!("\n\n{}", str::repeat("_", 50)));
+            
+            stack.write_html(&mut report_html, false);
         }
+        report.write_line(format!("\n==> {} threads with {} roots", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
+        report_html.write_line(format!("<h3>{} threads <small class=\"text-muted\">with {} roots</small></h3>", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
         
-        report.write_line(format!("\n==> {} threads with {} roots", nb_threads, nb_roots));
+        match report_html.reverse_lines() {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Failed to reverse lines of html report: {}", e)
+            }
+        };
+        
         Ok(())
     }
 }

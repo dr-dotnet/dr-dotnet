@@ -28,15 +28,15 @@
     </div>
 </div>
 
-@foreach (var markdownReport in Session.EnumerateFiles().Where(x => x.Extension.ToLower() == ".md"))
+@foreach (FileInfo report in Session.EnumerateReports())
 {
     <div class="mat-layout-grid">
         <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
-                @markdownReport.Name
+                @report.Name
             </div>
-            <div class="markdown mat-layout-grid-cell mat-layout-grid-cell-span-12">
-                @MarkdownFileToMarkup(markdownReport)
+            <div class="report mat-layout-grid-cell mat-layout-grid-cell-span-12">
+                @ConvertFileToMarkup(report)
             </div>
         </div>
     </div>
@@ -50,13 +50,15 @@
     private SessionInfo? _session;
     private SessionInfo Session => _session ??= SessionDiscovery.GetSession(SessionId);
 
-    private static MarkupString MarkdownFileToMarkup(FileInfo markdownFile)
+    private static MarkupString ConvertFileToMarkup(FileInfo file)
     {
-        var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
-
-        string markdownContent = File.ReadAllText(markdownFile.FullName);
-        string htmlContent = Markdown.ToHtml(markdownContent, pipeline);
-        return new MarkupString(htmlContent);
+        string content = File.ReadAllText(file.FullName);
+        return file.Extension.ToLower() switch
+        {
+            ".md" => new MarkupString(Markdown.ToHtml(content, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build())),
+            ".html" => new MarkupString(content),
+            _ => new MarkupString()
+        };
     }
 
     private void OnBackClick(object data)
@@ -70,7 +72,7 @@
 
         using var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true);
       
-        foreach (var file in Session.EnumerateFiles())
+        foreach (var file in Session.EnumerateReports())
         {
             archive.CreateEntryFromFile(file.FullName, file.Name);
         }

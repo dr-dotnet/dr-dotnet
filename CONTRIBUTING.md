@@ -11,6 +11,7 @@
       - Checkout the [architecture](ARCHITECTURE.md) and the [building guidelines](BUILDING.md) to get started
       - Make sure it builds and that tests are passing
       - Add changes in [CHANGELOG.md](CHANGELOG.md) and increment version (semver). The first line is parsed an becomes the release version in the CD pipeline.
+        - Prefer starting changelog entries with one of the following (in this order): Add, Update, Change, Improve, Remove or Fix.
 
 ## Project Spirit
 

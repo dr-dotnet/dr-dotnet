@@ -58,7 +58,7 @@ public class RuntimePausesProfilerTests : ProfilerTests
 
         await session.AwaitUntilCompletion();
 
-        var summary = session.EnumerateFiles().Where(x => x.Name == "summary.md").FirstOrDefault();
+        var summary = session.EnumerateReports().Where(x => x.Name == "summary.md").FirstOrDefault();
 
         Assert.NotNull(summary, "No summary have been created!");
 

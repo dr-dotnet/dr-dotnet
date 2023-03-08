@@ -57,20 +57,104 @@ a, .btn-link {
     font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
 }
 
-.markdown table, .markdown th, .markdown td {
+/* report markdown */
+.report table, .report th, .report td {
     border: 1px solid #ddd;
     border-collapse: collapse;
     padding: 5px 10px 5px 10px;
 }
-
-.markdown tr:nth-child(even) {
+.report tr:nth-child(even) {
     background-color: #fafafa;
 }
-
-.markdown thead tr {
+.report thead tr {
     background-color: #ddd;
 }
-
-code {
+.report code {
     color: #6200ee;
+}
+
+/* report html */
+/* https://codepen.io/ogxd/pen/vYzxZgm?editors=1100 */
+.report > details details {
+    margin-left: 15px;
+    position: relative;
+}
+.report > details details::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: -10px;
+    width: 1px;
+    height: calc(28px + 10px);
+    background-color: #c7d3df;
+}
+.report > details details:last-child::after {
+    height: calc(28px / 2 + 5px);
+}
+.report > details details::before {
+    content: "";
+    position: absolute;
+    top: calc(28px / 2);
+    left: -10px;
+    width: 10px;
+    height: 1px;
+    background-color: #c7d3df;
+}
+.report > details details[open]:not(:last-child)::after {
+    height: calc(100% + 5px);
+}
+.report summary {
+    margin: 5px 0px 0px 0px;
+    padding: 5px 10px;
+    background-color: #f2f2f2;
+    border: 0px solid #c7d3df;
+    border-radius: 3px;
+    color: #545f69;
+    position: relative;
+}
+.report ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+.report span {
+    float: right;
+}
+.report li {
+    margin: 5px 0;
+    padding: 5px 10px;
+    background-color: #f2f2f2;
+    border: 0px solid #c7d3df;
+    border-radius: 3px;
+    color: #545f69;
+    position: relative;
+    margin-left: 15px;
+    position: relative;
+}
+.report li::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: -10px;
+    width: 1px;
+    height: calc(28px + 10px);
+    background-color: #c7d3df;
+}
+.report li:last-child::after {
+    height: calc(28px / 2 + 5px);
+}
+.report li::before {
+    content: "";
+    position: absolute;
+    top: calc(28px / 2);
+    left: -10px;
+    width: 10px;
+    height: 1px;
+    background-color: #c7d3df;
+}
+.report li[open]:not(:last-child)::after {
+    height: calc(100% + 5px);
+}
+.report li:last-child {
+    background-color: #ffeeee;
 }
