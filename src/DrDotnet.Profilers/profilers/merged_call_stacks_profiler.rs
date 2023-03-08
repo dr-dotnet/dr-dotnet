@@ -300,10 +300,10 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
-        let mut report = self.session_info.create_report("summary.md".to_owned());
+        let mut report = self.session_info.create_report("pstacks.md".to_owned());
         report.write_line(format!("# Merged Callstacks"));
 
-        let mut report_html = self.session_info.create_report("summary.html".to_owned());
+        let mut report_html = self.session_info.create_report("collapsible_pstacks.html".to_owned());
         
         let merged_stack = self.merged_stack.lock().unwrap();
         
@@ -316,6 +316,7 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
             stack.write_html(&mut report_html, false);
         }
         report.write_line(format!("\n==> {} threads with {} roots", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
+        report_html.write_line(format!("<h3>{} threads <small class=\"text-muted\">with {} roots</small></h3>", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
         
         match report_html.reverse_lines() {
             Ok(_) => {}
