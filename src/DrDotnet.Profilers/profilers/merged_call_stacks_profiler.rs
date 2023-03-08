@@ -117,7 +117,19 @@ impl MergedStack {
         
         for next_stack in self.stacks.iter()
             .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
-            let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
+            
+            let mut has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
+            
+            if has_same_alignment {
+                // Check that the next stack  of next_stack has also the same alignment
+                let next_next_stack = next_stack.stacks.iter()
+                    .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len()))
+                    .next();
+
+                if let Some (n) = next_next_stack{
+                    has_same_alignment = n.thread_ids.len() == self.thread_ids.len();
+                }
+            }
 
             if has_same_alignment {
                 report.write(format!("\n</ul>\n"));
