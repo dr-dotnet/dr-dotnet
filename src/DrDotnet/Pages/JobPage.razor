@@ -2,6 +2,7 @@
 
 @using DrDotnet.Utils;
 @using Microsoft.Extensions.Logging
+@using System.Threading
 
 @inject NavigationManager NavigationManager
 @inject IProfilerDiscovery ProfilerDiscovery
@@ -104,27 +105,35 @@
         Profiler = ProfilerDiscovery.GetProfilers().FirstOrDefault(x => x.Guid == ProfilerId)!;
     }
 
-    private async Task OnRunAnalysisClicked(object data)
+    private void OnRunAnalysisClicked(object data)
     {
-        try
+        State = JobState.InProgress;
+        StateHasChanged();
+        
+        // Trigger profiler in another thread than UI thread
+        _ = Task.Run(async () =>
         {
-            ProcessInfo process = ProcessDiscovery.GetProcessInfoFromPid(ProcessId)!;
+            try
+            {
+                ProcessInfo process = ProcessDiscovery.GetProcessInfoFromPid(ProcessId)!;
 
-            State = JobState.InProgress;
+                // Todo check profiler and check process
+                Logger.LogInformation("Start profiling!");
+                Session = ProfilingExtensions.StartProfilingSession(Profiler, process, Logger);
+                Logger.LogInformation("Successfully attached to process!");
+                
+                await Session.AwaitUntilCompletion();
+
+                State = JobState.Completed;
+            }
+            catch (Exception e)
+            {
+                State = JobState.Failed;
+                Logger.LogError(e, "Could not attach to process {ProcessId}", ProcessId);
+            }
             
-            // Todo check profiler and check process
-            Logger.LogInformation("Start profiling!");
-            Session = ProfilingExtensions.StartProfilingSession(Profiler, process, Logger);
-            Logger.LogInformation("Successfully attached to process!");
-            await Session.AwaitUntilCompletion();
-            
-            State = JobState.Completed;
-        }
-        catch (Exception e)
-        {
-            State = JobState.Failed;
-            Logger.LogError(e, "Could not attach to process {ProcessId}", ProcessId);
-        }
+            await InvokeAsync(StateHasChanged);
+        });
     }
 
     private void OnViewSessionResultsClicked(object data)

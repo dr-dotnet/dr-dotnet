@@ -1,3 +1,7 @@
+# 0.2.5
+- Attach to process in non-UI thread
+- Change CPU sampled profiler output to html format
+
 # 0.2.4
 - Add support for raw HTML reports
 - Add collapsible HTML view for *Merged Callstacks* profiler

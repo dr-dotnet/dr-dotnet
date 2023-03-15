@@ -45,7 +45,7 @@ public class CpuHotpathProfilerTests : ProfilerTests
 
         Console.WriteLine("Session Directory: " + session.Path);
 
-        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.md");
+        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "stacks.html");
 
         Assert.NotNull(summary, "No summary have been created!");
 

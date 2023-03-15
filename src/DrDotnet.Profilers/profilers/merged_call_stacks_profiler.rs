@@ -16,7 +16,6 @@ const PADDING: usize = 5;
 /// if < 0 will print all thread ids
 const NB_THREAD_IDS_TO_PRINT: usize = 4;
 
-
 #[derive(Default)]
 pub struct MergedCallStacksProfiler {
     clr_profiler_info: ClrProfilerInfo,
