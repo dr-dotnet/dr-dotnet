@@ -56,9 +56,7 @@ impl ParallelStacksProfiler {
                 ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT,
                 method_ids_ptr_c,
                 std::ptr::null(), 0);
-
-            // METHOD_IDS ARE STACKED, we reverse them to read from top to bottom instead of the opposite
-            method_ids.reverse(); 
+            
             let count = sequences.entry(method_ids).or_insert(0);
             *count += 1;
         }
@@ -128,7 +126,18 @@ impl CorProfilerCallback3 for ParallelStacksProfiler {
             error!("Can't wait for the thread to finish!");
         }
 
-        let sequences = self.sequences.lock().unwrap();
+        let mut sequences = self.sequences.lock().unwrap();
+
+        // METHOD_IDS ARE STACKED, we need to reverse them to read from top to bottom instead of the opposite
+        let keys: Vec<_> = sequences.keys().cloned().collect();
+        for key in keys {
+            if let Some(value) = sequences.remove(&key) {
+                let mut new_key = key;
+                new_key.reverse();
+                sequences.insert(new_key, value);
+            }
+        }
+        
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         tree.sort_by(&|a, b| b.inclusive.cmp(&a.inclusive));
 
