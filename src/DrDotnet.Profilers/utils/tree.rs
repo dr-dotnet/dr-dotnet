@@ -71,21 +71,24 @@ impl<K, V> Eq for TreeNode<K, V>
     where K: Eq, V: Eq {}
 
 impl<K, V> TreeNode<K, V>
-    where V: AddAssign + Default + Clone
+    where V: for<'a> AddAssign<&'a V> + Default,
 {
-    // Compute recursively and return the inclusive value of a given TreeNode
-    pub fn get_inclusive_value(&self) -> V
-    {
-        let mut inclusive_data = if let Some(self_data) = &self.value {
-            self_data.clone()
-        } else {
-            V::default()
-        };
-        for child in self.children.iter() {
-            let child_inclusive_value = child.get_inclusive_value();
-            inclusive_data += child_inclusive_value;
+    fn get_inclusive_value_recursive(&self, value: &mut V) {
+        if let Some(self_data) = &self.value {
+            value.add_assign(self_data);
         }
-        inclusive_data
+        for child in self.children.iter() {
+            child.get_inclusive_value_recursive(value);
+        }
+    }
+
+    // Compute recursively and return the inclusive value of a given TreeNode
+    pub fn get_inclusive_value(&self) -> V {
+        // Creating a single vector and passing it through get_inclusive_value_recursive
+        // enables us to avoid cloning.
+        let mut value = V::default();
+        self.get_inclusive_value_recursive(&mut value);
+        value
     }
 }
 
@@ -104,7 +107,7 @@ mod tests {
         }
     }
 
-    // Run tests with 'cargo test -- --nocapture' to get output in console
+    // Run tests with 'cargo test -- --nocapture --test-threads=1' to get output in console
     #[test]
     fn test_tree() {
         // Sequences of u32
@@ -163,9 +166,9 @@ mod tests {
         pub struct Threads(Vec<ThreadID>);
     
         // Implement AddAssign for get_inclusive_value to be usable
-        impl AddAssign for Threads {
-            fn add_assign(&mut self, other: Self) {
-                self.0.extend(other.0);
+        impl AddAssign<&Threads> for Threads {
+            fn add_assign(&mut self, other: &Self) {
+                self.0.extend(&other.0);
             }
         }
 
