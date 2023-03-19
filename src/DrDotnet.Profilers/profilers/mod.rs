@@ -20,6 +20,8 @@ pub mod duplicated_strings_profiler;
 pub use duplicated_strings_profiler::DuplicatedStringsProfiler as DuplicatedStringsProfiler;
 
 pub mod merged_call_stacks_profiler;
+pub mod pstacks_profiler;
+
 pub use merged_call_stacks_profiler::MergedCallStacksProfiler as MergedCallStacksProfiler;
 
 use simplelog::*;

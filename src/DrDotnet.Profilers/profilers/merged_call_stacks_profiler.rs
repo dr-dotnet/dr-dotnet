@@ -167,7 +167,7 @@ impl MergedStack {
         }
 
         for next_stack in self.stacks.iter()
-            .sorted_by(|a, b| Ord::cmp(&b.thread_ids.len(), &a.thread_ids.len())) {
+            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
             let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
             next_stack.write_stack(report, if has_same_alignment {increment} else { increment + 1 });
         }
@@ -300,24 +300,31 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
         let mut report = self.session_info.create_report("pstacks.md".to_owned());
-        report.write_line(format!("# Merged Callstacks"));
-
         let mut report_html = self.session_info.create_report("collapsible_pstacks.html".to_owned());
         
         let merged_stack = self.merged_stack.lock().unwrap();
+        report.write_line(format!("\n==> {} threads with {} roots", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
         
         for stack in merged_stack.stacks.iter()
             .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
             
             stack.write_to(&mut report);
-            report.write(format!("\n\n{}", str::repeat("_", 50)));
+            report.write_line(format!("\n\n{}", str::repeat("_", 50)));
             
             stack.write_html(&mut report_html, false);
         }
-        report.write_line(format!("\n==> {} threads with {} roots", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
+        report.write_line(format!("# Merged Callstacks"));
+        
         report_html.write_line(format!("<h3>{} threads <small class=\"text-muted\">with {} roots</small></h3>", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
         
         match report_html.reverse_lines() {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Failed to reverse lines of html report: {}", e)
+            }
+        };
+
+        match report.reverse_lines() {
             Ok(_) => {}
             Err(e) => {
                 error!("Failed to reverse lines of html report: {}", e)
