@@ -3,26 +3,26 @@ use std::collections::HashMap;
 use std::ops::AddAssign;
 
 #[derive(Debug, Clone)]
-struct TreeNode<K, D> {
+struct TreeNode<K, V> {
     pub key: K,
-    pub value: Option<D>,
-    pub children: Vec<TreeNode<K, D>>,
+    pub value: Option<V>,
+    pub children: Vec<TreeNode<K, V>>,
 }
 
-impl<K, D> TreeNode<K, D>
-    where K: PartialEq + Copy, D: Clone
+impl<K, V> TreeNode<K, V>
+    where K: PartialEq + Copy, V: Clone
 {
-    pub fn new(key: K, value: Option<D>) -> Self {
+    pub fn new(key: K) -> Self {
         TreeNode {
-            key,
-            value,
+            key: key,
+            value: None,
             children: Vec::new(),
         }
     }
 
     // Sort children recursively based on the given closure
     pub fn sort_by<F>(&mut self, compare: &F)
-        where F: Fn(&TreeNode<K, D>, &TreeNode<K, D>) -> Ordering,
+        where F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
     {
         self.children.sort_by(compare);
         for child in &mut self.children {
@@ -30,34 +30,32 @@ impl<K, D> TreeNode<K, D>
         }
     }
 
-    pub fn build_from_sequences(sequences: &HashMap<Vec<K>, D>, root_key: K) -> TreeNode<K, D> {
-        let mut root = TreeNode::new(root_key, None);
+    pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
+        let mut root = TreeNode::new(root_key);
         for (sequence, value) in sequences {
             let mut current = &mut root;
-            let mut depth: usize = 1;
-            let l = sequence.len();
             for y in sequence {
                 let mut child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
                     &mut current.children[i]
                 } else {
-                    let mut new_child: TreeNode<K, D> = TreeNode::new(*y, if depth == l { Some(value.clone()) } else { None });
+                    let mut new_child: TreeNode<K, V> = TreeNode::new(*y);
                     current.children.push(new_child);
                     let len = current.children.len();
                     &mut current.children[len - 1]
                 };
                 current = child;
-                depth+=1;
             }
+            current.value = Some(value.clone());
         }
         return root;
     }
 }
 
-impl<K, D> PartialEq for TreeNode<K, D>
-    where K: Eq
+impl<K, V> PartialEq for TreeNode<K, V>
+    where K: Eq, V: Eq
 {
     fn eq(&self, other: &Self) -> bool {
-        if self.key != other.key || self.children.len() != other.children.len() {
+        if self.key != other.key || self.value != other.value || self.children.len() != other.children.len() {
             return false;
         }
         for (child1, child2) in self.children.iter().zip(other.children.iter()) {
@@ -69,19 +67,19 @@ impl<K, D> PartialEq for TreeNode<K, D>
     }
 }
 
-impl<K, D> Eq for TreeNode<K, D>
-    where K: Eq {}
+impl<K, V> Eq for TreeNode<K, V>
+    where K: Eq, V: Eq {}
 
-impl<K, D> TreeNode<K, D>
-    where D: AddAssign + Default + Clone
+impl<K, V> TreeNode<K, V>
+    where V: AddAssign + Default + Clone
 {
     // Compute recursively and return the inclusive value of a given TreeNode
-    pub fn get_inclusive_value(&self) -> D
+    pub fn get_inclusive_value(&self) -> V
     {
         let mut inclusive_data = if let Some(self_data) = &self.value {
             self_data.clone()
         } else {
-            D::default()
+            V::default()
         };
         for child in self.children.iter() {
             let child_inclusive_value = child.get_inclusive_value();
@@ -95,8 +93,8 @@ impl<K, D> TreeNode<K, D>
 mod tests {
     use super::*;
 
-    fn print<T, D, F>(tree: &TreeNode<T, D>, depth: usize, format: &F)
-        where F: Fn(&TreeNode<T, D>) -> String
+    fn print<T, V, F>(tree: &TreeNode<T, V>, depth: usize, format: &F)
+        where F: Fn(&TreeNode<T, V>) -> String
     {
         let tabs = " ".repeat(depth);
         println!("{}- {}", tabs, format(tree));
@@ -114,10 +112,10 @@ mod tests {
             (vec![1, 2, 3], 1),
             (vec![2, 2, 3], 2),
             (vec![1, 2], 3),
-            (vec![1, 2, 4], 5),
-            (vec![1, 3, 5], 6),
-            (vec![2, 3, 2, 1, 4], 7),
-            (vec![1, 3, 5, 1], 8),
+            (vec![1, 2, 4], 4),
+            (vec![1, 3, 5], 5),
+            (vec![2, 3, 2, 1, 4], 6),
+            (vec![1, 3, 5, 1], 7),
         ]);
 
         // Expected sequences in a tree, sorted by descending inclusive value
@@ -125,16 +123,16 @@ mod tests {
         TreeNode { key: 0, value: None, children: vec![
             TreeNode { key: 1, value: None, children: vec![
                 TreeNode { key: 3, value: None, children: vec![
-                    TreeNode { key: 5, value: Some(6), children: vec![
-                        TreeNode { key: 1, value: Some(8), children: vec![] }] }] },
+                    TreeNode { key: 5, value: Some(5), children: vec![
+                        TreeNode { key: 1, value: Some(7), children: vec![] }] }] },
                 TreeNode { key: 2, value: Some(3), children: vec![
-                    TreeNode { key: 4, value: Some(5), children: vec![] },
+                    TreeNode { key: 4, value: Some(4), children: vec![] },
                     TreeNode { key: 3, value: Some(1), children: vec![] }] }] },
             TreeNode { key: 2, value: None, children: vec![
                 TreeNode { key: 3, value: None, children: vec![
                     TreeNode { key: 2, value: None, children: vec![
                         TreeNode { key: 1, value: None, children: vec![
-                            TreeNode { key: 4, value: Some(7), children: vec![] }] }] }] },
+                            TreeNode { key: 4, value: Some(6), children: vec![] }] }] }] },
                 TreeNode { key: 2, value: None, children: vec![
                     TreeNode { key: 3, value: Some(2), children: vec![] }] }] }] };
 
