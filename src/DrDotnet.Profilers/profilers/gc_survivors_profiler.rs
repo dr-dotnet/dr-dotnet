@@ -6,7 +6,10 @@
 
 use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
+use std::thread;
 
+use crate::ffi::ClassID;
+use crate::ffi::ObjectID;
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
@@ -15,10 +18,10 @@ use crate::profilers::*;
 pub struct GCSurvivorsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_references: HashMap<ffi::ObjectID, Vec<ffi::ObjectID>>,
+    object_to_references: HashMap<ObjectID, Vec<ObjectID>>,
     serialized_survivor_branches: HashMap<String, u64>,
-    root_references: HashSet<ffi::ObjectID>,
-    // todo: add state
+    root_references: HashSet<ObjectID>,
+    is_triggered_gc: bool,
 }
 
 impl Profiler for GCSurvivorsProfiler {
@@ -36,6 +39,74 @@ impl Profiler for GCSurvivorsProfiler {
         }
     }
 }
+
+// - trigger GC
+// on gc
+// - get surviving references from gen 2 (HashSet<ObjectID> or HashMap<ObjectID, usize (bytes)>)
+// - build map from object to referencers (inverted)
+// after gc
+// - for each surviving reference
+//   - get all retention paths recursively (they all start with the surviving ref ID)
+//   - each path is a vec or class IDs. With that get objectid size
+
+
+/*
+
+- A > B > C (12)
+- A > D > C (12)
+- A > E > C (4)
+
+- C *12 2 roots
+    - B
+        - A
+    - D
+        - A
+- C *4 1 roots
+    - E
+        - A
+
+
+- C 12 3 roots
+    - B (12)
+        - A (12)
+    - D (12)
+        - A (12)
+    - E (4)
+        - A (4)
+
+
+[C, B, A] 12
+[C, D, A] 12
+[C, D, A] 4
+
+???
+- C None
+    - B None
+        - A Some(12)
+    - D None
+        - A Some(12)
+    - E None
+        - A Some(4)
+
+❌
+- C 28
+    - B 12
+        - A Some(12)
+    - D 12 
+        - A Some(12)
+    - E 4
+        - A Some(4)
+
+✅
+- C 16 [1, 2, 3, …. 12] + [1, 2, 3, …. 12] + [13, 14, 15, 16] = [1, 2, 3, …. 16]
+    - B 12 [1, 2, 3, …. 12]
+        - A Some([1, 2, 3, …. 12])
+    - D 12 [1, 2, 3, …. 12]
+        - A Some([1, 2, 3, …. 12])
+    - E 4 [13, 14, 15, 16]
+        - A Some([13, 14, 15, 16])
+
+ */
 
 impl GCSurvivorsProfiler
 {
@@ -207,7 +278,9 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback2-rootreferences2-method
     fn root_references_2(&mut self, root_ref_ids: &[ffi::ObjectID], root_kinds: &[ffi::COR_PRF_GC_ROOT_KIND], root_flags: &[ffi::COR_PRF_GC_ROOT_FLAGS], root_ids: &[ffi::UINT_PTR]) -> Result<(), ffi::HRESULT>
     {
-        // Only track in case of gen 2!
+        if !self.is_triggered_gc {
+            return Ok(());
+        }
 
         info!("Root references ({})", root_ids.len());
 
@@ -230,8 +303,25 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler {
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
+        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
+        // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
+        let p_clone = self.clr().clone();
+
+        self.is_triggered_gc = true;
+
+        let _ = thread::spawn(move || {
+            debug!("Force GC");
+            
+            match p_clone.force_gc() {
+                Ok(_) => debug!("GC Forced!"),
+                Err(hresult) => error!("Error forcing GC: {:?}", hresult)
+            };
+        }).join();
+
+        self.is_triggered_gc = false;
+        
         // Security timeout
-        detach_after_duration::<GCSurvivorsProfiler>(&self, 320, None);
+        detach_after_duration::<GCSurvivorsProfiler>(&self, 360, None);
 
         Ok(())
     }
