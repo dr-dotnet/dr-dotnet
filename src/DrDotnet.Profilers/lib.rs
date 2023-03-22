@@ -11,8 +11,6 @@ extern crate bitflags;
 #[macro_use]
 extern crate log;
 
-use crate::profilers::pstacks_profiler::ParallelStacksProfiler;
-
 mod rust_protobuf_protos {
     include!(concat!(env!("OUT_DIR"), "/rust_protobuf_protos/mod.rs"));
 }
