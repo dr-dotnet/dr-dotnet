@@ -26,7 +26,6 @@ register!(
     RuntimePauseProfiler,
     CpuHotpathProfiler,
     DuplicatedStringsProfiler,
-    MergedCallStacksProfiler,
     ParallelStacksProfiler
 );
 
