@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
+
+class SurvivorObject
+{
+    ~SurvivorObject(){
+        
+    }
+}
 
 public class GCSurvivorsProfilerTests : ProfilerTests
 {
@@ -34,8 +42,19 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        using var service = new AllocationSimulation(1_000_000, 100_000);
-        await Task.Delay(3000);
+        // Create two objects that will be placed in the GEN 2 heap
+        var obj1 = new SurvivorObject();
+        var obj2 = new SurvivorObject();
+
+        // Force two garbage collections to promote objects from GEN 0 to GEN 2
+        GC.Collect();
+        GC.WaitForFullGCComplete();
+        GC.Collect();
+        GC.WaitForFullGCComplete();
+
+        // Check that the objects are in the GEN 2 heap
+        Assert.AreEqual(2, GC.GetGeneration(obj1));
+        Assert.AreEqual(2, GC.GetGeneration(obj2));
 
         SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
@@ -43,7 +62,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
         Console.WriteLine("Session Directory: " + session.Path);
 
-        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.md");
+        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.html");
 
         Assert.NotNull(summary, "No summary have been created!");
 
