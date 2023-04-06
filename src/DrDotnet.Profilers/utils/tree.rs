@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops::AddAssign;
 
 #[derive(Debug, Clone)]
-struct TreeNode<K, V> {
+pub struct TreeNode<K, V> {
     pub key: K,
     pub value: Option<V>,
     pub children: Vec<TreeNode<K, V>>,
