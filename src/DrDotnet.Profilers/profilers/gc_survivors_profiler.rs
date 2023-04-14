@@ -5,6 +5,7 @@
 // - Stop profiling and make a report
 
 use std::cmp::min;
+use dashmap::{DashMap, DashSet};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Keys;
 use std::fmt::{Display, Formatter};
@@ -30,7 +31,7 @@ pub struct GCSurvivorsProfiler {
     session_info: SessionInfo,
     object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
     is_triggered_gc: AtomicBool,
-    surviving_references: HashMap<ObjectID, usize>,
+    surviving_references: DashMap<ObjectID, usize>,
     sequences: HashMap<Vec<ClassID>, References>,
 }
 
@@ -298,9 +299,11 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
 
         // Post-process tracked persisting references
         info!("Building graph of surviving references... {} objects to process", self.surviving_references.len());
-        for (object_id, count) in self.surviving_references.iter() {
+        for surviving_reference in self.surviving_references.iter() {
             let info = self.clr();
-            match info.get_object_generation(*object_id) {
+            let object_id = surviving_reference.key().clone();
+            let count = surviving_reference.value().clone();
+            match info.get_object_generation(object_id) {
                 Ok(gen) => {
                     // debug!("Surviving object id ({object_id}) generation: {:?}", gen.generation);
                     // we care only for objects from GEN 2
@@ -310,11 +313,11 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
                 }
                 Err(e) => { debug!("Error ({:?}) getting generation of object id: {object_id}", e); continue; }
             }
-            for branch in self.append_references(info, *object_id, 10) {
+            for branch in self.append_references(info, object_id, 10) {
                 
                 self.sequences.entry(branch)
-                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), count.clone());})
-                    .or_insert(References(HashMap::from([(object_id.clone(), count.clone())])));
+                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), count);})
+                    .or_insert(References(HashMap::from([(object_id.clone(), count)])));
             }
         }
 
@@ -378,7 +381,7 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
             // we care only for objects from GEN 2 but cannot check it here while GC is not finished
             let size = object_lengths[i];
             self.surviving_references.entry(id)
-                .and_modify(|mut s| *s += size)
+                .and_modify(|mut s| *s = size)
                 .or_insert(size);
         }
 
@@ -408,19 +411,16 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
                 continue;
             }
 
-            match self.surviving_references.remove(&old_id) {
-                // Reference was already tracked: we update its ID and the last gc info
-                Some(size) => {
-                    self.surviving_references.insert(new_id, new_size);
-                    moved_tracked_refs += 1;
-                },
-                // Reference wasn't tracked: we start tracking it
-                None => { self.surviving_references.insert(new_id, new_size); new_tracked_refs += 1; },
-                // None => { new_tracked_refs += 1; },
-            };
+            if self.surviving_references.remove(&old_id).is_some() {
+                moved_tracked_refs += 1;
+            }
+
+            self.surviving_references.entry(new_id)
+                .and_modify(|mut s| *s = new_size)
+                .or_insert(new_size);
         }
 
-        info!("Tracking {} new refs", new_tracked_refs);
+        info!("Tracking {} new refs",  old_object_ids.len() - moved_tracked_refs);
         info!("Updated {} moved refs", moved_tracked_refs);
 
         // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
