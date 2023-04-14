@@ -4,26 +4,20 @@
 // - On GC end, for each GC root collected, iterate over objects it references (recursively). That gives use a tree of survivors gor the last GC
 // - Stop profiling and make a report
 
-use std::cmp::min;
-use dashmap::{DashMap, DashSet};
-use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::Keys;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::AddAssign;
-use itertools::Itertools;
 use std::thread;
-use thousands::{digits, Separable, SeparatorPolicy};
 use std::sync::atomic::{AtomicBool, Ordering};
+use dashmap::DashMap;
+use thousands::{digits, Separable, SeparatorPolicy};
 
-use crate::ffi::ClassID;
-use crate::ffi::ObjectID;
+use crate::ffi::*;
 use crate::api::*;
-use crate::api::ffi::{COR_PRF_GC_GENERATION_RANGE, HRESULT};
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
 use crate::utils::TreeNode;
-
 
 #[derive(Default)]
 pub struct GCSurvivorsProfiler {
@@ -31,8 +25,7 @@ pub struct GCSurvivorsProfiler {
     session_info: SessionInfo,
     object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
     is_triggered_gc: AtomicBool,
-    surviving_references: DashMap<ObjectID, usize>,
-    sequences: HashMap<Vec<ClassID>, References>,
+    surviving_references: DashMap<ObjectID, usize>
 }
 
 #[derive(Clone, Default, Debug)]
@@ -177,6 +170,10 @@ impl GCSurvivorsProfiler
             Ok(array_class_info) => {
                 *array_dimension = *array_dimension + 1;
                 // TODO: Handle array_class_info.rank
+                if array_class_info.element_class_id.is_none() {
+                    error!("No element class id for array class object");
+                    return class_id;
+                }
                 self.get_inner_type(array_class_info.element_class_id.unwrap(), array_dimension)
             },
             Err(_) => class_id,
@@ -207,11 +204,11 @@ impl GCSurvivorsProfiler
         return name;
     }
 
-    fn build_tree_and_write_report(&mut self) -> Result<(), ffi::HRESULT>
+    fn build_tree_and_write_report(&mut self, sequences: HashMap<Vec<ClassID>, References>) -> Result<(), HRESULT>
     {
         info!("Building report");
         
-        let mut tree = TreeNode::build_from_sequences(&self.sequences, 0);
+        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
 
         // Sorts by descending inclusive value
         tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
@@ -249,7 +246,7 @@ impl GCSurvivorsProfiler
 
 impl CorProfilerCallback for GCSurvivorsProfiler
 {
-    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
+    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), HRESULT>
     {
         if !self.is_triggered_gc.load(Ordering::Relaxed) {
             error!("Early return of object_references because GC wasn't forced yet");
@@ -271,7 +268,7 @@ impl CorProfilerCallback for GCSurvivorsProfiler
 
 impl CorProfilerCallback2 for GCSurvivorsProfiler
 {
-    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
+    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
         info!("garbage_collection_started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
         
         if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
@@ -281,7 +278,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         Ok(())
     }
 
-    fn garbage_collection_finished(&mut self) -> Result<(), ffi::HRESULT>
+    fn garbage_collection_finished(&mut self) -> Result<(), HRESULT>
     {
         info!("garbage_collection_finished");
         
@@ -296,6 +293,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
+
+        let mut sequences: HashMap<Vec<ClassID>, References> = HashMap::new();
 
         // Post-process tracked persisting references
         info!("Building graph of surviving references... {} objects to process", self.surviving_references.len());
@@ -314,14 +313,16 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
                 Err(e) => { debug!("Error ({:?}) getting generation of object id: {object_id}", e); continue; }
             }
             for branch in self.append_references(info, object_id, 10) {
-                
-                self.sequences.entry(branch)
+                sequences.entry(branch)
                     .and_modify(|referencers| {referencers.0.insert(object_id.clone(), count);})
                     .or_insert(References(HashMap::from([(object_id.clone(), count)])));
             }
         }
 
-        let _ = self.build_tree_and_write_report();
+        // Free this memory
+        self.surviving_references.clear();
+
+        let _ = self.build_tree_and_write_report(sequences);
         
         // We're done, we can detach :)
         let profiler_info = self.clr().clone();
@@ -333,11 +334,11 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
 
 impl CorProfilerCallback3 for GCSurvivorsProfiler
 {
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), HRESULT> {
         self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
+    fn profiler_attach_complete(&mut self) -> Result<(), HRESULT>
     {
         // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
@@ -362,7 +363,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 impl CorProfilerCallback4 for GCSurvivorsProfiler
 {
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
+    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), HRESULT>
     {
         info!("surviving_references_2 ({} objects survived) on thread {:?}", object_ids.len(), std::thread::current().id());
         
@@ -390,7 +391,7 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
     }
 
     // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-movedreferences2-method
-    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
+    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), HRESULT>
     {
         info!("moved_references_2 ({} objects moved) on thread {:?}", old_object_ids.len(), std::thread::current().id());
 
@@ -424,7 +425,7 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler
         info!("Updated {} moved refs", moved_tracked_refs);
 
         // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
-        Err(ffi::HRESULT::E_FAIL)
+        Err(HRESULT::E_FAIL)
     }
 }
 

@@ -17,7 +17,6 @@ mod unknown;
 
 pub use self::class_factory::ClassFactory;
 pub use self::cor_profiler_assembly_reference_provider::CorProfilerAssemblyReferenceProvider;
-pub use self::cor_profiler_callback::CorProfilerCallback;
 pub use self::cor_profiler_function_control::CorProfilerFunctionControl;
 pub use self::cor_profiler_function_enum::CorProfilerFunctionEnum;
 pub use self::cor_profiler_info::CorProfilerInfo;

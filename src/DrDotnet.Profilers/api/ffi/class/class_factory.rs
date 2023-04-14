@@ -6,6 +6,7 @@ use crate::{
 use std::ffi::c_void;
 use std::ptr;
 use std::sync::atomic::{AtomicU32, Ordering};
+use crate::ffi::class::cor_profiler_callback::CorProfilerCallback;
 
 #[repr(C)]
 pub struct ClassFactoryVtbl<T>
