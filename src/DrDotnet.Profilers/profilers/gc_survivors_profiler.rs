@@ -12,6 +12,7 @@ use std::ops::AddAssign;
 use itertools::Itertools;
 use std::thread;
 use thousands::{digits, Separable, SeparatorPolicy};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::ffi::ClassID;
 use crate::ffi::ObjectID;
@@ -22,12 +23,13 @@ use crate::profilers::*;
 use crate::session::Report;
 use crate::utils::TreeNode;
 
-#[derive(Default, Clone)]
+
+#[derive(Default)]
 pub struct GCSurvivorsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
-    is_triggered_gc: bool,
+    is_triggered_gc: AtomicBool,
     surviving_references: HashMap<ObjectID, usize>,
     sequences: HashMap<Vec<ClassID>, References>,
 }
@@ -204,28 +206,29 @@ impl GCSurvivorsProfiler
         return name;
     }
 
-    fn build_tree_and_write_report(&mut self) -> Result<(), ffi::HRESULT> {
+    fn build_tree_and_write_report(&mut self) -> Result<(), ffi::HRESULT>
+    {
+        info!("Building report");
         
         let mut tree = TreeNode::build_from_sequences(&self.sequences, 0);
 
         // Sorts by descending inclusive value
         tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
         
-        fn print<T, V, F>(tree: &TreeNode<T, V>, depth: usize, format: &F)
-            where F: Fn(&TreeNode<T, V>) -> String
-        {
-            let tabs = " ".repeat(depth);
-            info!("{}- {}", tabs, format(tree));
-
-            for child in &tree.children {
-                print(child, depth + 1, format);
-            }
-        }
-        print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.get_class_name(node.key), node.get_inclusive_value(), node.value));
+        // fn print<T, V, F>(tree: &TreeNode<T, V>, depth: usize, format: &F)
+        //     where F: Fn(&TreeNode<T, V>) -> String
+        // {
+        //     let tabs = " ".repeat(depth);
+        //     info!("{}- {}", tabs, format(tree));
+        // 
+        //     for child in &tree.children {
+        //         print(child, depth + 1, format);
+        //     }
+        // }
+        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.get_class_name(node.key), node.get_inclusive_value(), node.value));
 
         let nb_classes = tree.children.len();
         let nb_objects: usize = tree.children.iter().map(|x| x.get_inclusive_value().0.len()).sum();
-
 
         let mut report = self.session_info.create_report("summary.html".to_owned());
 
@@ -247,8 +250,8 @@ impl CorProfilerCallback for GCSurvivorsProfiler
 {
     fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
     {
-        if !self.is_triggered_gc {
-            debug!("Early return of object_references because GC wasn't forced yet");
+        if !self.is_triggered_gc.load(Ordering::Relaxed) {
+            error!("Early return of object_references because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
@@ -268,10 +271,10 @@ impl CorProfilerCallback for GCSurvivorsProfiler
 impl CorProfilerCallback2 for GCSurvivorsProfiler
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
-        info!("GC started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
+        info!("garbage_collection_started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
         
         if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
-            self.is_triggered_gc = true;
+            self.is_triggered_gc.store(true, Ordering::Relaxed);
         }
 
         Ok(())
@@ -279,9 +282,10 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
 
     fn garbage_collection_finished(&mut self) -> Result<(), ffi::HRESULT>
     {
-        info!("GC finished");
-        if !self.is_triggered_gc {
-            debug!("Early return of garbage_collection_finished because GC wasn't forced yet");
+        info!("garbage_collection_finished");
+        
+        if !self.is_triggered_gc.load(Ordering::Relaxed) {
+            error!("Early return of garbage_collection_finished because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
@@ -324,12 +328,14 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback3 for GCSurvivorsProfiler {
+impl CorProfilerCallback3 for GCSurvivorsProfiler
+{
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
         self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT>
+    {
         // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
         let p_clone = self.clr().clone();
@@ -350,11 +356,14 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler {
     }
 }
 
-impl CorProfilerCallback4 for GCSurvivorsProfiler {
+impl CorProfilerCallback4 for GCSurvivorsProfiler
+{
     // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT> {
-        info!("Surviving references v2: {} objects survived", object_ids.len());
-        if !self.is_triggered_gc {
+    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
+    {
+        info!("surviving_references_2 ({} objects survived) on thread {:?}", object_ids.len(), std::thread::current().id());
+        
+        if !self.is_triggered_gc.load(Ordering::Relaxed) {
             error!("Early return of surviving_references_2 because GC wasn't forced yet");
             return Ok(());
         }
@@ -364,7 +373,7 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler {
             if id == 0 {
                 continue; // skip native frame
             }
-            debug!("surviving_references_2 obj id: {id}");
+            //debug!("surviving_references_2 obj id: {id}");
 
             // we care only for objects from GEN 2 but cannot check it here while GC is not finished
             let size = object_lengths[i];
@@ -378,9 +387,11 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler {
     }
 
     // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-movedreferences2-method
-    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT> {
-        info!("Moved references 2 ({} objects moved)", old_object_ids.len());
-        if !self.is_triggered_gc {
+    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), ffi::HRESULT>
+    {
+        info!("moved_references_2 ({} objects moved) on thread {:?}", old_object_ids.len(), std::thread::current().id());
+
+        if !self.is_triggered_gc.load(Ordering::Relaxed) {
             error!("Early return of moved_references_2 because GC wasn't forced yet");
             return Ok(());
         }
@@ -415,7 +426,6 @@ impl CorProfilerCallback4 for GCSurvivorsProfiler {
         // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
         Err(ffi::HRESULT::E_FAIL)
     }
-
 }
 
 impl CorProfilerCallback5 for GCSurvivorsProfiler {}
