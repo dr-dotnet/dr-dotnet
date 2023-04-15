@@ -52,10 +52,6 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         GC.Collect();
         GC.WaitForFullGCComplete();
 
-        // Check that the objects are in the GEN 2 heap
-        Assert.AreEqual(2, GC.GetGeneration(obj1));
-        Assert.AreEqual(2, GC.GetGeneration(obj2));
-
         SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
         await session.AwaitUntilCompletion();
@@ -69,5 +65,9 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         var content = File.ReadAllText(summary.FullName);
 
         Console.WriteLine(content);
+        
+        // Check that the objects are in the GEN 2 heap
+        Assert.AreEqual(2, GC.GetGeneration(obj1));
+        Assert.AreEqual(2, GC.GetGeneration(obj2));
     }
 }
