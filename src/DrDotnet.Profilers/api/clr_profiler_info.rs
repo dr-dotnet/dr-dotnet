@@ -41,6 +41,7 @@ impl Default for ClrProfilerInfo {
 
 unsafe impl Send for ClrProfilerInfo {}
 
+// Define some custom methods here, on top of those that are officially made available by the CLR profiling API
 impl ClrProfilerInfo {
 
     pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
@@ -53,6 +54,7 @@ impl ClrProfilerInfo {
         unsafe { self.info.as_ref().unwrap() }
     }
 
+    // Return the name of type (with its namespace)
     pub fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
         match self.get_module_metadata(module_id, CorOpenFlags::ofRead) {
             Ok(metadata) =>
@@ -70,8 +72,52 @@ impl ClrProfilerInfo {
         }
     }
 
-    pub unsafe fn get_method_name(clr_profiler_info: &ClrProfilerInfo, method_id: FunctionID) -> String {
-        match clr_profiler_info.get_token_and_metadata_from_function(method_id) {
+    // If the type is an array, recursively drill until the base object type is found
+    fn get_inner_type(&self, class_id: ClassID, array_dimension: &mut usize) -> ClassID
+    {
+        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
+        match self.is_array_class(class_id) {
+            Ok(array_class_info) => {
+                *array_dimension = *array_dimension + 1;
+                // TODO: Handle array_class_info.rank
+                if array_class_info.element_class_id.is_none() {
+                    error!("No element class id for array class object");
+                    return class_id;
+                }
+                self.get_inner_type(array_class_info.element_class_id.unwrap(), array_dimension)
+            },
+            Err(_) => class_id,
+        }
+    }
+    
+    // Returns a class name (namespaced) for a given ClassID
+    pub fn get_class_name(&self, class_id: ClassID) -> String
+    {
+        let mut array_dimension = 0;
+
+        let class_id = self.get_inner_type(class_id, &mut array_dimension);
+        
+        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
+        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
+        let mut name = match self.get_class_id_info(class_id) {
+            Ok(class_info) => self.get_type_name(class_info.module_id, class_info.token),
+            _ => "unknown2".to_owned()
+        };
+
+        if array_dimension > 0 {
+            let mut brackets = String::with_capacity(array_dimension * 2);
+            for _ in 0..array_dimension {
+                brackets.push_str("[]");
+            }
+            name.push_str(&brackets);
+        }
+
+        return name;
+    }
+
+    // Returns a method name for a given FunctionID
+    pub unsafe fn get_method_name(&self, method_id: FunctionID) -> String {
+        match self.get_token_and_metadata_from_function(method_id) {
             Ok(f) =>
             match f.metadata_import.get_method_props(f.token) {
                 Ok(method_props) => method_props.name,
@@ -87,6 +133,7 @@ impl ClrProfilerInfo {
         }
     }
 
+    // Returns a method name and the type where it is defined (namespaced) for a given FunctionID
     pub unsafe fn get_full_method_name(&self, method_id: FunctionID) -> String {
         match self.get_function_info(method_id) {
             Ok(function_info) =>

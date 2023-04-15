@@ -1,21 +1,14 @@
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using DrDotnet.Tests.Simulations;
 using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
-class SurvivorObject
-{
-    ~SurvivorObject(){
-        
-    }
-}
+public record SurvivorObject;
 
 public class GCSurvivorsProfilerTests : ProfilerTests
 {
@@ -46,9 +39,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
         // Force two garbage collections to promote objects from GEN 0 to GEN 2
         GC.Collect();
-        GC.WaitForFullGCComplete();
         GC.Collect();
-        GC.WaitForFullGCComplete();
 
         SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 

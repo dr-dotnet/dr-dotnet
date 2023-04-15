@@ -4,6 +4,7 @@
 // - On GC end, for each GC root collected, iterate over objects it references (recursively). That gives use a tree of survivors gor the last GC
 // - Stop profiling and make a report
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::AddAssign;
@@ -24,8 +25,7 @@ pub struct GCSurvivorsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
-    is_triggered_gc: AtomicBool,
-    surviving_references: DashMap<ObjectID, usize>
+    is_triggered_gc: AtomicBool
 }
 
 #[derive(Clone, Default, Debug)]
@@ -83,60 +83,77 @@ impl Profiler for GCSurvivorsProfiler {
 
 impl GCSurvivorsProfiler
 {
-    pub fn append_references(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<Vec<ClassID>>
+    pub fn append_references(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: usize) -> Vec<Vec<ClassID>>
     {
         let mut branches: Vec<Vec<ClassID>> = Vec::new();
 
-        self.append_references_recursive(info, object_id, &mut Vec::new(), -max_depth, &mut branches);
+        let mut branch: Vec<ClassID> = vec![]; // A branch we update live and copy every time we reached the end of a path
+        let mut stack: Vec<(ObjectID, usize)> = vec![(object_id, 0)]; // A stack to iterate without recursions
 
-        return branches;
-    }
-    
-    fn append_references_recursive(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, branch: &mut Vec<ClassID>, depth: i32, branches: &mut Vec<Vec<ClassID>>)
-    {
-        let class_id = info.get_class_from_object(object_id);
-        if class_id.is_err() {
-            return; // do something else?
-        }
-        branch.push(class_id.unwrap());
+        while !stack.is_empty() {
 
-        let mut add_branch = || {
-            branches.push(branch.clone());
-        };
+            let current_id: (ObjectID, usize) = stack.pop().unwrap();
 
-        // Escape in case of circular references (could be done in a better way)
-        if depth > 0 {
-            add_branch();
-            return;
-        }
+            // Trim branch until it has the proper depth
+            while branch.len() > current_id.1 {
+                branch.pop();
+            }
 
-        match self.object_to_referencers.get(&object_id) {
-            Some(referencers) => {
-                let branch_current_len = branch.len();
-
-                for i in 0..referencers.len() {
-                    if i == 0 {
-                        // Same branch, we keep on this same branch
-                        self.append_references_recursive(info, referencers[0], branch, depth + 1, branches);
-                    }
-                    else {
-                        // New branch. We clone the current branch to append next holders
-                        let mut branch_copy = branch[..branch_current_len].to_vec();
-                        self.append_references_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
-                    }
+            match info.get_class_from_object(object_id) {
+                Ok(class_id) => branch.push(class_id),
+                Err(_) => {
+                    error!("Impossible to get class ID for object ID {}", object_id);
+                    continue;
                 }
-            },
-            None => {
-                add_branch();
+            }
+
+            match self.object_to_referencers.get(&current_id.0) {
+                Some(referencers) => {
+                    if referencers.len() == 0 {
+                        // We reached the end of a path, copy the branch and add it to our branches
+                        branches.push(branch.clone());
+                    } else {
+                        // Only push new referencers if we are within our allowed depth
+                        if current_id.1 < max_depth {
+                            for i in 0..referencers.len() {
+                                stack.push((referencers[i], current_id.1 + 1));
+                            }
+                        }
+                    }
+                },
+                None => {
+                    // We reached the end of a path, copy the branch and add it to our branches
+                    branches.push(branch.clone());
+                }
             }
         }
+
+        // Example:
+        // M
+        // ├─ A
+        // │  └─ D
+        // ├─ B
+        // └─ C
+        //    ├─ F
+        //    └─ G
+        // 0  1  2
+        // Iteration 1: We pop M, which is added to the branch. A, B and C are pushed to the stack
+        // Iteration 2: We pop C, which is added to the branch. F and G are pushed to the stack
+        // Iteration 3: We pop G, which is added to the branch. There are no child, so the branch MCG is completed
+        // Iteration 4: We pop F. F depth is 2, but the branch is currently of len 3, so G is removed from the branch. F is then added to the branch. There are no child, so the branch MCF is completed
+        // Iteration 5: We pop B. B depth is 1, but the branch is currently of len 3, so C and F are removed from the branch. B is then added to the branch. There are no child, so the branch MB is completed
+        // Iteration 6: We pop A. A depth is 1, but the branch is currently of len 2, so B is removed from the branch. A is then added to the branch
+        // Iteration 7: We pop D. which is added to the branch. There are no child, so the branch MAD is completed
+        // The stack is now empty, we're done :)
+
+        return branches;
     }
 
     fn print_html(&self, tree: &TreeNode<ClassID, References>, is_same_level: bool, report: &mut Report)
     {
         let refs = &tree.get_inclusive_value();
         let nb_objects = refs.0.len();
-        let class_name = self.get_class_name(tree.key);
+        let class_name = self.clr().get_class_name(tree.key);
 
         if !is_same_level {
             report.write(format!("\n<details><summary><span>{refs}</span>{class_name}</summary>"));
@@ -144,7 +161,14 @@ impl GCSurvivorsProfiler
             report.write(format!("\n<li><span>{refs}</span>{class_name}</li>"));
         }
 
+        let mut i = 0;
         for child in &tree.children {
+            
+            // Set a limit to the output
+            if i > 100 {
+                break;
+            }
+            
             let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
                 && nb_objects == child.get_inclusive_value().0.len();
             
@@ -156,6 +180,8 @@ impl GCSurvivorsProfiler
             if has_same_alignment && !is_same_level {
                 report.write(format!("\n</ul>\n"));
             }
+            
+            i += 1;
         }
 
         if !is_same_level {
@@ -163,56 +189,28 @@ impl GCSurvivorsProfiler
         }
     }
 
-    fn get_inner_type(&self, class_id: usize, array_dimension: &mut usize) -> usize
+    fn build_tree(sequences: HashMap<Vec<usize>, References>) -> TreeNode<usize, References>
     {
-        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
-        match self.clr().is_array_class(class_id) {
-            Ok(array_class_info) => {
-                *array_dimension = *array_dimension + 1;
-                // TODO: Handle array_class_info.rank
-                if array_class_info.element_class_id.is_none() {
-                    error!("No element class id for array class object");
-                    return class_id;
-                }
-                self.get_inner_type(array_class_info.element_class_id.unwrap(), array_dimension)
-            },
-            Err(_) => class_id,
-        }
-    }
-    
-    fn get_class_name(&self, class_id: ffi::ClassID) -> String
-    {
-        let mut array_dimension = 0;
+        info!("Building tree");
 
-        let class_id = self.get_inner_type(class_id, &mut array_dimension);
-        
-        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
-        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-        let mut name = match self.clr().get_class_id_info(class_id) {
-            Ok(class_info) => self.clr().get_type_name(class_info.module_id, class_info.token),
-            _ => "unknown2".to_owned()
-        };
+        let now = std::time::Instant::now();
 
-        if array_dimension > 0 {
-            let mut brackets = String::with_capacity(array_dimension * 2);
-            for _ in 0..array_dimension {
-                brackets.push_str("[]");
-            }
-            name.push_str(&brackets);
-        }
-
-        return name;
-    }
-
-    fn build_tree_and_write_report(&mut self, sequences: HashMap<Vec<ClassID>, References>) -> Result<(), HRESULT>
-    {
-        info!("Building report");
-        
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-
+    
         // Sorts by descending inclusive value
         tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
-        
+
+        info!("Tree built and sorted in {} ms", now.elapsed().as_millis());
+
+        return tree;
+    }
+
+    fn write_report(&mut self, tree: TreeNode<usize, References>) -> Result<(), HRESULT>
+    {
+        info!("Building report");
+
+        let now = std::time::Instant::now();
+
         // fn print<T, V, F>(tree: &TreeNode<T, V>, depth: usize, format: &F)
         //     where F: Fn(&TreeNode<T, V>) -> String
         // {
@@ -223,7 +221,7 @@ impl GCSurvivorsProfiler
         //         print(child, depth + 1, format);
         //     }
         // }
-        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.get_class_name(node.key), node.get_inclusive_value(), node.value));
+        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.clr().get_class_name(node.key), node.get_inclusive_value(), node.value));
 
         let nb_classes = tree.children.len();
         let nb_objects: usize = tree.children.iter().map(|x| x.get_inclusive_value().0.len()).sum();
@@ -237,9 +235,44 @@ impl GCSurvivorsProfiler
             self.print_html(&tree_node, false, &mut report);
         }
 
-        info!("Report written");
+        info!("Report written in {} ms", now.elapsed().as_millis());
 
         Ok(())
+    }
+
+    // Post-process tracked persisting references
+    fn build_sequences(&mut self) -> HashMap<Vec<usize>, References>
+    {
+        info!("Building graph of surviving references... {} objects to process", self.object_to_referencers.len());
+
+        let now = std::time::Instant::now();
+
+        let mut sequences: HashMap<Vec<ClassID>, References> = HashMap::new();
+
+        for object in self.object_to_referencers.iter() {
+            let info = self.clr();
+            let object_id = object.key().clone();
+            let size = info.get_object_size_2(object_id).unwrap_or(0);
+            match info.get_object_generation(object_id) {
+                Ok(gen) => {
+                    // debug!("Surviving object id ({object_id}) generation: {:?}", gen.generation);
+                    // we care only for objects from GEN 2
+                    if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                        continue;
+                    }
+                }
+                Err(e) => { debug!("Error ({:?}) getting generation of object id: {object_id}", e); continue; }
+            }
+            for branch in self.append_references(info, object_id, 10) {
+                sequences.entry(branch)
+                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
+                    .or_insert(References(HashMap::from([(object_id.clone(), size)])));
+            }
+        }
+
+        info!("Graph built in {} ms", now.elapsed().as_millis());
+
+        sequences
     }
     
 }
@@ -261,6 +294,9 @@ impl CorProfilerCallback for GCSurvivorsProfiler
                 .and_modify(|referencers| referencers.push(object_id))
                 .or_insert(vec![object_id]);
         }
+
+        // Also add this object, with no referencers, just in case this object isn't referenced 
+        self.object_to_referencers.insert(object_id, vec![]);
 
         Ok(())
     }
@@ -294,35 +330,9 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
-        let mut sequences: HashMap<Vec<ClassID>, References> = HashMap::new();
-
-        // Post-process tracked persisting references
-        info!("Building graph of surviving references... {} objects to process", self.surviving_references.len());
-        for surviving_reference in self.surviving_references.iter() {
-            let info = self.clr();
-            let object_id = surviving_reference.key().clone();
-            let count = surviving_reference.value().clone();
-            match info.get_object_generation(object_id) {
-                Ok(gen) => {
-                    // debug!("Surviving object id ({object_id}) generation: {:?}", gen.generation);
-                    // we care only for objects from GEN 2
-                    if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                        continue;
-                    }
-                }
-                Err(e) => { debug!("Error ({:?}) getting generation of object id: {object_id}", e); continue; }
-            }
-            for branch in self.append_references(info, object_id, 10) {
-                sequences.entry(branch)
-                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), count);})
-                    .or_insert(References(HashMap::from([(object_id.clone(), count)])));
-            }
-        }
-
-        // Free this memory
-        self.surviving_references.clear();
-
-        let _ = self.build_tree_and_write_report(sequences);
+        let sequences = self.build_sequences();
+        let tree = Self::build_tree(sequences);
+        let _ = self.write_report(tree);
         
         // We're done, we can detach :)
         let profiler_info = self.clr().clone();
@@ -360,75 +370,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback4 for GCSurvivorsProfiler
-{
-    // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-survivingreferences2-method
-    fn surviving_references_2(&mut self, object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), HRESULT>
-    {
-        info!("surviving_references_2 ({} objects survived) on thread {:?}", object_ids.len(), std::thread::current().id());
-        
-        if !self.is_triggered_gc.load(Ordering::Relaxed) {
-            error!("Early return of surviving_references_2 because GC wasn't forced yet");
-            return Ok(());
-        }
-
-        for i in 0..object_ids.len() {
-            let id = object_ids[i];
-            if id == 0 {
-                continue; // skip native frame
-            }
-            //debug!("surviving_references_2 obj id: {id}");
-
-            // we care only for objects from GEN 2 but cannot check it here while GC is not finished
-            let size = object_lengths[i];
-            self.surviving_references.entry(id)
-                .and_modify(|mut s| *s = size)
-                .or_insert(size);
-        }
-
-        // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
-        Err(ffi::HRESULT::E_FAIL)
-    }
-
-    // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilercallback4-movedreferences2-method
-    fn moved_references_2(&mut self, old_object_ids: &[ffi::ObjectID], new_object_ids: &[ffi::ObjectID], object_lengths: &[usize]) -> Result<(), HRESULT>
-    {
-        info!("moved_references_2 ({} objects moved) on thread {:?}", old_object_ids.len(), std::thread::current().id());
-
-        if !self.is_triggered_gc.load(Ordering::Relaxed) {
-            error!("Early return of moved_references_2 because GC wasn't forced yet");
-            return Ok(());
-        }
-
-        let mut new_tracked_refs = 0;
-        let mut moved_tracked_refs = 0;
-
-        for i in 0..old_object_ids.len() {
-            let old_id = old_object_ids[i];
-            let new_id = new_object_ids[i];
-            let new_size = object_lengths[i];
-            
-            if old_id == 0 {
-                continue;
-            }
-
-            if self.surviving_references.remove(&old_id).is_some() {
-                moved_tracked_refs += 1;
-            }
-
-            self.surviving_references.entry(new_id)
-                .and_modify(|mut s| *s = new_size)
-                .or_insert(new_size);
-        }
-
-        info!("Tracking {} new refs",  old_object_ids.len() - moved_tracked_refs);
-        info!("Updated {} moved refs", moved_tracked_refs);
-
-        // Return HRESULT because "Profilers can return an HRESULT that indicates failure from the MovedReferences2 method, to avoid calling the second method"
-        Err(HRESULT::E_FAIL)
-    }
-}
-
+impl CorProfilerCallback4 for GCSurvivorsProfiler {}
 impl CorProfilerCallback5 for GCSurvivorsProfiler {}
 impl CorProfilerCallback6 for GCSurvivorsProfiler {}
 impl CorProfilerCallback7 for GCSurvivorsProfiler {}
