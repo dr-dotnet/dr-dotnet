@@ -23,7 +23,7 @@ use crate::utils::TreeNode;
 pub struct GCSurvivorsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
+    object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
     is_triggered_gc: AtomicBool,
     surviving_references: DashMap<ObjectID, usize>
 }
