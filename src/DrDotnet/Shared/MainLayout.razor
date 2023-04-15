@@ -1,5 +1,6 @@
 ﻿@using Microsoft.Extensions.Logging
 @using DrDotnet.Utils
+@using System.IO
 
 @inherits LayoutComponentBase
 
@@ -11,6 +12,7 @@
             <b style="flex-grow: 1;">Dr.Dotnet</b>
             <i>Version @VersionUtils.CurrentVersion</i>
             <MatButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MatButton>
+            <MatButton OnClick="@OpenProfilingLogs" Icon="receipt" Style="">Profiling Logs</MatButton>
             <MatButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MatButton>
         </div>
 
@@ -29,14 +31,30 @@
         <MatButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MatButton>
     </MatDialogActions>
 </MatDialog>
+
+<MatDialog @bind-IsOpen="@IsProfilingLogDialogOpen">
+    <MatDialogTitle>Profiling Logs</MatDialogTitle>
+    <MatDialogContent>
+        <textarea id="logs" style="height: 70vh; width: 85vw;" @bind="AllProfilingLogs" @bind:event="oninput"></textarea>
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { IsProfilingLogDialogOpen = false; })">Close</MatButton>
+    </MatDialogActions>
+</MatDialog>
  
 @code
 {
     private bool IsLogDialogOpen { get; set; } = false;
+    private bool IsProfilingLogDialogOpen { get; set; } = false;
 
     void OpenLogs()
     {
         IsLogDialogOpen = true;
+    }
+    
+    void OpenProfilingLogs()
+    {
+        IsProfilingLogDialogOpen = true;
     }
 
     private string? AllLogs
@@ -44,6 +62,20 @@
         get
         {
             return (Logger as Logger)?.GetAllLogs();
+        }
+        set { /* readonly */ }
+    }
+    
+    private string? AllProfilingLogs
+    {
+        get
+        {
+            string profilingLogsFile = Path.Combine(PathUtils.DrDotnetBaseDirectory, "profiler.debug.log");
+            if (!File.Exists(profilingLogsFile))
+            {
+                return "Profiling logs file not found";
+            }
+            return File.ReadAllText(profilingLogsFile);
         }
         set { /* readonly */ }
     }
