@@ -99,10 +99,10 @@ impl GCSurvivorsProfiler
                 branch.pop();
             }
 
-            match info.get_class_from_object(object_id) {
+            match info.get_class_from_object(current_id.0) {
                 Ok(class_id) => branch.push(class_id),
                 Err(_) => {
-                    error!("Impossible to get class ID for object ID {}", object_id);
+                    error!("Impossible to get class ID for object ID {}", current_id.0);
                     continue;
                 }
             }
