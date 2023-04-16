@@ -58,6 +58,24 @@ impl Profiler for GCSurvivorsProfiler {
             name: "GC Survivors".to_owned(),
             description: "Todo.".to_owned(),
             is_released: true,
+            parameters: vec![
+                ProfilerParameter { 
+                    name: "Sort by size".to_owned(),
+                    key: "sort_by_size".to_owned(),
+                    description: "If true, sort the results by inclusive size (bytes). Otherwise, sort by inclusive instances count.".to_owned(),
+                    type_: ParameterType::BOOLEAN.into(),
+                    value: "true".to_owned(),
+                    ..std::default::Default::default()
+                },
+                ProfilerParameter { 
+                    name: "Maximum types to display".to_owned(),
+                    key: "max_types_display".to_owned(),
+                    description: "The maximum number of types to display in the report".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "100".to_owned(),
+                    ..std::default::Default::default()
+                }
+            ],
             ..std::default::Default::default()
         }
     }
@@ -143,11 +161,13 @@ impl GCSurvivorsProfiler
             report.write(format!("\n<li><span>{refs}</span>{class_name}</li>"));
         }
 
+        let max_types_display = self.session_info().get_parameter::<u64>("max_types_display").unwrap();
+
         let mut i = 0;
         for child in &tree.children {
             
             // Set a limit to the output
-            if i > 100 {
+            if i > max_types_display {
                 break;
             }
             
@@ -171,7 +191,7 @@ impl GCSurvivorsProfiler
         }
     }
 
-    fn build_tree(sequences: HashMap<Vec<usize>, References>) -> TreeNode<usize, References>
+    fn build_tree(&self, sequences: HashMap<Vec<usize>, References>) -> TreeNode<usize, References>
     {
         info!("Building tree");
 
@@ -179,11 +199,16 @@ impl GCSurvivorsProfiler
 
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
     
-        // Sorts by descending inclusive count
-        // tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
-        // Sorts by descending inclusive size
-        tree.sort_by(&|a, b| b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>()));
-
+        let sort_by_size = self.session_info().get_parameter::<bool>("sort_by_size").unwrap();
+        if sort_by_size {
+            // Sorts by descending inclusive size
+            tree.sort_by(&|a, b| b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>()));
+        }
+        else {
+            // Sorts by descending inclusive count
+            tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        }
+ 
         info!("Tree built and sorted in {} ms", now.elapsed().as_millis());
 
         return tree;
@@ -315,7 +340,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         }
 
         let sequences = self.build_sequences();
-        let tree = Self::build_tree(sequences);
+        let tree = self.build_tree(sequences);
         let _ = self.write_report(tree);
         
         // We're done, we can detach :)
