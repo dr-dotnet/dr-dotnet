@@ -1,10 +1,3 @@
-// Workflow:
-// - On GC start, clear everything
-// - Collect all GC roots
-// - On GC end, for each GC root collected, iterate over objects it references (recursively). That gives use a tree of survivors gor the last GC
-// - Stop profiling and make a report
-
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::AddAssign;
@@ -63,23 +56,12 @@ impl Profiler for GCSurvivorsProfiler {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E86".to_owned(),
             name: "GC Survivors".to_owned(),
-            description: "After a garbage collection, iterate over GC roots and browse through references recursively until an ephemeral object is found (gen 0 or 1). \
-                Then, list such retained objects with the chain of references, along with the count of such occurence. \
-                Timeouts after 320s if no garbage collection happened or if did not succeed to catch any callback.".to_owned(),
+            description: "Todo.".to_owned(),
             is_released: true,
             ..std::default::Default::default()
         }
     }
 }
-
-// - trigger GC
-// on gc
-// - get surviving references from gen 2 (HashSet<ObjectID> or HashMap<ObjectID, usize (bytes)>)
-// - build map from object to referencers (inverted)
-// after gc
-// - for each surviving reference
-//   - get all retention paths recursively (they all start with the surviving ref ID)
-//   - each path is a vec or class IDs. With that get objectid size
 
 impl GCSurvivorsProfiler
 {
@@ -197,8 +179,10 @@ impl GCSurvivorsProfiler
 
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
     
-        // Sorts by descending inclusive value
-        tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        // Sorts by descending inclusive count
+        // tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        // Sorts by descending inclusive size
+        tree.sort_by(&|a, b| b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>()));
 
         info!("Tree built and sorted in {} ms", now.elapsed().as_millis());
 
