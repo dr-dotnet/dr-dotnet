@@ -23,9 +23,18 @@ protobuf-json-mapping = "3.2.0"
 thousands = "0.2.0"
 rayon = "1.7"
 
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.8.5"
+
+[[bench]]
+name = "tree_bench"
+harness = false
+
 [build-dependencies]
 protobuf-codegen = "3.2.0"
 
 [lib]
-crate-type = ["cdylib"]
+name = "profilers"
+crate-type = ["lib", "cdylib"]
 path = "lib.rs"
