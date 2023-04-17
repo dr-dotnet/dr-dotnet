@@ -67,6 +67,14 @@ impl Profiler for GCSurvivorsProfiler {
                     value: "true".to_owned(),
                     ..std::default::Default::default()
                 },
+                ProfilerParameter {
+                    name: "Sort multi-threaded".to_owned(),
+                    key: "sort_multithreaded".to_owned(),
+                    description: "If true, sort the results with a multi-threaded methode. Otherwise, sort with an iterative method.".to_owned(),
+                    type_: ParameterType::BOOLEAN.into(),
+                    value: "false".to_owned(),
+                    ..std::default::Default::default()
+                },
                 ProfilerParameter { 
                     name: "Maximum types to display".to_owned(),
                     key: "max_types_display".to_owned(),
@@ -203,13 +211,23 @@ impl GCSurvivorsProfiler
         let now = std::time::Instant::now();
     
         let sort_by_size = self.session_info().get_parameter::<bool>("sort_by_size").unwrap();
-        if sort_by_size {
-            // Sorts by descending inclusive size
-            tree.sort_by_iterative(&|a, b| b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>()));
+        
+        let mut compare = &|a:&TreeNode<usize, References>, b:&TreeNode<usize, References>| {
+            if sort_by_size {
+                // Sorts by descending inclusive size
+                b.inclusive_value.0.values().sum::<usize>().cmp(&a.inclusive_value.0.values().sum::<usize>())
+            } else {
+                // Sorts by descending inclusive count
+                b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len())
+            }
+        };
+
+        let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();
+        if sort_multithreaded {
+            tree.sort_by_multithreaded(compare);
         }
         else {
-            // Sorts by descending inclusive count
-            tree.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+            tree.sort_by_iterative(compare);
         }
  
         info!("Tree sorted in {} ms", now.elapsed().as_millis());
@@ -233,10 +251,10 @@ impl GCSurvivorsProfiler
         //         print(child, depth + 1, format);
         //     }
         // }
-        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.clr().get_class_name(node.key), node.get_inclusive_value(), node.value));
+        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.clr().get_class_name(node.key), node.inclusive_value, node.value));
 
         let nb_classes = tree.children.len();
-        let nb_objects: usize = tree.children.iter().map(|x| x.get_inclusive_value().0.len()).sum();
+        let nb_objects: usize = tree.children.iter().map(|x| x.inclusive_value.0.len()).sum();
 
         let mut report = self.session_info.create_report("summary.html".to_owned());
 
@@ -254,7 +272,7 @@ impl GCSurvivorsProfiler
 
     fn print_html(&self, tree: &TreeNode<ClassID, References>, is_same_level: bool, report: &mut Report)
     {
-        let refs = &tree.get_inclusive_value();
+        let refs = &tree.inclusive_value;
         let nb_objects = refs.0.len();
         let class_name = self.clr().get_class_name(tree.key);
 
@@ -275,7 +293,7 @@ impl GCSurvivorsProfiler
             }
             
             let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
-                && nb_objects == child.get_inclusive_value().0.len();
+                && nb_objects == child.inclusive_value.0.len();
             
             if has_same_alignment && !is_same_level {
                 report.write(format!("\n<ul>\n"));
