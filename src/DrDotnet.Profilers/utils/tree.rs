@@ -207,9 +207,15 @@ mod tests {
         type ThreadID = u32;
     
         // Required to wrap Vec<ThreadID> in order to implement AddAssign
-        #[derive(Clone, Default, Debug)]
+        #[derive(Clone, Default, Debug, Eq)]
         pub struct Threads(Vec<ThreadID>);
-    
+        
+        impl PartialEq<Self> for Threads {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+
         // Implement AddAssign for get_inclusive_value to be usable
         impl AddAssign<&Threads> for Threads {
             fn add_assign(&mut self, other: &Self) {
@@ -233,9 +239,29 @@ mod tests {
         print(&tree, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
 
         // Sorts by descending inclusive value
-        tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        let mut tree_sorted = tree.clone();
+        let start = Instant::now();
+        tree_sorted.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        let duration = start.elapsed();
+        println!("Recursive sort_by duration: {:?}", duration);
 
+        let mut tree_clone = tree.clone();
+        assert_ne!(tree_clone, tree_sorted);
+        let start = Instant::now();
+        tree_clone.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        let duration = start.elapsed();
+        println!("Iterative sort_by duration: {:?}", duration);
+        assert_eq!(tree_clone, tree_sorted);
+        
+        let mut tree_clone = tree.clone();
+        assert_ne!(tree_clone, tree_sorted);
+        let start = Instant::now();
+        tree_clone.sort_by_multithreaded(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        let duration = start.elapsed();
+        println!("Multithreaded sort_by duration: {:?}", duration);
+        assert_eq!(tree_clone, tree_sorted);
+        
         println!("Sorted:");
-        print(&tree, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree_sorted, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
     }
 }
