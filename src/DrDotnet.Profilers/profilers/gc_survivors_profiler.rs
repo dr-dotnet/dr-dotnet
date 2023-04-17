@@ -262,16 +262,11 @@ impl GCSurvivorsProfiler
             let info = self.clr();
             let object_id = object.key().clone();
             let size = info.get_object_size_2(object_id).unwrap_or(0);
-            match info.get_object_generation(object_id) {
-                Ok(gen) => {
-                    // debug!("Surviving object id ({object_id}) generation: {:?}", gen.generation);
-                    // we care only for objects from GEN 2
-                    if gen.generation != ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                        continue;
-                    }
-                }
-                Err(e) => { debug!("Error ({:?}) getting generation of object id: {object_id}", e); continue; }
+            
+            if !Self::is_gen_2(info, object_id) {
+                continue;
             }
+
             for branch in self.append_references(info, object_id, 10) {
                 sequences.entry(branch)
                     .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
@@ -283,7 +278,20 @@ impl GCSurvivorsProfiler
 
         sequences
     }
-    
+
+    fn is_gen_2(info: &ClrProfilerInfo, object_id: usize) -> bool {
+        if let Ok(gen_info) = info.get_object_generation(object_id) {
+            if gen_info.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
+                true
+            }
+            else {
+                false
+            }
+        }
+        else {
+            false
+        }
+    }
 }
 
 impl CorProfilerCallback for GCSurvivorsProfiler
