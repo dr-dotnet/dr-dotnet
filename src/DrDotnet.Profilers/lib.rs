@@ -1,9 +1,9 @@
-mod profilers;
-mod session;
-mod interop;
-mod macros;
-mod utils;
-mod api;
+pub mod profilers;
+pub mod session;
+pub mod interop;
+pub mod macros;
+pub mod utils;
+pub mod api;
 
 #[macro_use]
 extern crate bitflags;
