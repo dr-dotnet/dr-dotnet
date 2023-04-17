@@ -205,11 +205,11 @@ impl GCSurvivorsProfiler
         let sort_by_size = self.session_info().get_parameter::<bool>("sort_by_size").unwrap();
         if sort_by_size {
             // Sorts by descending inclusive size
-            tree.sort_by(&|a, b| b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>()));
+            tree.sort_by_iterative(&|a, b| b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>()));
         }
         else {
             // Sorts by descending inclusive count
-            tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+            tree.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
         }
  
         info!("Tree sorted in {} ms", now.elapsed().as_millis());
