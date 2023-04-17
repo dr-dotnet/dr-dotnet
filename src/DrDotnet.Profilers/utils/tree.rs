@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
+use std::collections::vec_deque::VecDeque;
 use std::ops::AddAssign;
 use rayon::prelude::*;
 
@@ -8,16 +9,18 @@ pub struct TreeNode<K, V> {
     pub key: K,
     pub value: Option<V>,
     pub children: Vec<TreeNode<K, V>>,
+    pub inclusive_value: V
 }
 
 impl<K, V> TreeNode<K, V>
-    where K: PartialEq + Copy + Sync + Send, V: Clone + Sync + Send
+    where K: PartialEq + Copy + Sync + Send, V: for<'a> AddAssign<&'a V> + Default + Clone + Sync + Send,
 {
     pub fn new(key: K) -> Self {
         TreeNode {
-            key: key,
+            key,
             value: None,
             children: Vec::new(),
+            inclusive_value: V::default()
         }
     }
 
@@ -58,6 +61,7 @@ impl<K, V> TreeNode<K, V>
 
     pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
         let mut root = TreeNode::new(root_key);
+        
         for (sequence, value) in sequences {
             let mut current = &mut root;
             for y in sequence {
@@ -73,7 +77,19 @@ impl<K, V> TreeNode<K, V>
             }
             current.value = Some(value.clone());
         }
+        
+        root.calculate_all_inclusive_value();
+        
         return root;
+    }
+
+    fn calculate_all_inclusive_value(&mut self)
+    {
+        self.inclusive_value = self.calculate_inclusive_value();
+
+        for child in &mut self.children {
+            child.calculate_all_inclusive_value();
+        }
     }
 }
 
@@ -109,7 +125,7 @@ impl<K, V> TreeNode<K, V>
     }
 
     // Compute recursively and return the inclusive value of a given TreeNode
-    pub fn get_inclusive_value(&self) -> V {
+    fn calculate_inclusive_value(&self) -> V {
         // Creating a single vector and passing it through get_inclusive_value_recursive
         // enables us to avoid cloning.
         let mut value = V::default();
@@ -150,33 +166,33 @@ mod tests {
 
         // Expected sequences in a tree, sorted by descending inclusive value
         let expected =
-        TreeNode { key: 0, value: None, children: vec![
-            TreeNode { key: 1, value: None, children: vec![
-                TreeNode { key: 3, value: None, children: vec![
-                    TreeNode { key: 5, value: Some(5), children: vec![
-                        TreeNode { key: 1, value: Some(7), children: vec![] }] }] },
-                TreeNode { key: 2, value: Some(3), children: vec![
-                    TreeNode { key: 4, value: Some(4), children: vec![] },
-                    TreeNode { key: 3, value: Some(1), children: vec![] }] }] },
-            TreeNode { key: 2, value: None, children: vec![
-                TreeNode { key: 3, value: None, children: vec![
-                    TreeNode { key: 2, value: None, children: vec![
-                        TreeNode { key: 1, value: None, children: vec![
-                            TreeNode { key: 4, value: Some(6), children: vec![] }] }] }] },
-                TreeNode { key: 2, value: None, children: vec![
-                    TreeNode { key: 3, value: Some(2), children: vec![] }] }] }] };
+        TreeNode { key: 0, value: None, inclusive_value: 0, children: vec![
+            TreeNode { key: 1, value: None, inclusive_value: 0, children: vec![
+                TreeNode { key: 3, value: None, inclusive_value: 0, children: vec![
+                    TreeNode { key: 5, value: Some(5), inclusive_value: 0, children: vec![
+                        TreeNode { key: 1, value: Some(7), inclusive_value: 0, children: vec![] }] }] },
+                TreeNode { key: 2, value: Some(3), inclusive_value: 0, children: vec![
+                    TreeNode { key: 4, value: Some(4), inclusive_value: 0, children: vec![] },
+                    TreeNode { key: 3, value: Some(1), inclusive_value: 0, children: vec![] }] }] },
+            TreeNode { key: 2, value: None, inclusive_value: 0, children: vec![
+                TreeNode { key: 3, value: None, inclusive_value: 0, children: vec![
+                    TreeNode { key: 2, value: None, inclusive_value: 0, children: vec![
+                        TreeNode { key: 1, value: None, inclusive_value: 0, children: vec![
+                            TreeNode { key: 4, value: Some(6), inclusive_value: 0, children: vec![] }] }] }] },
+                TreeNode { key: 2, value: None, inclusive_value: 0, children: vec![
+                    TreeNode { key: 3, value: Some(2), inclusive_value: 0, children: vec![] }] }] }] };
 
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
 
         println!("Unsorted:");
-        print(&tree, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.inclusive_value, node.value));
         assert_ne!(tree, expected);
 
         // Sorts by descending inclusive value
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, expected);
         let start = Instant::now();
-        tree_clone.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        tree_clone.sort_by(&|a, b| b.inclusive_value.cmp(&a.inclusive_value));
         let duration = start.elapsed();
         println!("Recursive sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, expected);
@@ -184,7 +200,7 @@ mod tests {
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, expected);
         let start = Instant::now();
-        tree_clone.sort_by_iterative(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        tree_clone.sort_by_iterative(&|a, b| b.inclusive_value.cmp(&a.inclusive_value));
         let duration = start.elapsed();
         println!("Iterative sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, expected);
@@ -192,12 +208,12 @@ mod tests {
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, expected);
         let start = Instant::now();
-        tree_clone.sort_by_multithreaded(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        tree_clone.sort_by_multithreaded(&|a, b| b.inclusive_value.cmp(&a.inclusive_value));
         let duration = start.elapsed();
         println!("Multithreaded sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, expected);
 
-        print(&tree_clone, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree_clone, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.inclusive_value, node.value));
     }
 
     #[test]
@@ -236,19 +252,19 @@ mod tests {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
 
         println!("Unsorted:");
-        print(&tree, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.inclusive_value, node.value));
 
         // Sorts by descending inclusive value
         let mut tree_sorted = tree.clone();
         let start = Instant::now();
-        tree_sorted.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        tree_sorted.sort_by(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len()));
         let duration = start.elapsed();
         println!("Recursive sort_by duration: {:?}", duration);
 
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, tree_sorted);
         let start = Instant::now();
-        tree_clone.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        tree_clone.sort_by_iterative(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len()));
         let duration = start.elapsed();
         println!("Iterative sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, tree_sorted);
@@ -256,12 +272,12 @@ mod tests {
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, tree_sorted);
         let start = Instant::now();
-        tree_clone.sort_by_multithreaded(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
+        tree_clone.sort_by_multithreaded(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len()));
         let duration = start.elapsed();
         println!("Multithreaded sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, tree_sorted);
         
         println!("Sorted:");
-        print(&tree_sorted, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree_sorted, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.inclusive_value, node.value));
     }
 }
