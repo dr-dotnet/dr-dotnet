@@ -85,10 +85,13 @@ impl<K, V> TreeNode<K, V>
 
     fn calculate_all_inclusive_value(&mut self)
     {
-        self.inclusive_value = self.calculate_inclusive_value();
-
-        for child in &mut self.children {
-            child.calculate_all_inclusive_value();
+        let mut queue = VecDeque::new();
+        queue.push_back(self);
+        while let Some(node) = queue.pop_front() {
+            node.inclusive_value = node.calculate_inclusive_value();
+            for child in &mut node.children {
+                queue.push_back(child);
+            }
         }
     }
 }
@@ -166,21 +169,21 @@ mod tests {
 
         // Expected sequences in a tree, sorted by descending inclusive value
         let expected =
-        TreeNode { key: 0, value: None, inclusive_value: 0, children: vec![
-            TreeNode { key: 1, value: None, inclusive_value: 0, children: vec![
-                TreeNode { key: 3, value: None, inclusive_value: 0, children: vec![
-                    TreeNode { key: 5, value: Some(5), inclusive_value: 0, children: vec![
-                        TreeNode { key: 1, value: Some(7), inclusive_value: 0, children: vec![] }] }] },
-                TreeNode { key: 2, value: Some(3), inclusive_value: 0, children: vec![
-                    TreeNode { key: 4, value: Some(4), inclusive_value: 0, children: vec![] },
-                    TreeNode { key: 3, value: Some(1), inclusive_value: 0, children: vec![] }] }] },
-            TreeNode { key: 2, value: None, inclusive_value: 0, children: vec![
-                TreeNode { key: 3, value: None, inclusive_value: 0, children: vec![
-                    TreeNode { key: 2, value: None, inclusive_value: 0, children: vec![
-                        TreeNode { key: 1, value: None, inclusive_value: 0, children: vec![
-                            TreeNode { key: 4, value: Some(6), inclusive_value: 0, children: vec![] }] }] }] },
-                TreeNode { key: 2, value: None, inclusive_value: 0, children: vec![
-                    TreeNode { key: 3, value: Some(2), inclusive_value: 0, children: vec![] }] }] }] };
+        TreeNode { key: 0, value: None, inclusive_value: 28, children: vec![
+            TreeNode { key: 1, value: None, inclusive_value: 20, children: vec![
+                TreeNode { key: 3, value: None, inclusive_value: 12, children: vec![
+                    TreeNode { key: 5, value: Some(5), inclusive_value: 12, children: vec![
+                        TreeNode { key: 1, value: Some(7), inclusive_value: 7, children: vec![] }] }] },
+                TreeNode { key: 2, value: Some(3), inclusive_value: 8 , children: vec![
+                    TreeNode { key: 4, value: Some(4), inclusive_value: 4, children: vec![] },
+                    TreeNode { key: 3, value: Some(1), inclusive_value: 1, children: vec![] }]}] },
+            TreeNode { key: 2, value: None, inclusive_value: 8, children: vec![
+                TreeNode { key: 3, value: None, inclusive_value: 6, children: vec![
+                    TreeNode { key: 2, value: None, inclusive_value: 6, children: vec![
+                        TreeNode { key: 1, value: None, inclusive_value: 6, children: vec![
+                            TreeNode { key: 4, value: Some(6), inclusive_value: 6 , children: vec![] }] }] }] },
+                TreeNode { key: 2, value: None, inclusive_value: 2, children: vec![
+                    TreeNode { key: 3, value: Some(2), inclusive_value: 2, children: vec![] }] }] }] };
 
         let tree = TreeNode::build_from_sequences(&sequences, 0);
 
