@@ -21,6 +21,7 @@ bitflags = "1.2.1"
 protobuf = "3.2.0"
 protobuf-json-mapping = "3.2.0"
 thousands = "0.2.0"
+rayon = "1.7"
 
 [build-dependencies]
 protobuf-codegen = "3.2.0"
