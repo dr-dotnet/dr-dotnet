@@ -149,55 +149,58 @@ impl GCSurvivorsProfiler
         return branches;
     }
 
-    fn print_html(&self, tree: &TreeNode<ClassID, References>, is_same_level: bool, report: &mut Report)
+    // Post-process tracked persisting references
+    fn build_sequences(&mut self) -> HashMap<Vec<usize>, References>
     {
-        let refs = &tree.get_inclusive_value();
-        let nb_objects = refs.0.len();
-        let class_name = self.clr().get_class_name(tree.key);
+        info!("Building graph of surviving references... {} objects to process", self.object_to_referencers.len());
 
-        if !is_same_level {
-            report.write(format!("\n<details><summary><span>{refs}</span>{class_name}</summary>"));
-        } else {
-            report.write(format!("\n<li><span>{refs}</span>{class_name}</li>"));
+        let now = std::time::Instant::now();
+
+        let mut sequences: HashMap<Vec<ClassID>, References> = HashMap::new();
+
+        let info = self.clr();
+
+        for object in self.object_to_referencers.iter() {
+            
+            let object_id = object.key().clone();
+
+            if !Self::is_gen_2(info, object_id) {
+                continue;
+            }
+
+            let size = info.get_object_size_2(object_id).unwrap_or(0);
+
+            for branch in self.append_references(info, object_id, 10) {
+                sequences.entry(branch)
+                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
+                    .or_insert(References(HashMap::from([(object_id.clone(), size)])));
+            }
         }
 
-        let max_types_display = self.session_info().get_parameter::<u64>("max_types_display").unwrap();
+        info!("Graph built in {} ms", now.elapsed().as_millis());
 
-        let mut i = 0;
-        for child in &tree.children {
-            
-            // Set a limit to the output
-            if i > max_types_display {
-                break;
-            }
-            
-            let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
-                && nb_objects == child.get_inclusive_value().0.len();
-            
-            if has_same_alignment && !is_same_level {
-                report.write(format!("\n<ul>\n"));
-            }
-            self.print_html(child, has_same_alignment, report);
-
-            if has_same_alignment && !is_same_level {
-                report.write(format!("\n</ul>\n"));
-            }
-            
-            i += 1;
-        }
-
-        if !is_same_level {
-            report.write(format!("\n</details>\n"));
-        }
+        sequences
     }
 
-    fn build_tree(&self, sequences: HashMap<Vec<usize>, References>) -> TreeNode<usize, References>
+    fn is_gen_2(info: &ClrProfilerInfo, object_id: usize) -> bool {
+        info.get_object_generation(object_id).map_or(false, |gen_info| gen_info.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2)
+    }
+
+    fn build_tree(&self, sequences: &mut HashMap<Vec<usize>, References>) -> TreeNode<usize, References>
     {
         info!("Building tree");
 
         let now = std::time::Instant::now();
 
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
+
+        sequences.clear();
+
+        info!("Tree built in {} ms", now.elapsed().as_millis());
+
+        info!("Sorting tree");
+
+        let now = std::time::Instant::now();
     
         let sort_by_size = self.session_info().get_parameter::<bool>("sort_by_size").unwrap();
         if sort_by_size {
@@ -209,7 +212,7 @@ impl GCSurvivorsProfiler
             tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
         }
  
-        info!("Tree built and sorted in {} ms", now.elapsed().as_millis());
+        info!("Tree sorted in {} ms", now.elapsed().as_millis());
 
         return tree;
     }
@@ -249,47 +252,45 @@ impl GCSurvivorsProfiler
         Ok(())
     }
 
-    // Post-process tracked persisting references
-    fn build_sequences(&mut self) -> HashMap<Vec<usize>, References>
+    fn print_html(&self, tree: &TreeNode<ClassID, References>, is_same_level: bool, report: &mut Report)
     {
-        info!("Building graph of surviving references... {} objects to process", self.object_to_referencers.len());
+        let refs = &tree.get_inclusive_value();
+        let nb_objects = refs.0.len();
+        let class_name = self.clr().get_class_name(tree.key);
 
-        let now = std::time::Instant::now();
+        if !is_same_level {
+            report.write(format!("\n<details><summary><span>{refs}</span>{class_name}</summary>"));
+        } else {
+            report.write(format!("\n<li><span>{refs}</span>{class_name}</li>"));
+        }
 
-        let mut sequences: HashMap<Vec<ClassID>, References> = HashMap::new();
+        let max_types_display = self.session_info().get_parameter::<u64>("max_types_display").unwrap();
 
-        for object in self.object_to_referencers.iter() {
-            let info = self.clr();
-            let object_id = object.key().clone();
-            let size = info.get_object_size_2(object_id).unwrap_or(0);
+        let mut i = 0;
+        for child in &tree.children {
             
-            if !Self::is_gen_2(info, object_id) {
-                continue;
+            // Set a limit to the output
+            if i > max_types_display {
+                break;
             }
+            
+            let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
+                && nb_objects == child.get_inclusive_value().0.len();
+            
+            if has_same_alignment && !is_same_level {
+                report.write(format!("\n<ul>\n"));
+            }
+            self.print_html(child, has_same_alignment, report);
 
-            for branch in self.append_references(info, object_id, 10) {
-                sequences.entry(branch)
-                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
-                    .or_insert(References(HashMap::from([(object_id.clone(), size)])));
+            if has_same_alignment && !is_same_level {
+                report.write(format!("\n</ul>\n"));
             }
+            
+            i += 1;
         }
 
-        info!("Graph built in {} ms", now.elapsed().as_millis());
-
-        sequences
-    }
-
-    fn is_gen_2(info: &ClrProfilerInfo, object_id: usize) -> bool {
-        if let Ok(gen_info) = info.get_object_generation(object_id) {
-            if gen_info.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 {
-                true
-            }
-            else {
-                false
-            }
-        }
-        else {
-            false
+        if !is_same_level {
+            report.write(format!("\n</details>\n"));
         }
     }
 }
@@ -347,8 +348,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
-        let sequences = self.build_sequences();
-        let tree = self.build_tree(sequences);
+        let mut sequences = self.build_sequences();
+        let tree = self.build_tree(&mut sequences);
         let _ = self.write_report(tree);
         
         // We're done, we can detach :)
