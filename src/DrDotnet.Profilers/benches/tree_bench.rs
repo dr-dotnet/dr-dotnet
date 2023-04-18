@@ -1,4 +1,4 @@
-use std::{ops::AddAssign, collections::HashMap};
+use std::{ops::AddAssign, collections::HashMap, cell::RefCell};
 use profilers::utils::*;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::prelude::*;
@@ -56,6 +56,31 @@ fn bench_tree_sort(c: &mut Criterion) {
     c.bench_function("iterative", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         b.iter(|| tree.sort_by_iterative(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len())))
+    });
+
+    c.bench_function("iterative calculate", |b| {
+        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
+        b.iter(|| tree.sort_by_iterative(&|a, b| b.calculate_inclusive_value().0.len().cmp(&a.calculate_inclusive_value().0.len())))
+    });
+    
+    c.bench_function("iterative cached", |b| {
+        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
+        let cache: RefCell<HashMap<u32, usize>> = RefCell::new(HashMap::new());
+        b.iter(|| {
+            tree.sort_by_iterative(&|a, b| {
+                let mut c = cache.borrow_mut();
+        
+                let value_b = *c
+                    .entry(b.key)
+                    .or_insert_with(|| b.calculate_inclusive_value().0.len());
+
+                let value_a = *c
+                    .entry(a.key)
+                    .or_insert_with(|| a.calculate_inclusive_value().0.len());
+
+                value_b.cmp(&value_a)
+            })
+        });
     });
 
     c.bench_function("multithreaded", |b| {

@@ -125,7 +125,7 @@ impl<K, V> TreeNode<K, V>
     }
 
     // Compute recursively and return the inclusive value of a given TreeNode
-    fn calculate_inclusive_value(&self) -> V {
+    pub fn calculate_inclusive_value(&self) -> V {
         // Creating a single vector and passing it through get_inclusive_value_recursive
         // enables us to avoid cloning.
         let mut value = V::default();
