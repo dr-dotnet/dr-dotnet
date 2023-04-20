@@ -26,16 +26,19 @@ use std::{mem::MaybeUninit, ptr};
 use uuid::Uuid;
 use widestring::U16CString;
 use std::slice;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use crate::*;
 
 #[derive(Clone)]
 pub struct ClrProfilerInfo {
     info: *const FFICorProfilerInfo,
+    should_detach_now: Arc<AtomicBool>,
 }
 
 impl Default for ClrProfilerInfo {
     fn default() -> Self {
-        Self { info: core::ptr::null() }
+        Self { info: core::ptr::null(), should_detach_now: Arc::new(AtomicBool::new(false))}
     }
 }
 
@@ -46,6 +49,7 @@ impl ClrProfilerInfo {
     pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
         ClrProfilerInfo {
             info: cor_profiler_info,
+            should_detach_now: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -53,6 +57,14 @@ impl ClrProfilerInfo {
         unsafe { self.info.as_ref().unwrap() }
     }
 
+    pub fn get_should_detach_now(&self) -> bool {
+        self.should_detach_now.load(Ordering::SeqCst)
+    }
+    
+    pub fn detach_now(&self) {
+        self.should_detach_now.store(true, Ordering::SeqCst);
+    }
+    
     pub fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
         match self.get_module_metadata(module_id, CorOpenFlags::ofRead) {
             Ok(metadata) =>

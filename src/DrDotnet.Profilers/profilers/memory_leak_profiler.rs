@@ -290,8 +290,7 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         info!("Successfully processed persisting objects");
 
         // Request detach
-        let profiler_info = self.clr().clone();
-        profiler_info.request_profiler_detach(3000).ok();
+        self.clr().detach_now();
 
         // We can free some memory
         self.object_to_referencers.clear();
@@ -303,14 +302,7 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 
 impl CorProfilerCallback3 for MemoryLeakProfiler {
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
-    }
-
-    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
-        // Security timeout
-        detach_after_duration::<MemoryLeakProfiler>(&self, 320, None);
-
-        Ok(())
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length, None)
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {

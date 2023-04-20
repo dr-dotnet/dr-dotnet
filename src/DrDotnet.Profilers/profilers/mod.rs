@@ -37,7 +37,13 @@ pub trait Profiler : CorProfilerCallback9 {
     fn clr(&self) -> &ClrProfilerInfo;
     fn set_clr_profiler_info(&mut self, clr_profiler_info: &ClrProfilerInfo);
 
-    fn init(&mut self, event: ffi::COR_PRF_MONITOR, high_event: Option<ffi::COR_PRF_HIGH_MONITOR>, clr_profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT>
+    fn init(&mut self, 
+            event: ffi::COR_PRF_MONITOR, 
+            high_event: Option<ffi::COR_PRF_HIGH_MONITOR>, 
+            clr_profiler_info: ClrProfilerInfo, 
+            client_data: *const std::os::raw::c_void, 
+            client_data_length: u32,
+            security_timeout_duration_seconds: Option<u64>) -> Result<(), ffi::HRESULT>
     {
         self.set_clr_profiler_info(&clr_profiler_info);
 
@@ -45,6 +51,10 @@ pub trait Profiler : CorProfilerCallback9 {
             Some(e) => e,
             None => ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE
         };
+
+        let duration_seconds = security_timeout_duration_seconds.unwrap_or(360);
+        
+        detach_after_duration(self, duration_seconds, None);
 
         match self.clr().set_event_mask_2(event, high_event_s) {
             Ok(_) => match SessionInfo::init(client_data, client_data_length) {
@@ -65,7 +75,7 @@ pub trait Profiler : CorProfilerCallback9 {
     }
 }
 
-pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
+fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
 {
     let profiler_info = profiler.clr().clone();
 
@@ -73,15 +83,28 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
         if thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max).is_err() {
             error!("Could not increase thread priority for detach operation");
         }
-        std::thread::sleep(std::time::Duration::from_secs(duration_seconds));
 
+        let mut slept = 0;
+        while slept < duration_seconds {
+            if profiler_info.get_should_detach_now() {
+                info!("security timeout interrupted!");
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            slept += 1;
+        }
+        
         if let Some(ref func) = callback {
             (func)();
         }
-
+        
+        info!("detach_after_duration requesting profiler detach");
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-requestprofilerdetach-method
         // https://github.com/Potapy4/dotnet-coreclr/blob/master/Documentation/Profiling/davbr-blog-archive/Profiler%20Detach.md#requestprofilerdetach
-        profiler_info.request_profiler_detach(3000).ok();
+        profiler_info.request_profiler_detach(3000).or_else(|hresult| {
+            error!("Error requesting profiler detach in detach_after_duration: {:?}", hresult);
+            Ok::<(), ()>(())
+        })
     });
 }
 
