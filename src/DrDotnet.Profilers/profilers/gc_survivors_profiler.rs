@@ -215,10 +215,10 @@ impl GCSurvivorsProfiler
         let mut compare = &|a:&TreeNode<usize, References>, b:&TreeNode<usize, References>| {
             if sort_by_size {
                 // Sorts by descending inclusive size
-                b.inclusive_value.0.values().sum::<usize>().cmp(&a.inclusive_value.0.values().sum::<usize>())
+                b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>())
             } else {
                 // Sorts by descending inclusive count
-                b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len())
+                b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())
             }
         };
 
@@ -251,10 +251,10 @@ impl GCSurvivorsProfiler
         //         print(child, depth + 1, format);
         //     }
         // }
-        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.clr().get_class_name(node.key), node.inclusive_value, node.value));
+        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.clr().get_class_name(node.key), node.get_inclusive_value(), node.value));
 
         let nb_classes = tree.children.len();
-        let nb_objects: usize = tree.children.iter().map(|x| x.inclusive_value.0.len()).sum();
+        let nb_objects: usize = tree.children.iter().map(|x| x.get_inclusive_value().0.len()).sum();
 
         let mut report = self.session_info.create_report("summary.html".to_owned());
 
@@ -272,7 +272,7 @@ impl GCSurvivorsProfiler
 
     fn print_html(&self, tree: &TreeNode<ClassID, References>, is_same_level: bool, report: &mut Report)
     {
-        let refs = &tree.inclusive_value;
+        let refs = &tree.get_inclusive_value();
         let nb_objects = refs.0.len();
         let class_name = self.clr().get_class_name(tree.key);
 
@@ -293,7 +293,7 @@ impl GCSurvivorsProfiler
             }
             
             let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
-                && nb_objects == child.inclusive_value.0.len();
+                && nb_objects == child.get_inclusive_value().0.len();
             
             if has_same_alignment && !is_same_level {
                 report.write(format!("\n<ul>\n"));
