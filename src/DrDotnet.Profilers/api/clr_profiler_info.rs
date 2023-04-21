@@ -1223,6 +1223,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         
         match self.get_attached_status() {
             AttachedStatus::Attached => {
+                self.set_attached_status(AttachedStatus::Detaching);
                 let hr = unsafe {
                     self.info()
                         .RequestProfilerDetach(expected_completion_milliseconds)
