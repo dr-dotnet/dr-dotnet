@@ -27,18 +27,25 @@ use uuid::Uuid;
 use widestring::U16CString;
 use std::slice;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::*;
 
 #[derive(Clone)]
 pub struct ClrProfilerInfo {
     info: *const FFICorProfilerInfo,
-    should_detach_now: Arc<AtomicBool>,
+    attached_status: Arc<AtomicUsize>,
+}
+
+pub enum AttachedStatus {
+    Attaching,
+    Attached,
+    Detaching,
+    Detached,
 }
 
 impl Default for ClrProfilerInfo {
     fn default() -> Self {
-        Self { info: core::ptr::null(), should_detach_now: Arc::new(AtomicBool::new(false))}
+        Self { info: core::ptr::null(), attached_status: Arc::new(AtomicUsize::new(AttachedStatus::Detached as usize))}
     }
 }
 
@@ -49,7 +56,7 @@ impl ClrProfilerInfo {
     pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
         ClrProfilerInfo {
             info: cor_profiler_info,
-            should_detach_now: Arc::new(AtomicBool::new(false)),
+            attached_status: Arc::new(AtomicUsize::new(AttachedStatus::Detached as usize)),
         }
     }
 
@@ -57,12 +64,18 @@ impl ClrProfilerInfo {
         unsafe { self.info.as_ref().unwrap() }
     }
 
-    pub fn get_should_detach_now(&self) -> bool {
-        self.should_detach_now.load(Ordering::SeqCst)
+    pub fn get_attached_status(&self) -> AttachedStatus {
+        match self.attached_status.load(Ordering::SeqCst) {
+            x if x == AttachedStatus::Attaching as usize => AttachedStatus::Attaching,
+            x if x == AttachedStatus::Attached as usize => AttachedStatus::Attached,
+            x if x == AttachedStatus::Detaching as usize => AttachedStatus::Detaching,
+            x if x == AttachedStatus::Detached as usize => AttachedStatus::Detached,
+            _ => unreachable!(),
+        }
     }
     
-    pub fn detach_now(&self) {
-        self.should_detach_now.store(true, Ordering::SeqCst);
+    pub fn set_attached_status(&self, status: AttachedStatus) {
+        self.attached_status.store(status as usize, Ordering::SeqCst);
     }
     
     pub fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
@@ -1207,14 +1220,25 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         &self,
         expected_completion_milliseconds: u32,
     ) -> Result<(), HRESULT> {
-        let hr = unsafe {
-            self.info()
-                .RequestProfilerDetach(expected_completion_milliseconds)
-        };
+        
+        match self.get_attached_status() {
+            AttachedStatus::Attached => {
+                let hr = unsafe {
+                    self.info()
+                        .RequestProfilerDetach(expected_completion_milliseconds)
+                };
 
-        match hr {
-            HRESULT::S_OK => Ok(()),
-            _ => Err(hr),
+                match hr {
+                    HRESULT::S_OK => Ok(()),
+                    _ => Err(hr),
+                }
+            }
+            AttachedStatus::Detaching => {
+                Err(HRESULT::CORPROF_E_PROFILER_DETACHING)
+            },
+            _ => {
+                Err(HRESULT::CORPROF_E_UNSUPPORTED_CALL_SEQUENCE)
+            }
         }
     }
     fn set_function_id_mapper_2(

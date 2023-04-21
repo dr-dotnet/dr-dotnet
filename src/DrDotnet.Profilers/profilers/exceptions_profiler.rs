@@ -65,8 +65,14 @@ impl CorProfilerCallback2 for ExceptionsProfiler {}
 
 impl CorProfilerCallback3 for ExceptionsProfiler {
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS, None, profiler_info, client_data, client_data_length)
+    }
+
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         let duration_seconds = self.session_info().get_parameter::<u64>("duration").unwrap();
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS, None, profiler_info, client_data, client_data_length, Some(duration_seconds))
+
+        detach_after_duration::<ExceptionsProfiler>(&self, duration_seconds, None);
+        Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {

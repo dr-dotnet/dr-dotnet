@@ -6,11 +6,12 @@ use crate::{
 use std::ffi::c_void;
 use std::ptr;
 use std::sync::atomic::{AtomicU32, Ordering};
+use crate::profilers::Profiler;
 
 #[repr(C)]
 pub struct ClassFactoryVtbl<T>
 where
-    T: CorProfilerCallback9,
+    T: Profiler,
 {
     pub IUnknown: IUnknown<ClassFactory<T>>,
     pub IClassFactory: IClassFactory<ClassFactory<T>>,
@@ -19,7 +20,7 @@ where
 #[repr(C)]
 pub struct ClassFactory<T>
 where
-    T: CorProfilerCallback9,
+    T: Profiler,
 {
     pub lpVtbl: *const ClassFactoryVtbl<T>,
     ref_count: AtomicU32,
@@ -28,7 +29,7 @@ where
 
 impl<T> ClassFactory<T>
 where
-    T: CorProfilerCallback9,
+    T: Profiler,
 {
     pub fn new<'b>(profiler: T) -> &'b mut ClassFactory<T> {
         debug!("IClassFactory::new");
@@ -99,5 +100,5 @@ where
     }
 }
 
-unsafe impl<T> Sync for ClassFactory<T> where T: Sync, T: CorProfilerCallback9 {}
-unsafe impl<T> Send for ClassFactory<T> where T: Send, T: CorProfilerCallback9 {}
+unsafe impl<T> Sync for ClassFactory<T> where T: Sync, T: Profiler {}
+unsafe impl<T> Send for ClassFactory<T> where T: Send, T: Profiler {}

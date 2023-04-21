@@ -98,11 +98,12 @@ impl CorProfilerCallback2 for RuntimePauseProfiler {
 
 impl CorProfilerCallback3 for RuntimePauseProfiler {
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS, Some(ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_BASIC_GC), profiler_info, client_data, client_data_length, Some(20))
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS, Some(ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_BASIC_GC), profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         self.profiling_start = Instant::now();
+        detach_after_duration::<RuntimePauseProfiler>(&self, 20, None);
         Ok(())
     }
 

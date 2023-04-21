@@ -42,8 +42,7 @@ pub trait Profiler : CorProfilerCallback9 {
             high_event: Option<ffi::COR_PRF_HIGH_MONITOR>, 
             clr_profiler_info: ClrProfilerInfo, 
             client_data: *const std::os::raw::c_void, 
-            client_data_length: u32,
-            security_timeout_duration_seconds: Option<u64>) -> Result<(), ffi::HRESULT>
+            client_data_length: u32) -> Result<(), ffi::HRESULT>
     {
         self.set_clr_profiler_info(&clr_profiler_info);
 
@@ -51,10 +50,6 @@ pub trait Profiler : CorProfilerCallback9 {
             Some(e) => e,
             None => ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE
         };
-
-        let duration_seconds = security_timeout_duration_seconds.unwrap_or(360);
-        
-        detach_after_duration(self, duration_seconds, None);
 
         match self.clr().set_event_mask_2(event, high_event_s) {
             Ok(_) => match SessionInfo::init(client_data, client_data_length) {
@@ -75,7 +70,7 @@ pub trait Profiler : CorProfilerCallback9 {
     }
 }
 
-fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
+pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callback: Option<Box<dyn Fn() + Send>>)
 {
     let profiler_info = profiler.clr().clone();
 
@@ -84,15 +79,7 @@ fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, callb
             error!("Could not increase thread priority for detach operation");
         }
 
-        let mut slept = 0;
-        while slept < duration_seconds {
-            if profiler_info.get_should_detach_now() {
-                info!("security timeout interrupted!");
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_secs(1));
-            slept += 1;
-        }
+        std::thread::sleep(std::time::Duration::from_secs(duration_seconds));
         
         if let Some(ref func) = callback {
             (func)();

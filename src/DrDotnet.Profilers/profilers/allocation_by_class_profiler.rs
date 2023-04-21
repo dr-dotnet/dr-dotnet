@@ -61,7 +61,12 @@ impl CorProfilerCallback2 for AllocationByClassProfiler {
 
 impl CorProfilerCallback3 for AllocationByClassProfiler {
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length, Some(11))
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
+    }
+
+    fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
+        detach_after_duration::<AllocationByClassProfiler>(&self, 10, None);
+        Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {

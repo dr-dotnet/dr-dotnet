@@ -267,7 +267,7 @@ impl CorProfilerCallback2 for MergedCallStacksProfiler {}
 
 impl CorProfilerCallback3 for MergedCallStacksProfiler {
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT, None, profiler_info, client_data, client_data_length, None)
+        self.init(ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT, None, profiler_info, client_data, client_data_length)
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
@@ -294,10 +294,8 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
         if thread_handle.join().is_err() {
             error!("Can't wait for the thread to finish!");
         }
-
-        self.clr().detach_now();
         
-        Ok(())
+        self.clr().request_profiler_detach(3000)
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), ffi::HRESULT> {
