@@ -9,9 +9,9 @@ using DrDotnet.Utils;
 
 namespace DrDotnet.Tests.Profilers;
 
-public class MergedCallstacksProfilerTests : ProfilerTests
+public class ParallelStacksProfilerTests : ProfilerTests
 {
-    protected override Guid ProfilerGuid => new Guid("{9404d16c-b49e-11ed-afa1-0242ac120002}");
+    protected override Guid ProfilerGuid => new Guid("{9404d16c-b49e-11ed-afa1-0242ac120003}");
 
     [Test]
     [Order(0)]
@@ -26,7 +26,7 @@ public class MergedCallstacksProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(160_000)]
     [NonParallelizable]
-    public async Task Profiler_Merged_Callstacks()
+    public async Task Profiler_Parallel_Stacks()
     {
         Logger logger = new Logger();
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);

@@ -24,7 +24,7 @@ register!(
     RuntimePauseProfiler,
     CpuHotpathProfiler,
     DuplicatedStringsProfiler,
-    MergedCallStacksProfiler
+    ParallelStacksProfiler
 );
 
 // Actual COM entry point
