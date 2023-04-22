@@ -231,7 +231,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler {
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         // Security timeout
-        detach_after_duration::<GCSurvivorsProfiler>(&self, 320, None);
+        detach_after_duration::<GCSurvivorsProfiler>(&self, 320);
 
         Ok(())
     }

@@ -1,19 +1,17 @@
 #![allow(non_snake_case)]
 use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, CorProfilerInfo};
-use crate::{
-    ffi::*,
-    traits::CorProfilerCallback9,
-    ClrProfilerInfo,
-};
+use crate::{ffi::*, traits::CorProfilerCallback9, ClrProfilerInfo, profilers};
 use std::{
     ffi::c_void,
     ptr, slice,
     sync::atomic::{AtomicU32, Ordering},
 };
 use widestring::{U16CString, U16String};
+use crate::api::AttachedStatus;
+use crate::profilers::Profiler;
 
 #[repr(C)]
-pub struct CorProfilerCallbackVtbl<T: CorProfilerCallback9> {
+pub struct CorProfilerCallbackVtbl<T: Profiler> {
     pub IUnknown: IUnknown<CorProfilerCallback<T>>,
     pub ICorProfilerCallback: ICorProfilerCallback<CorProfilerCallback<T>>,
     pub ICorProfilerCallback2: ICorProfilerCallback2<CorProfilerCallback<T>>,
@@ -27,13 +25,13 @@ pub struct CorProfilerCallbackVtbl<T: CorProfilerCallback9> {
 }
 
 #[repr(C)]
-pub struct CorProfilerCallback<T: CorProfilerCallback9> {
+pub struct CorProfilerCallback<T: Profiler> {
     pub lpVtbl: *const CorProfilerCallbackVtbl<T>,
     ref_count: AtomicU32,
     profiler: T,
 }
 
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: Profiler> CorProfilerCallback<T> {
     pub fn new<'b>(profiler: T) -> &'b mut CorProfilerCallback<T> {
         info!("CorProfilerCallback<T>::new");
         let cor_profiler_callback = CorProfilerCallback {
@@ -163,7 +161,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 }
 
 // IUnknown
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: Profiler> CorProfilerCallback<T> {
     pub unsafe extern "system" fn query_interface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
         let uuid: uuid::Uuid = GUID::into(*riid);
         debug!("CorProfilerCallback<T>::QueryInterface({})", uuid);
@@ -210,7 +208,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 }
 
 // ICorProfilerCallback
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: Profiler> CorProfilerCallback<T> {
     pub unsafe extern "system" fn Initialize(
         &mut self,
         pICorProfilerInfoUnk: *const CorProfilerInfo,
@@ -926,7 +924,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
 }
 
 // ICorProfilerCallback2
-impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
+impl<T: Profiler> CorProfilerCallback<T> {
     pub unsafe extern "system" fn ThreadNameChanged(
         &mut self,
         threadId: ThreadID,
@@ -1046,7 +1044,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
             return HRESULT::E_FAIL;
         }
         let profiler_info = ClrProfilerInfo::new(pCorProfilerInfoUnk);
-
+        profiler_info.set_attached_status(AttachedStatus::Attaching);
         let result = self
             .profiler
             .initialize_for_attach(profiler_info, pvClientData, cbClientData);
@@ -1062,6 +1060,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         }
     }
     pub unsafe extern "system" fn ProfilerAttachComplete(&mut self) -> HRESULT {
+        self.profiler.clr().set_attached_status(AttachedStatus::Attached);
         let result = self.profiler.profiler_attach_complete();
         match result {
             Ok(_) => {
@@ -1075,6 +1074,7 @@ impl<T: CorProfilerCallback9> CorProfilerCallback<T> {
         }
     }
     pub unsafe extern "system" fn ProfilerDetachSucceeded(&mut self) -> HRESULT {
+        self.profiler.clr().set_attached_status(AttachedStatus::Detached);
         let result = self.profiler.profiler_detach_succeeded();
         match result {
             Ok(_) => {

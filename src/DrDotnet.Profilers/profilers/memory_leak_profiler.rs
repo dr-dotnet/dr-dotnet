@@ -308,7 +308,7 @@ impl CorProfilerCallback3 for MemoryLeakProfiler {
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         // Security timeout
-        detach_after_duration::<MemoryLeakProfiler>(&self, 320, None);
+        detach_after_duration::<MemoryLeakProfiler>(&self, 320);
 
         Ok(())
     }

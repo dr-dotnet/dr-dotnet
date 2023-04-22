@@ -103,7 +103,7 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         self.profiling_start = Instant::now();
-        detach_after_duration::<RuntimePauseProfiler>(&self, 20, None);
+        detach_after_duration::<RuntimePauseProfiler>(&self, 20);
         Ok(())
     }
 

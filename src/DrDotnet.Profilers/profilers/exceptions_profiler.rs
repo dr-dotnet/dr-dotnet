@@ -71,7 +71,7 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         let duration_seconds = self.session_info().get_parameter::<u64>("duration").unwrap();
 
-        detach_after_duration::<ExceptionsProfiler>(&self, duration_seconds, None);
+        detach_after_duration::<ExceptionsProfiler>(&self, duration_seconds);
         Ok(())
     }
 

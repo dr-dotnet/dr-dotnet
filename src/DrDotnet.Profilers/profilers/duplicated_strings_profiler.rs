@@ -136,7 +136,9 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler {
 
         // We're done, we can detach :)
         let profiler_info = self.clr().clone();
-        profiler_info.request_profiler_detach(3000).ok();
+    if let Err(e) = profiler_info.request_profiler_detach(3000) {
+        error!("Failed to detach in garbage_collection_finished: {:?}", e);
+    }
         
         Ok(())
     }
@@ -161,7 +163,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
         }).join();
         
         // Security timeout
-        detach_after_duration::<DuplicatedStringsProfiler>(&self, 360, None);
+        detach_after_duration::<DuplicatedStringsProfiler>(&self, 60);
 
         Ok(())
     }
