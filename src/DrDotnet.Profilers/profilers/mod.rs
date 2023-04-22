@@ -88,9 +88,9 @@ pub fn detach_after_duration<T: Profiler>(profiler: &T, duration_seconds: u64, c
         info!("detach_after_duration requesting profiler detach");
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo3-requestprofilerdetach-method
         // https://github.com/Potapy4/dotnet-coreclr/blob/master/Documentation/Profiling/davbr-blog-archive/Profiler%20Detach.md#requestprofilerdetach
-        profiler_info.request_profiler_detach(3000).or_else(|hresult| {
-            error!("Error requesting profiler detach in detach_after_duration: {:?}", hresult);
-            Ok::<(), ()>(())
+    if let Err(e) = profiler_info.request_profiler_detach(3000) {
+        error!("Error requesting profiler detach in detach_after_duration: {:?}", e);
+    }
         })
     });
 }

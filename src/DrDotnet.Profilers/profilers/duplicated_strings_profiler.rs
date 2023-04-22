@@ -136,10 +136,9 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler {
 
         // We're done, we can detach :)
         let profiler_info = self.clr().clone();
-        match profiler_info.request_profiler_detach(3000) {
-            Ok(_) => {}
-            Err(e) => {error!("Failed to detach in garbage_collection_finished: {:?}", e)}
-        };
+    if let Err(e) = profiler_info.request_profiler_detach(3000) {
+        error!("Failed to detach in garbage_collection_finished: {:?}", e);
+    }
         
         Ok(())
     }
