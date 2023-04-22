@@ -65,7 +65,7 @@ impl CorProfilerCallback3 for AllocationByClassProfiler {
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
-        detach_after_duration::<AllocationByClassProfiler>(&self, 10, None);
+        detach_after_duration::<AllocationByClassProfiler>(&self, 10);
         Ok(())
     }
 

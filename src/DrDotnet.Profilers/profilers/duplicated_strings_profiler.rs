@@ -163,7 +163,7 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
         }).join();
         
         // Security timeout
-        detach_after_duration::<DuplicatedStringsProfiler>(&self, 60, None);
+        detach_after_duration::<DuplicatedStringsProfiler>(&self, 60);
 
         Ok(())
     }
