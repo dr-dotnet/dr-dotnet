@@ -27,7 +27,7 @@ use uuid::Uuid;
 use widestring::U16CString;
 use std::slice;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::*;
 
 #[derive(Clone)]
@@ -74,7 +74,7 @@ impl ClrProfilerInfo {
         }
     }
     
-    pub fn set_attached_status(&self, status: AttachedStatus) {
+    pub(in crate::api) fn set_attached_status(&self, status: AttachedStatus) {
         self.attached_status.store(status as usize, Ordering::SeqCst);
     }
     
@@ -1220,10 +1220,8 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         &self,
         expected_completion_milliseconds: u32,
     ) -> Result<(), HRESULT> {
-        
-        match self.get_attached_status() {
-            AttachedStatus::Attached => {
-                self.set_attached_status(AttachedStatus::Detaching);
+        match self.attached_status.compare_exchange(AttachedStatus::Attached as usize, AttachedStatus::Detaching as usize, Ordering::Acquire, Ordering::Relaxed) {
+            Ok(_) => {
                 let hr = unsafe {
                     self.info()
                         .RequestProfilerDetach(expected_completion_milliseconds)
@@ -1233,12 +1231,10 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
                     HRESULT::S_OK => Ok(()),
                     _ => Err(hr),
                 }
-            }
-            AttachedStatus::Detaching => {
-                Err(HRESULT::CORPROF_E_PROFILER_DETACHING)
             },
-            _ => {
-                Err(HRESULT::CORPROF_E_UNSUPPORTED_CALL_SEQUENCE)
+            Err(current) => match current {
+                x if x == AttachedStatus::Detaching as usize => Err(HRESULT::CORPROF_E_PROFILER_DETACHING),
+                _ => Err(HRESULT::CORPROF_E_UNSUPPORTED_CALL_SEQUENCE)
             }
         }
     }
