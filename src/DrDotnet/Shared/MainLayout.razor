@@ -1,9 +1,7 @@
-﻿@using Microsoft.Extensions.Logging
-@using DrDotnet.Utils
+﻿@using DrDotnet.Utils
+@using System.IO
 
 @inherits LayoutComponentBase
-
-@inject ILogger Logger;
 
 <div class="page">
     <div class="main">
@@ -21,9 +19,15 @@
 </div>
 
 <MatDialog @bind-IsOpen="@IsLogDialogOpen">
-    <MatDialogTitle>Logs</MatDialogTitle>
     <MatDialogContent>
-        <textarea id="logs" style="height: 70vh; width: 85vw;" @bind="AllLogs" @bind:event="oninput"></textarea>
+        <MatTabGroup>
+            <MatTab Label="App Logs">
+                <textarea readonly id="logs" style="height: 70vh; width: 85vw;">@GetLogs("app.debug.log")</textarea>
+            </MatTab>
+            <MatTab Label="Profiler Logs">
+                <textarea id="logs" style="height: 70vh; width: 85vw;">@GetLogs("profiler.debug.log")</textarea>
+            </MatTab>
+        </MatTabGroup>
     </MatDialogContent>
     <MatDialogActions>
         <MatButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MatButton>
@@ -32,6 +36,8 @@
  
 @code
 {
+    private const int MaximumBufferSize = 65536;
+    private readonly FileSystemWatcher _watcher = new(PathUtils.DrDotnetBaseDirectory);
     private bool IsLogDialogOpen { get; set; } = false;
 
     void OpenLogs()
@@ -39,31 +45,46 @@
         IsLogDialogOpen = true;
     }
 
-    private string? AllLogs
+    private string? GetLogs(string file)
     {
-        get
+        string fullPath = Path.Combine(PathUtils.DrDotnetBaseDirectory, file);
+        if (!File.Exists(fullPath))
         {
-            return (Logger as Logger)?.GetAllLogs();
+            return string.Empty;
         }
-        set { /* readonly */ }
-    }
+        
+        using var fs = File.OpenRead(fullPath);
+        using var sr =  new StreamReader(fs);
 
-    private void OnMessageLogged(string message)
-    {
-        if (IsLogDialogOpen)
+        if (fs.Length > MaximumBufferSize)
         {
-            InvokeAsync(StateHasChanged);
+            fs.Seek(-MaximumBufferSize, SeekOrigin.End);
         }
-    }
 
+        return sr.ReadToEnd();
+    }
+    
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        
+        _watcher.NotifyFilter = NotifyFilters.LastAccess
+                              | NotifyFilters.LastWrite
+                              | NotifyFilters.Size;
 
-        // This is dogshit but I'll adress that later
-        if (Logger is Logger logger)
+        _watcher.Changed += WatcherOnChanged;
+
+        _watcher.Filter = "*.log";
+        _watcher.IncludeSubdirectories = true;
+        _watcher.EnableRaisingEvents = true;
+    }
+
+    private void WatcherOnChanged(object sender, FileSystemEventArgs e)
+    {
+        if (IsLogDialogOpen)
         {
-            logger.MessageLogged += OnMessageLogged;
+            // Trigger refresh of the logs view in case dialog is open and new log arrives
+            InvokeAsync(StateHasChanged);
         }
     }
 }

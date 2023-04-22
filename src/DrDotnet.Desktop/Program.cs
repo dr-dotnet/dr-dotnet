@@ -1,4 +1,6 @@
-﻿using MatBlazor;
+﻿using DrDotnet.Logging;
+using DrDotnet.Utils;
+using MatBlazor;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Photino.Blazor;
@@ -19,8 +21,11 @@ class Program
         appBuilder.Services.AddMatBlazor();
 
         appBuilder.Services.AddSingleton<HttpClient>();
-        // Todo: use microsoft logging providers and friends
-        appBuilder.Services.AddSingleton<ILogger, Logger>();
+        
+        appBuilder.Services.AddLogging(lb => lb
+            .AddSimpleConsole()
+            .AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.debug.log")));
+
         appBuilder.Services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         appBuilder.Services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         appBuilder.Services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();

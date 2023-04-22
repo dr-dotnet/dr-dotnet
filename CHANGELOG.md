@@ -1,3 +1,10 @@
+# 0.2.6
+- Add display of profiler logs
+- Add application logs (UI) to a file
+- Fix logs loaded in memory that could cause high memory usage
+- Fix ordering of sessions
+- Fix possible segfault when detaching
+
 # 0.2.5
 - Attach to process in non-UI thread
 - Change CPU sampled profiler output to html format

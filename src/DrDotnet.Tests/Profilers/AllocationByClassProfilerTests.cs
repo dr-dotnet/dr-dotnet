@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -36,7 +38,7 @@ public class AllocationByClassProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Counts_Allocations_By_Class()
     {
-        Logger logger = new Logger();
+        ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 

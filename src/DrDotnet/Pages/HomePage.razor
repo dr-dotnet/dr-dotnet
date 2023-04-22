@@ -28,7 +28,7 @@
     {
         base.OnInitialized();
 
-        Sessions = SessionDiscovery.GetSessions().OrderByDescending(x => x.Timestamp);
+        Sessions = SessionDiscovery.GetSessions().OrderByDescending(x => x.TimestampDate);
     }
 
     private void OnSelectionChanged(object data)

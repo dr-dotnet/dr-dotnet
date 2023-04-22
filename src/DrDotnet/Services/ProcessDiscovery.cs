@@ -12,7 +12,7 @@ public class ProcessDiscovery : IProcessDiscovery
 {
     private readonly ILogger _logger;
 
-    public ProcessDiscovery(ILogger logger)
+    public ProcessDiscovery(ILogger<ProcessDiscovery> logger)
     {
         _logger = logger;
     }

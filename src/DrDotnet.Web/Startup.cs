@@ -1,9 +1,12 @@
+using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MatBlazor;
 using System.Net.Http;
+using DrDotnet.Logging;
+using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet.Web;
@@ -19,8 +22,11 @@ public class Startup
         services.AddMatBlazor();
 
         services.AddSingleton<HttpClient>();
-        // Todo: use microsoft logging providers and friends
-        services.AddSingleton<ILogger, Logger>();
+
+        services.AddLogging(lb => lb
+            .AddSimpleConsole()
+            .AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.debug.log")));
+        
         services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();

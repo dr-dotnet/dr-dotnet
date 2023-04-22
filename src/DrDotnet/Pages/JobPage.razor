@@ -2,12 +2,11 @@
 
 @using DrDotnet.Utils;
 @using Microsoft.Extensions.Logging
-@using System.Threading
 
 @inject NavigationManager NavigationManager
 @inject IProfilerDiscovery ProfilerDiscovery
 @inject IProcessDiscovery ProcessDiscovery
-@inject ILogger Logger
+@inject ILogger<JobPage> Logger
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
