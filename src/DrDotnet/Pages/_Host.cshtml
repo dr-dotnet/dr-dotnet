@@ -21,18 +21,38 @@
     <link href="_content/MatBlazor/dist/matBlazor.css" rel="stylesheet" />
     <script src="_content/MatBlazor/dist/matBlazor.js"></script>
     
+    <script src="js/scroll.js"></script>
+    
     <script>
-      window.downloadFileFromStream = async (fileName, contentStreamReference) => {
-        const arrayBuffer = await contentStreamReference.arrayBuffer();
-        const blob = new Blob([arrayBuffer]);
-        const url = URL.createObjectURL(blob);
-        const anchorElement = document.createElement('a');
-        anchorElement.href = url;
-        anchorElement.download = fileName ?? '';
-        anchorElement.click();
-        anchorElement.remove();
-        URL.revokeObjectURL(url);
-      }
+        async function  downloadFileFromStream(fileName, contentStreamReference) {
+            const arrayBuffer = await contentStreamReference.arrayBuffer();
+            const blob = new Blob([arrayBuffer]);
+            const url = URL.createObjectURL(blob);
+            const anchorElement = document.createElement('a');
+            anchorElement.href = url;
+            anchorElement.download = fileName ?? '';
+            anchorElement.click();
+            anchorElement.remove();
+            URL.revokeObjectURL(url);
+        }
+        
+        function scrollToBottom(element) {
+            console.log("scroll to " + element);
+            if (!element) {
+                return;
+            }
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        function scroll() {
+            const scrollBottomElements = document.getElementsByClassName("scrollToBottom");
+            console.log("setup " + scrollBottomElements);
+            for (let i = 0; i < scrollBottomElements.length; i++) {
+                console.log("scrolling " + scrollBottomElements[i]);
+                scrollToBottom(scrollBottomElements[i]);
+            }
+        }
+
     </script>
 
 </head>
