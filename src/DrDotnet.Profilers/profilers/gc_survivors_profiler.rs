@@ -1,3 +1,4 @@
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::AddAssign;
@@ -172,10 +173,6 @@ impl GCSurvivorsProfiler
             
             let object_id = object.key().clone();
 
-            if !Self::is_gen_2(info, object_id) {
-                continue;
-            }
-
             let size = info.get_object_size_2(object_id).unwrap_or(0);
 
             for branch in self.append_references(info, object_id, 10) {
@@ -226,7 +223,8 @@ impl GCSurvivorsProfiler
         tree.children.sort_by(compare);
 
         // Keep the first "max_types_display" roots
-        let max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
+        let mut max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
+        max_types_display = min(max_types_display, tree.children.len());
         tree.children = tree.children.drain(0..max_types_display).collect();
 
         // Then sort the whole tree (all levels of childrens)
@@ -327,13 +325,20 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         // Create dependency tree, but from object to referencers, instead of object to its references.
         // This is usefull for being able to browse from any object back to its roots.
         for object_ref_id in object_ref_ids {
+
+            if !Self::is_gen_2(self.clr(), object_ref_id.clone()) {
+                continue;
+            }
+            
             self.object_to_referencers.entry(*object_ref_id)
                 .and_modify(|referencers| referencers.push(object_id))
                 .or_insert(vec![object_id]);
         }
 
         // Also add this object, with no referencers, just in case this object isn't referenced 
-        self.object_to_referencers.insert(object_id, vec![]);
+        if Self::is_gen_2(self.clr(), object_id.clone()) {
+            self.object_to_referencers.insert(object_id, vec![]);
+        }
 
         Ok(())
     }
