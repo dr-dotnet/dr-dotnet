@@ -221,7 +221,15 @@ impl GCSurvivorsProfiler
                 b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())
             }
         };
+        
+        // Start by sorting the tree "roots" (only the first level of childrens)
+        tree.children.sort_by(compare);
 
+        // Keep the first "max_types_display" roots
+        let max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
+        tree.children = tree.children.drain(0..max_types_display).collect();
+
+        // Then sort the whole tree (all levels of childrens)
         let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();
         if sort_multithreaded {
             tree.sort_by_multithreaded(compare);
@@ -281,16 +289,9 @@ impl GCSurvivorsProfiler
         } else {
             report.write(format!("\n<li><span>{refs}</span>{class_name}</li>"));
         }
-
-        let max_types_display = self.session_info().get_parameter::<u64>("max_types_display").unwrap();
-
+        
         let mut i = 0;
         for child in &tree.children {
-            
-            // Set a limit to the output
-            if i > max_types_display {
-                break;
-            }
             
             let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
                 && nb_objects == child.get_inclusive_value().0.len();
