@@ -6,6 +6,7 @@ use crate::{
 use std::ffi::c_void;
 use std::ptr;
 use std::sync::atomic::{AtomicU32, Ordering};
+use crate::api::ffi::class::cor_profiler_callback::CorProfilerCallback;
 use crate::profilers::Profiler;
 
 #[repr(C)]
