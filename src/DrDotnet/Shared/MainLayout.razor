@@ -1,9 +1,8 @@
 ﻿@using DrDotnet.Utils
 @using System.IO
 
+@implements IDisposable
 @inherits LayoutComponentBase
-
-@inject IJSRuntime JSRuntime
 
 <div class="page">
     <div class="main">
@@ -23,10 +22,10 @@
     <MatDialogContent>
         <MatTabGroup>
             <MatTab Label="App Logs">
-                <textarea @bind="AppLogs" @bind:event="oninput" class="logs" style="height: 70vh; width: 85vw;"></textarea>
+                <LogsArea>@AppLogs</LogsArea>
             </MatTab>
             <MatTab Label="Profiler Logs">
-                @* <textarea readonly @ref="profilerLogsTextArea" class="logs" style="height: 70vh; width: 85vw;">@GetLogs("profiler.debug.log")</textarea> *@
+                <LogsArea>@ProfilerLogs</LogsArea>
             </MatTab>
         </MatTabGroup>
     </MatDialogContent>
@@ -37,28 +36,23 @@
  
 @code
 {
-#pragma warning disable CS0649
-    //private ElementReference appLogsTextArea;
-    // private ElementReference profilerLogsTextArea;
-#pragma warning restore CS0649
-    
     private const int MaximumBufferSize = 65536;
     private readonly FileSystemWatcher _watcher = new(PathUtils.DrDotnetBaseDirectory);
 
     private bool IsLogDialogOpen { get; set; }
 
-    public string AppLogs
-    {
-        get => GetLogs("app.debug.log");
-        set { }
-    }
+    private string? _appLogs;
+    public string AppLogs => _appLogs ??= GetLogs("app.debug.log");
+    
+    private string? _profilerLogs;
+    public string ProfilerLogs => _profilerLogs ??= GetLogs("profiler.debug.log");
 
     void OpenLogs()
     {
         IsLogDialogOpen = true;
     }
 
-    private string GetLogs(string file)
+    private static string GetLogs(string file)
     {
         string fullPath = Path.Combine(PathUtils.DrDotnetBaseDirectory, file);
         if (!File.Exists(fullPath))
@@ -74,8 +68,6 @@
             fs.Seek(-MaximumBufferSize, SeekOrigin.End);
         }
         
-        Console.WriteLine("GetLogs");
-        
         return sr.ReadToEnd();
     }
 
@@ -83,40 +75,33 @@
     {
         base.OnInitialized();
 
-        //AppLogs = GetLogs("app.debug.log");
-        
         _watcher.NotifyFilter = NotifyFilters.LastAccess
+                              | NotifyFilters.CreationTime
                               | NotifyFilters.LastWrite
                               | NotifyFilters.Size;
 
         _watcher.Changed += WatcherOnChanged;
 
         _watcher.Filter = "*.log";
-        _watcher.IncludeSubdirectories = true;
+        _watcher.IncludeSubdirectories = false;
         _watcher.EnableRaisingEvents = true;
-        
-        Console.WriteLine("OnInitialized");
     }
 
     private void WatcherOnChanged(object sender, FileSystemEventArgs e)
     {
+        // Reset content
+        _appLogs = null;
+        _profilerLogs = null;
+        
         if (IsLogDialogOpen)
         {
             // Trigger refresh of the logs view in case dialog is open and new log arrives
             InvokeAsync(StateHasChanged);
-            
-            Console.WriteLine("WatcherOnChanged");
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    public void Dispose()
     {
-        Console.WriteLine("OnInitializedAsync 1");
-        
-        await base.OnInitializedAsync();
-        
-        Console.WriteLine("OnInitializedAsync 2");
-        
-        //await JSRuntime.InvokeVoidAsync("scroll");
+        _watcher.Dispose();
     }
 }

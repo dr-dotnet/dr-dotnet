@@ -1,0 +1,38 @@
+@namespace DrDotnet
+
+@inject IJSRuntime JSRuntime
+
+<textarea id="@Id" class="logs" style="height: 70vh; width: 85vw;">@ChildContent</textarea>
+
+@code {
+    [Parameter]
+    public EventCallback OnAfterRendered { get; set; }
+    
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    
+    [Parameter]  
+    public string? Id { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // In case Id is not set, set a random one
+        Id ??= Random.Shared.Next().ToString();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await OnAfterRendered.InvokeAsync(Id);
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
+    }
+}
