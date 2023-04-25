@@ -59,8 +59,8 @@
         {
             return string.Empty;
         }
-        
-        using var fs = File.OpenRead(fullPath);
+
+        using var fs = File.Open(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var sr =  new StreamReader(fs);
 
         if (fs.Length > MaximumBufferSize)
