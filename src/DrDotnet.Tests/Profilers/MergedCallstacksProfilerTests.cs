@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using DrDotnet.Tests.Simulations;
 using DrDotnet.Utils;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -28,7 +30,7 @@ public class MergedCallstacksProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Merged_Callstacks()
     {
-        Logger logger = new Logger();
+        ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 

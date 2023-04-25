@@ -7,6 +7,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
@@ -29,7 +31,7 @@ public class RuntimePausesProfilerTests : ProfilerTests
     [NonParallelizable]
     public async Task Profiler_Counts_Runtime_Pauses()
     {
-        Logger logger = new Logger();
+        ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 

@@ -10,7 +10,7 @@ public class SessionsDiscovery : ISessionDiscovery
 {
     private readonly ILogger _logger;
 
-    public SessionsDiscovery(ILogger logger)
+    public SessionsDiscovery(ILogger<SessionsDiscovery> logger)
     {
         _logger = logger;
     }
