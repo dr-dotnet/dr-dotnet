@@ -89,7 +89,7 @@ impl Profiler for GCSurvivorsProfiler {
                     key: "max_retention_depth".to_owned(),
                     description: "The maximum depth while drilling through retention paths".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "10".to_owned(),
+                    value: "4".to_owned(),
                     ..std::default::Default::default()
                 }
             ],

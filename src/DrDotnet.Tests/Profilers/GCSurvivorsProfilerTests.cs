@@ -37,14 +37,11 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
         profiler.Parameters.First(x => x.Key == "max_types_display").Value = int.MaxValue.ToString();
+        profiler.Parameters.First(x => x.Key == "max_retention_depth").Value = 3.ToString();
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 
         // Create two objects that will be placed in the GEN 2 heap
-        //var survivorObjects = Enumerable.Range(0, 1000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
-
-        var complex1 = new SurvivorObject[][][] { new SurvivorObject[][] { new SurvivorObject[] { new SurvivorObject(1, 2, 3), new SurvivorObject(4, 5, 6) } } };
-        var complex2 = new SurvivorObject[][][] { new SurvivorObject[][] { new SurvivorObject[] { new SurvivorObject(1, 2, 3), new SurvivorObject(4, 5, 6) } } };
-        var complex3 = new SurvivorObject[][][] { new SurvivorObject[][] { new SurvivorObject[] { new SurvivorObject(1, 2, 3), new SurvivorObject(4, 5, 6) } } };
+        var survivorObjects = Enumerable.Range(0, 1000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
 
         // Force two garbage collections to promote objects from GEN 0 to GEN 2
         GC.Collect();
@@ -59,13 +56,14 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         Assert.NotNull(summary, "No summary have been created!");
 
         string content = File.ReadAllText(summary.FullName);
+        
+        string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
+        string expectedArrayEntry = $"<li><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</li>";
 
-        //Assert.True(content.Contains($"<li><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</li>"));
+        Assert.True(content.Contains(expectedEntry));
+        Assert.True(content.Contains(expectedArrayEntry));
 
         // Check that the objects are in the GEN 2 heap
-        //Assert.AreEqual(2, GC.GetGeneration(survivorObjects));
-        Assert.AreEqual(2, GC.GetGeneration(complex1));
-        Assert.AreEqual(2, GC.GetGeneration(complex2));
-        Assert.AreEqual(2, GC.GetGeneration(complex3));
+        Assert.AreEqual(2, GC.GetGeneration(survivorObjects));
     }
 }
