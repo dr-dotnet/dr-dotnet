@@ -48,22 +48,22 @@ fn bench_tree_sort(c: &mut Criterion) {
 
     let sequences = build_random_sequences();
 
-    c.bench_function("recursive", |b| {
+    c.bench_function("recursive + no caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-        b.iter(|| tree.sort_by(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len())))
+        b.iter(|| tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())))
     });
     
-    c.bench_function("iterative", |b| {
+    c.bench_function("iterative + no caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-        b.iter(|| tree.sort_by_iterative(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len())))
+        b.iter(|| tree.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())))
     });
 
-    c.bench_function("iterative calculate", |b| {
+    c.bench_function("multithreaded + no caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-        b.iter(|| tree.sort_by_iterative(&|a, b| b.calculate_inclusive_value().0.len().cmp(&a.calculate_inclusive_value().0.len())))
+        b.iter(|| tree.sort_by_multithreaded(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())))
     });
     
-    c.bench_function("iterative cached", |b| {
+    c.bench_function("iterative + caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         let cache: RefCell<HashMap<u32, usize>> = RefCell::new(HashMap::new());
         b.iter(|| {
@@ -72,20 +72,15 @@ fn bench_tree_sort(c: &mut Criterion) {
         
                 let value_b = *c
                     .entry(b.key)
-                    .or_insert_with(|| b.calculate_inclusive_value().0.len());
+                    .or_insert_with(|| b.get_inclusive_value().0.len());
 
                 let value_a = *c
                     .entry(a.key)
-                    .or_insert_with(|| a.calculate_inclusive_value().0.len());
+                    .or_insert_with(|| a.get_inclusive_value().0.len());
 
                 value_b.cmp(&value_a)
             })
         });
-    });
-
-    c.bench_function("multithreaded", |b| {
-        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-        b.iter(|| tree.sort_by_multithreaded(&|a, b| b.inclusive_value.0.len().cmp(&a.inclusive_value.0.len())))
     });
 }
 
