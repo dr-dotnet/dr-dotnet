@@ -18,7 +18,7 @@ use crate::utils::TreeNode;
 pub struct GCSurvivorsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
+    object_to_referencers: DashMap<ClassID, HashMap<ClassID, usize>>,
     is_triggered_gc: AtomicBool
 }
 
@@ -322,23 +322,40 @@ impl CorProfilerCallback for GCSurvivorsProfiler
             return Ok(());
         }
 
+        let info = self.clr();
+
+        let class_id: ClassID = match info.get_class_from_object(object_id) {
+            Ok(class_id) => class_id,
+            Err(_) => {
+                //error!("Impossible to get class ID for object ID {}", current_id.0);
+                return Ok(());
+            }
+        };
+
         // Create dependency tree, but from object to referencers, instead of object to its references.
         // This is usefull for being able to browse from any object back to its roots.
         for object_ref_id in object_ref_ids {
 
-            if !Self::is_gen_2(self.clr(), object_ref_id.clone()) {
-                continue;
-            }
-            
-            self.object_to_referencers.entry(*object_ref_id)
-                .and_modify(|referencers| referencers.push(object_id))
-                .or_insert(vec![object_id]);
+            let class_ref_id: ClassID = match info.get_class_from_object(*object_ref_id) {
+                Ok(class_id) => class_id,
+                Err(_) => {
+                    //error!("Impossible to get class ID for object ID {}", current_id.0);
+                    continue;
+                }
+            };
+
+            self.object_to_referencers
+                .entry(class_ref_id)
+                .and_modify(|referencers| {
+                    referencers
+                        .entry(class_id)
+                        .and_modify(|x| *x += 1)
+                        .or_insert(1); })
+                .or_insert(HashMap::from([(class_id.clone(), 1)]));
         }
 
         // Also add this object, with no referencers, just in case this object isn't referenced 
-        if Self::is_gen_2(self.clr(), object_id.clone()) {
-            self.object_to_referencers.insert(object_id, vec![]);
-        }
+        self.object_to_referencers.insert(class_id, HashMap::new());
 
         Ok(())
     }
