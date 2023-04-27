@@ -121,6 +121,16 @@ a, .btn-link {
     float: right;
 }
 .report li {
+    list-style-type: none;
+    margin: 5px 0;
+    padding: 5px 10px;
+    background-color: #ffeeee;
+    border: 0px solid #c7d3df;
+    border-radius: 3px;
+    color: #545f69;
+    position: relative;
+}
+.report details > ul > li {
     margin: 5px 0;
     padding: 5px 10px;
     background-color: #ffeeee;
@@ -131,7 +141,7 @@ a, .btn-link {
     margin-left: 15px;
     position: relative;
 }
-.report li::after {
+.report details > ul > li::after {
     content: "";
     position: absolute;
     top: -5px;
@@ -140,10 +150,10 @@ a, .btn-link {
     height: calc(28px + 10px);
     background-color: #c7d3df;
 }
-.report li:last-child::after {
+.report details > ul > li:last-child::after {
     height: calc(28px / 2 + 5px);
 }
-.report li::before {
+.report details > ul > li::before {
     content: "";
     position: absolute;
     top: calc(28px / 2);
@@ -152,6 +162,6 @@ a, .btn-link {
     height: 1px;
     background-color: #c7d3df;
 }
-.report li[open]:not(:last-child)::after {
+.report details > ul > li[open]:not(:last-child)::after {
     height: calc(100% + 5px);
 }

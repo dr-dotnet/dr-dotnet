@@ -245,7 +245,7 @@ impl GCSurvivorsProfiler
         // Keep the first "max_types_display" roots
         let mut max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
         max_types_display = min(max_types_display, tree.children.len());
-        tree.children = tree.children.drain(0..max_types_display).collect();
+        tree.children.drain(max_types_display..);
 
         // Then sort the whole tree (all levels of childrens)
         let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();
@@ -330,14 +330,11 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         // Create dependency tree, but from object to referencers, instead of object to its references.
         // This is usefull for being able to browse from any object back to its roots.
         for object_ref_id in object_ref_ids {
-            
-            self.object_to_referencers.entry(*object_ref_id)
-                .and_modify(|referencers| referencers.push(object_id))
-                .or_insert(vec![object_id]);
+            self.object_to_referencers.entry(*object_ref_id).or_insert(Vec::new()).push(object_id);
         }
 
         // Also add this object, with no referencers, just in case this object isn't referenced 
-        self.object_to_referencers.insert(object_id, vec![]);
+        self.object_to_referencers.entry(object_id).or_insert(Vec::new());
 
         Ok(())
     }
