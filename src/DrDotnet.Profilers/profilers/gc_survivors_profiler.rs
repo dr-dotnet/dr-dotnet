@@ -83,6 +83,14 @@ impl Profiler for GCSurvivorsProfiler {
                     type_: ParameterType::INT.into(),
                     value: "1000".to_owned(),
                     ..std::default::Default::default()
+                },
+                ProfilerParameter { 
+                    name: "Maximum depth".to_owned(),
+                    key: "max_retention_depth".to_owned(),
+                    description: "The maximum depth while drilling through retention paths".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "10".to_owned(),
+                    ..std::default::Default::default()
                 }
             ],
             ..std::default::Default::default()
@@ -116,24 +124,30 @@ impl GCSurvivorsProfiler
                 }
             }
 
-            match self.object_to_referencers.get(&current_id.0) {
-                Some(referencers) => {
-                    if referencers.len() == 0 {
-                        // We reached the end of a path, copy the branch and add it to our branches
-                        branches.push(branch.clone());
-                    } else {
-                        // Only push new referencers if we are within our allowed depth
-                        if current_id.1 < max_depth {
+            if current_id.1 < max_depth {
+                match self.object_to_referencers.get(&current_id.0) {
+                    Some(referencers) => {
+                        if referencers.len() == 0 {
+                            // We reached the end of a path, copy the branch and add it to our branches
+                            branches.push(branch.clone());
+                        } else {
+                            // Push new referencers if we are within our allowed depth
                             for i in 0..referencers.len() {
                                 stack.push((referencers[i], current_id.1 + 1));
                             }
                         }
+                    },
+                    None => {
+                        // We reached the end of a path, copy the branch and add it to our branches
+                        branches.push(branch.clone());
                     }
-                },
-                None => {
-                    // We reached the end of a path, copy the branch and add it to our branches
-                    branches.push(branch.clone());
                 }
+            }
+            else {
+                // If max depth is reached, we push a 0 terminated branch to indicate that branch is truncated
+                let mut deep_branch = branch.clone();
+                deep_branch.push(0);
+                branches.push(deep_branch);
             }
         }
 
@@ -169,6 +183,8 @@ impl GCSurvivorsProfiler
 
         let info = self.clr();
 
+        let max_retention_depth = self.session_info().get_parameter::<usize>("max_retention_depth").unwrap();
+
         for object in self.object_to_referencers.iter() {
             
             let object_id = object.key().clone();
@@ -179,7 +195,7 @@ impl GCSurvivorsProfiler
 
             let size = info.get_object_size_2(object_id).unwrap_or(0);
 
-            for branch in self.append_references(info, object_id, 10) {
+            for branch in self.append_references(info, object_id, max_retention_depth) {
                 sequences.entry(branch)
                     .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
                     .or_insert(References(HashMap::from([(object_id.clone(), size)])));
@@ -269,10 +285,10 @@ impl GCSurvivorsProfiler
         let mut report = self.session_info.create_report("summary.html".to_owned());
 
         report.write_line(format!("<h2>GC Survivors Report</h2>"));
-        report.write_line(format!("<h3>{nb_objects} surviving objects of {nb_classes} classes..</h3>"));
+        report.write_line(format!("<h3>{nb_objects} surviving objects of {nb_classes} classes</h3>"));
 
         for tree_node in tree.children {
-            self.print_html(&tree_node, false, &mut report);
+            self.print_html(&tree_node, &mut report);
         }
 
         info!("Report written in {} ms", now.elapsed().as_millis());
@@ -280,38 +296,23 @@ impl GCSurvivorsProfiler
         Ok(())
     }
 
-    fn print_html(&self, tree: &TreeNode<ClassID, References>, is_same_level: bool, report: &mut Report)
+    fn print_html(&self, tree: &TreeNode<ClassID, References>, report: &mut Report)
     {
         let refs = &tree.get_inclusive_value();
-        let nb_objects = refs.0.len();
-        let class_name = self.clr().get_class_name(tree.key);
+        let class_name = if tree.key == 0 { "Path truncated because of depth limit reached".to_owned() } else { self.clr().get_class_name(tree.key) };
 
-        if !is_same_level {
-            report.write(format!("\n<details><summary><span>{refs}</span>{class_name}</summary>"));
+        let has_children = tree.children.len() > 0;
+
+        if has_children {
+            report.write_line(format!("<details><summary><span>{refs}</span>{class_name}</summary>"));
+            report.write_line(format!("<ul>"));
+            for child in &tree.children {
+                self.print_html(child, report);
+            }
+            report.write_line(format!("</ul>"));
+            report.write_line(format!("</details>"));
         } else {
-            report.write(format!("\n<li><span>{refs}</span>{class_name}</li>"));
-        }
-        
-        let mut i = 0;
-        for child in &tree.children {
-            
-            let has_same_alignment = (child.children.is_empty() || child.children.len() == 1)
-                && nb_objects == child.get_inclusive_value().0.len();
-            
-            if has_same_alignment && !is_same_level {
-                report.write(format!("\n<ul>\n"));
-            }
-            self.print_html(child, has_same_alignment, report);
-
-            if has_same_alignment && !is_same_level {
-                report.write(format!("\n</ul>\n"));
-            }
-            
-            i += 1;
-        }
-
-        if !is_same_level {
-            report.write(format!("\n</details>\n"));
+            report.write_line(format!("<li><span>{refs}</span>{class_name}</li>"));
         }
     }
 }

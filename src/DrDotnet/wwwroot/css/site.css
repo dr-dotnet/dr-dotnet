@@ -123,7 +123,7 @@ a, .btn-link {
 .report li {
     margin: 5px 0;
     padding: 5px 10px;
-    background-color: #f2f2f2;
+    background-color: #ffeeee;
     border: 0px solid #c7d3df;
     border-radius: 3px;
     color: #545f69;
@@ -154,7 +154,4 @@ a, .btn-link {
 }
 .report li[open]:not(:last-child)::after {
     height: calc(100% + 5px);
-}
-.report li:last-child {
-    background-color: #ffeeee;
 }
