@@ -81,7 +81,7 @@ impl Profiler for GCSurvivorsProfiler {
                     key: "max_types_display".to_owned(),
                     description: "The maximum number of types to display in the report".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "100".to_owned(),
+                    value: "1000".to_owned(),
                     ..std::default::Default::default()
                 }
             ],
@@ -172,6 +172,10 @@ impl GCSurvivorsProfiler
         for object in self.object_to_referencers.iter() {
             
             let object_id = object.key().clone();
+
+            if !Self::is_gen_2(info, object_id) {
+                continue;
+            }
 
             let size = info.get_object_size_2(object_id).unwrap_or(0);
 
@@ -325,10 +329,6 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         // Create dependency tree, but from object to referencers, instead of object to its references.
         // This is usefull for being able to browse from any object back to its roots.
         for object_ref_id in object_ref_ids {
-
-            if !Self::is_gen_2(self.clr(), object_ref_id.clone()) {
-                continue;
-            }
             
             self.object_to_referencers.entry(*object_ref_id)
                 .and_modify(|referencers| referencers.push(object_id))
@@ -336,9 +336,7 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         }
 
         // Also add this object, with no referencers, just in case this object isn't referenced 
-        if Self::is_gen_2(self.clr(), object_id.clone()) {
-            self.object_to_referencers.insert(object_id, vec![]);
-        }
+        self.object_to_referencers.insert(object_id, vec![]);
 
         Ok(())
     }
