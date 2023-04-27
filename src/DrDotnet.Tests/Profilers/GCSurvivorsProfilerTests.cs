@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
-public record SurvivorObject;
+[StructLayout(LayoutKind.Sequential)]
+public record SurvivorObject(int a, int b, long c);
 
 public class GCSurvivorsProfilerTests : ProfilerTests
 {
@@ -34,10 +36,10 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
+        profiler.Parameters.First(x => x.Key == "max_types_display").Value = int.MaxValue.ToString();
 
         // Create two objects that will be placed in the GEN 2 heap
-        var obj1 = new SurvivorObject();
-        var obj2 = new SurvivorObject();
+        var survivorObjects = Enumerable.Range(0, 1000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
 
         // Force two garbage collections to promote objects from GEN 0 to GEN 2
         GC.Collect();
@@ -47,18 +49,15 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
         await session.AwaitUntilCompletion();
 
-        Console.WriteLine("Session Directory: " + session.Path);
-
         var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.html");
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+        string content = File.ReadAllText(summary.FullName);
 
-        Console.WriteLine(content);
-        
+        Assert.True(content.Contains($"<li><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</li>"));
+
         // Check that the objects are in the GEN 2 heap
-        Assert.AreEqual(2, GC.GetGeneration(obj1));
-        Assert.AreEqual(2, GC.GetGeneration(obj2));
+        Assert.AreEqual(2, GC.GetGeneration(survivorObjects));
     }
 }
