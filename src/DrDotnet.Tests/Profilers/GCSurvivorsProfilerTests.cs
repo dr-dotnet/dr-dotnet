@@ -40,7 +40,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         profiler.Parameters.First(x => x.Key == "max_retention_depth").Value = 3.ToString();
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 
-        // Create two objects that will be placed in the GEN 2 heap
+        // Create 1000 SurvivorObject objects that will be placed in the GEN 2 heap
         var survivorObjects = Enumerable.Range(0, 1000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
 
         // Force two garbage collections to promote objects from GEN 0 to GEN 2
