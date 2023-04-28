@@ -11,7 +11,7 @@ use crate::{
         COR_DEBUG_IL_TO_NATIVE_MAP, COR_FIELD_OFFSET, COR_IL_MAP, COR_PRF_CODE_INFO,
         COR_PRF_ELT_INFO, COR_PRF_EX_CLAUSE_INFO, COR_PRF_FRAME_INFO, COR_PRF_GC_GENERATION_RANGE,
         COR_PRF_HIGH_MONITOR, COR_PRF_MODULE_FLAGS, COR_PRF_MONITOR, COR_PRF_REJIT_FLAGS,
-        COR_PRF_SNAPSHOT_INFO, COR_PRF_STATIC_TYPE, DWORD, GUID, HANDLE, HRESULT, LPCBYTE, HRESULT::S_OK,
+        COR_PRF_SNAPSHOT_INFO, COR_PRF_STATIC_TYPE, DWORD, GUID, HANDLE, HRESULT, LPCBYTE,
         UINT_PTR, ULONG, ULONG32, WCHAR,
     },
     AppDomainInfo, ArrayClassInfo, ArrayObjectInfo, AssemblyInfo, ClassInfo, ClassInfo2,
@@ -30,8 +30,6 @@ use std::slice;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::*;
-
-use super::ffi::CorTypeAttr;
 
 #[derive(Clone)]
 pub struct ClrProfilerInfo {

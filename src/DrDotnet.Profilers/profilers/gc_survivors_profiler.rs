@@ -229,7 +229,7 @@ impl GCSurvivorsProfiler
     
         let sort_by_size = self.session_info().get_parameter::<bool>("sort_by_size").unwrap();
         
-        let mut compare = &|a:&TreeNode<usize, References>, b:&TreeNode<usize, References>| {
+        let compare = &|a:&TreeNode<usize, References>, b:&TreeNode<usize, References>| {
             if sort_by_size {
                 // Sorts by descending inclusive size
                 b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>())
@@ -324,6 +324,12 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         if !self.is_triggered_gc.load(Ordering::Relaxed) {
             error!("Early return of object_references because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
+            return Ok(());
+        }
+
+        // If an object has no references and is not gen 2, we can discard it, because it means it will never reference any
+        // other gen 2 object, which is actually what we are looking for
+        if object_ref_ids.len() == 0 && !Self::is_gen_2(self.clr(), object_id) {
             return Ok(());
         }
 
