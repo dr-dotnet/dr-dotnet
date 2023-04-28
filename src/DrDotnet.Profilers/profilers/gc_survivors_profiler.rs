@@ -245,7 +245,7 @@ impl GCSurvivorsProfiler
         // Keep the first "max_types_display" roots
         let mut max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
         max_types_display = min(max_types_display, tree.children.len());
-        tree.children.drain(max_types_display..);
+        tree.children.truncate(max_types_display);
 
         // Then sort the whole tree (all levels of childrens)
         let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();

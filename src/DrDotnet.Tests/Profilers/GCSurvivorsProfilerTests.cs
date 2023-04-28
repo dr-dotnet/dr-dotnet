@@ -58,7 +58,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         string content = File.ReadAllText(summary.FullName);
         
         string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
-        string expectedArrayEntry = $"<li><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</li>";
+        string expectedArrayEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</summary>";
 
         Assert.True(content.Contains(expectedEntry));
         Assert.True(content.Contains(expectedArrayEntry));

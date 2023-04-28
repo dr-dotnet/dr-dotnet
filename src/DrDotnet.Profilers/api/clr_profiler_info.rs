@@ -23,12 +23,15 @@ use crate::{
     StringLayout,
 };
 use std::{mem::MaybeUninit, ptr};
+use itertools::Itertools;
 use uuid::Uuid;
 use widestring::U16CString;
 use std::slice;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::*;
+
+use super::ffi::CorTypeAttr;
 
 #[derive(Clone)]
 pub struct ClrProfilerInfo {
@@ -81,10 +84,72 @@ impl ClrProfilerInfo {
 
     // Return the name of type (with its namespace)
     pub fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
+
+        impl ClrProfilerInfo {
+            fn handle_nesting(&self, type_props: TypeProps, metadata: &MetadataImport, td: u32, module_id: usize) -> String {
+                if type_props.type_def_flags.is_nested() {
+                    match metadata.get_nested_class_props(td) {
+                        Ok(nested_td) => {
+                            let parent_type_name = self.get_type_name(module_id, nested_td);
+                            format!("{}.{}", parent_type_name, type_props.name)
+                        },
+                        Err(hresult) => {
+                            warn!("metadata.get_nested_class_props({}) failed ({:?})", td, hresult);
+                            // Fallback to just using plain type name
+                            type_props.name
+                        }
+                    }
+                } else {
+                    // The type is not a nested type, simply return its name
+                    type_props.name
+                }
+            }
+
+            fn handle_generics(&self, type_name_raw: String, metadata: &MetadataImport, td: mdTypeDef, module_id: ModuleID) -> String {
+                if let Some((start, number_str)) = type_name_raw.split_once('`') {
+                    match number_str.parse::<usize>() {
+                        Ok(number) => {
+                            info!("generic type: {}", type_name_raw);
+                            // Todo: Use number to initialize buffer with appropriate size
+                            match metadata.enum_generic_params(td) {
+                                Ok(generic_params) => {
+                                    let generic_type_names = generic_params.iter().map(|generic_param| {
+                                        match metadata.get_generic_params_props(*generic_param) {
+                                            Ok(generic_param_td) => self.get_type_name(module_id, generic_param_td),
+                                            Err(hresult) => {
+                                                warn!("info.get_generic_params_props({}) failed ({:?})", generic_param, hresult);
+                                                "unknown".to_owned()
+                                            }
+                                        }
+                                    }).join(", ");
+                                    format!("{}<{}>", start, generic_type_names)
+                                },
+                                Err(hresult) => {
+                                    warn!("info.enum_generic_params({}) failed ({:?})", td, hresult);
+                                    type_name_raw
+                                }
+                            }
+                        },
+                        Err(_) => {
+                            warn!("Error while parsing number of generic type parameters");
+                            type_name_raw
+                        },
+                    }
+                } else {
+                    type_name_raw
+                }
+            }
+        }
+
         match self.get_module_metadata(module_id, CorOpenFlags::ofRead) {
-            Ok(metadata) =>
-            match metadata.get_type_def_props(td) {
-                Ok(type_props) => type_props.name,
+            Ok(metadata) => match metadata.get_type_def_props(td) {
+                Ok(type_props) => {
+                    // If type is nested in another type, recursively get the name of the parent type to prefix it
+                    let type_name = self.handle_nesting(type_props, &metadata, td, module_id);
+                    // info!("version {}", metadata.get_version_string().unwrap_or_default()); // Just to show that this function works
+                    //let type_name = self.handle_generics(type_name, &metadata, td, module_id); // Somehow this crashes...
+                    type_name
+                },
                 Err(hresult) => {
                     warn!("metadata.get_type_def_props({}) failed ({:?})", td, hresult);
                     "unknown_0002".to_owned()
@@ -97,31 +162,32 @@ impl ClrProfilerInfo {
         }
     }
 
-    // If the type is an array, recursively drill until the base object type is found
-    fn get_inner_type(&self, class_id: ClassID, array_dimension: &mut usize) -> ClassID
-    {
-        // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
-        match self.is_array_class(class_id) {
-            Ok(array_class_info) => {
-                *array_dimension = *array_dimension + 1;
-                // TODO: Handle array_class_info.rank
-                if array_class_info.element_class_id.is_none() {
-                    error!("No element class id for array class object");
-                    return class_id;
-                }
-                self.get_inner_type(array_class_info.element_class_id.unwrap(), array_dimension)
-            },
-            Err(_) => class_id,
-        }
-    }
-    
     // Returns a class name (namespaced) for a given ClassID
-    pub fn get_class_name(&self, class_id: ClassID) -> String
-    {
-        let mut array_dimension = 0;
+    pub fn get_class_name(&self, class_id: ClassID) -> String {
+        impl ClrProfilerInfo {
+            // If the type is an array, recursively drill until the base object type is found
+            fn get_inner_type(&self, class_id: ClassID, array_dimension: &mut usize) -> ClassID {
+                // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
+                match self.is_array_class(class_id) {
+                    Ok(array_class_info) => {
+                        *array_dimension = *array_dimension + 1;
+                        // TODO: Handle array_class_info.rank
+                        if let Some(element_class_id) = array_class_info.element_class_id {
+                            self.get_inner_type(element_class_id, array_dimension)
+                        }
+                        else {
+                            error!("No element class id for array class object");
+                            class_id
+                        }
+                    },
+                    Err(_) => class_id,
+                }
+            }        
+        }
 
+        let mut array_dimension = 0;
         let class_id = self.get_inner_type(class_id, &mut array_dimension);
-        
+
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
         let mut name = match self.get_class_id_info(class_id) {
@@ -130,11 +196,10 @@ impl ClrProfilerInfo {
         };
 
         if array_dimension > 0 {
-            let mut brackets = String::with_capacity(array_dimension * 2);
+            name.reserve(array_dimension * 2);
             for _ in 0..array_dimension {
-                brackets.push_str("[]");
+                name.push_str("[]");
             }
-            name.push_str(&brackets);
         }
 
         return name;
