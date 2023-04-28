@@ -22,7 +22,7 @@ use crate::{
     FunctionTokenAndMetadata, IlFunctionBody, MetadataImport, ModuleInfo, ModuleInfo2, RuntimeInfo,
     StringLayout,
 };
-use std::{mem::MaybeUninit, ptr};
+use std::{mem::MaybeUninit, ptr, str::FromStr};
 use itertools::Itertools;
 use uuid::Uuid;
 use widestring::U16CString;
@@ -84,12 +84,12 @@ impl ClrProfilerInfo {
     pub fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
 
         impl ClrProfilerInfo {
-            fn handle_nesting(&self, type_props: TypeProps, metadata: &MetadataImport, td: u32, module_id: usize) -> String {
+            fn handle_nesting(&self, type_props: TypeProps, metadata: &MetadataImport, td: mdTypeDef, module_id: ModuleID) -> String {
                 if type_props.type_def_flags.is_nested() {
                     match metadata.get_nested_class_props(td) {
                         Ok(nested_td) => {
-                            let parent_type_name = self.get_type_name(module_id, nested_td);
-                            format!("{}.{}", parent_type_name, type_props.name)
+                            let nesting_type_name = self.get_type_name(module_id, nested_td);
+                            format!("{}.{}", nesting_type_name, type_props.name)
                         },
                         Err(hresult) => {
                             warn!("metadata.get_nested_class_props({}) failed ({:?})", td, hresult);
@@ -102,41 +102,6 @@ impl ClrProfilerInfo {
                     type_props.name
                 }
             }
-
-            fn handle_generics(&self, type_name_raw: String, metadata: &MetadataImport, td: mdTypeDef, module_id: ModuleID) -> String {
-                if let Some((start, number_str)) = type_name_raw.split_once('`') {
-                    match number_str.parse::<usize>() {
-                        Ok(number) => {
-                            info!("generic type: {}", type_name_raw);
-                            // Todo: Use number to initialize buffer with appropriate size
-                            match metadata.enum_generic_params(td) {
-                                Ok(generic_params) => {
-                                    let generic_type_names = generic_params.iter().map(|generic_param| {
-                                        match metadata.get_generic_params_props(*generic_param) {
-                                            Ok(generic_param_td) => self.get_type_name(module_id, generic_param_td),
-                                            Err(hresult) => {
-                                                warn!("info.get_generic_params_props({}) failed ({:?})", generic_param, hresult);
-                                                "unknown".to_owned()
-                                            }
-                                        }
-                                    }).join(", ");
-                                    format!("{}<{}>", start, generic_type_names)
-                                },
-                                Err(hresult) => {
-                                    warn!("info.enum_generic_params({}) failed ({:?})", td, hresult);
-                                    type_name_raw
-                                }
-                            }
-                        },
-                        Err(_) => {
-                            warn!("Error while parsing number of generic type parameters");
-                            type_name_raw
-                        },
-                    }
-                } else {
-                    type_name_raw
-                }
-            }
         }
 
         match self.get_module_metadata(module_id, CorOpenFlags::ofRead) {
@@ -144,8 +109,6 @@ impl ClrProfilerInfo {
                 Ok(type_props) => {
                     // If type is nested in another type, recursively get the name of the parent type to prefix it
                     let type_name = self.handle_nesting(type_props, &metadata, td, module_id);
-                    // info!("version {}", metadata.get_version_string().unwrap_or_default()); // Just to show that this function works
-                    //let type_name = self.handle_generics(type_name, &metadata, td, module_id); // Somehow this crashes...
                     type_name
                 },
                 Err(hresult) => {
@@ -180,7 +143,63 @@ impl ClrProfilerInfo {
                     },
                     Err(_) => class_id,
                 }
-            }        
+            }
+
+            fn handle_generics(&self, type_name: String, class_info: &ClassInfo2) -> String {
+
+                let total_generic_types = class_info.type_args.len();
+
+                if total_generic_types == 0 {
+                    return type_name;
+                }
+
+                // Before calling this function, generic types in a type name a hidden behind `N
+                // where N is a number of generic parameters.
+                // This method iterates all occurrences of `N in a type name (there can be more than one,
+                // for instance when dealing with nested types)
+                // Whenever an occurrence is found, it replaces with by retreiving the N next generic
+                // types from ClassInfo2::type_args.
+                // Example:
+                //  input: System.Collections.Generic.Dictionary`2.Entry
+                // output: System.Collections.Generic.Dictionary<int, string>.Entry
+
+                let mut start = 0;
+                let mut current_generic_type_index = 0;
+                let mut outstring = String::new();
+
+                while let Some(pos) = type_name[start..].find('`') {
+                    let absolute_pos = start + pos;
+
+                    // work
+                    outstring.push_str(&type_name[start..absolute_pos]);
+
+                    match type_name[absolute_pos + 1..absolute_pos + 2].parse::<usize>() {
+                        Ok(args_count) => {
+
+                            // Recursively get the generic argument names
+                            let arg_names = (0..args_count).into_iter().map(|i| {
+                                let arg_class_id = class_info.type_args[current_generic_type_index];
+                                let arg_name = self.get_class_name(arg_class_id);
+                                current_generic_type_index += 1;
+                                return arg_name;
+                            }).join(", ");
+
+                            // Surrounds generic arguments with < > in html
+                            outstring.push_str(&format!("&lt;{}&gt;", arg_names));
+                        },
+                        Err(_) => {
+                            error!("We have an error...");
+                        }
+                    }
+
+                    // Change start to look for next group, if any
+                    start = absolute_pos + 2;
+                }
+
+                outstring.push_str(&type_name[start..]);
+
+                outstring
+            }
         }
 
         let mut array_dimension = 0;
@@ -188,11 +207,16 @@ impl ClrProfilerInfo {
 
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-        let mut name = match self.get_class_id_info(class_id) {
-            Ok(class_info) => self.get_type_name(class_info.module_id, class_info.token),
+        let mut name = match self.get_class_id_info_2(class_id) {
+            Ok(class_info) => {
+                let name = self.get_type_name(class_info.module_id, class_info.token);
+                let name = self.handle_generics(name, &class_info);
+                name
+            } 
             _ => "unknown2".to_owned()
         };
 
+        // Append array symbols []
         if array_dimension > 0 {
             name.reserve(array_dimension * 2);
             for _ in 0..array_dimension {
@@ -1016,27 +1040,31 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         type_def: mdTypeDef,
         type_args: Option<&[ClassID]>,
     ) -> Result<ClassID, HRESULT> {
-        let mut class_id = MaybeUninit::uninit();
-        let (type_args, type_args_length) = match type_args {
-            Some(args) => (args.as_ptr(), args.len()),
-            None => (ptr::null(), 0),
-        };
+        let mut class_id = 0 as ClassID;
+        // let (type_args, type_args_length) = match type_args {
+        //     Some(args) => (args.as_ptr(), args.len()),
+        //     None => (ptr::null(), 0),
+        // };
         let hr = unsafe {
             self.info().GetClassFromTokenAndTypeArgs(
                 module_id,
                 type_def,
-                type_args_length as ULONG32,
-                type_args,
-                class_id.as_mut_ptr(),
+                0,
+                ptr::null(),
+                &mut class_id,
             )
         };
 
         match hr {
             HRESULT::S_OK => {
-                let class_id = unsafe { class_id.assume_init() };
+                let class_id = unsafe { class_id };
                 Ok(class_id)
             }
-            _ => Err(hr),
+            _ => {
+                error!("class_id: {}, module_id: {}, type_def: {}", class_id, module_id, type_def);
+                Err(hr)
+            }
+
         }
     }
 

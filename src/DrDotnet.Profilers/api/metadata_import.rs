@@ -3,7 +3,7 @@ use crate::{
         mdMethodDef, CorMethodAttr, CorMethodImpl, MetaDataImport as FFIMetaDataImport, HRESULT,
         HRESULT::S_OK, WCHAR, CorTypeAttr,
     },
-    MetadataImportTrait, MethodProps, TypeProps,
+    MetadataImportTrait, MethodProps, TypeProps, api::ffi::HCORENUM,
 };
 use std::{mem::MaybeUninit, ptr};
 use widestring::U16CString;
@@ -163,58 +163,55 @@ impl MetadataImportTrait for MetadataImport {
     }
 
     fn enum_generic_params(&self, td: crate::ffi::mdTypeDef) -> Result<Vec<crate::ffi::mdGenericParam>, HRESULT> {
-        let mut enumerator_handle = MaybeUninit::uninit();
+        let mut enumerator_handle = 0 as HCORENUM; // Beware, this HCORENUM is trickly. It should be initialized to NULL.
         let mut generic_param_buffer = Vec::<mdGenericParam>::with_capacity(10);
         unsafe { generic_param_buffer.set_len(10) };
         let mut params_fetched = MaybeUninit::uninit();
 
-        info!("open 2");
-
         let hr = unsafe {
             self.import().EnumGenericParams(
-                enumerator_handle.as_mut_ptr(),
+                &mut enumerator_handle,
                 td,
                 generic_param_buffer.as_mut_ptr(),
-                1,
-                params_fetched.as_mut_ptr()
+                10,
+                params_fetched.as_mut_ptr() // Not correct but seems to respect cMax
             )
         };
 
-        info!("mid");
+        let result = match hr {
+            HRESULT::S_OK => {
+                let params_fetched = unsafe { params_fetched.assume_init() };
+                let params_fetched = params_fetched.clone();
+                generic_param_buffer.truncate(params_fetched as usize);
+                let generic_param_buffer = generic_param_buffer.clone();
 
-        return Err(HRESULT::S_OK);
+                // Enumeration must be closed
+                unsafe {
+                    // Not tested
+                    self.import().CloseEnum(enumerator_handle);
+                }
 
-        // let result = match hr {
-        //     HRESULT::S_OK => {
-        //         let params_fetched = unsafe { params_fetched.assume_init() } as usize;
-        //         info!("mid {}", params_fetched);
-        //         generic_param_buffer.truncate(params_fetched);
-        //         Ok(generic_param_buffer)
-        //     }
-        //     _ => Err(hr),
-        // };
+                Ok(generic_param_buffer)
+            }
+            _ => Err(hr),
+        };
 
-        // //info!("mid {:?}", result);
-
-        // // Enumeration must be closed
-        // unsafe {
-        //     let enumerator_handle = enumerator_handle.assume_init();
-        //     self.import().CloseEnum(enumerator_handle);
-        // };
-
-        // info!("close");
-
-        // result
+        result
     }
 
     fn get_generic_params_props(&self, generic_param: crate::ffi::mdGenericParam) -> Result<crate::ffi::mdTypeDef, HRESULT> {
-        info!("1");
         let mut pul_param_seq = MaybeUninit::uninit();
         let mut pdw_param_flags = MaybeUninit::uninit();
         let mut type_def = MaybeUninit::uninit();
         let mut reserved = MaybeUninit::uninit();
         let mut wz_name = MaybeUninit::uninit();
+        let cch_name = 0;
         let mut pch_name = MaybeUninit::uninit();
+
+        // let cch_name = 50;
+        // let mut wz_name = Vec::<WCHAR>::with_capacity(cch_name as usize);
+        // unsafe { wz_name.set_len(cch_name as usize) };
+
         let hr = unsafe {
             self.import().GetGenericParamProps(
                 generic_param,
@@ -223,12 +220,10 @@ impl MetadataImportTrait for MetadataImport {
                 type_def.as_mut_ptr(),
                 reserved.as_mut_ptr(),
                 wz_name.as_mut_ptr(),
-                0, // For now we don't care about the generic parameter name
+                cch_name, // For now we don't care about the generic parameter name
                 pch_name.as_mut_ptr()
             )
         };
-
-        info!("2");
 
         match hr {
             HRESULT::S_OK => {
