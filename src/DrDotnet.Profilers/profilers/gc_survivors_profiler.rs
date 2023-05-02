@@ -329,7 +329,7 @@ impl CorProfilerCallback for GCSurvivorsProfiler
 
         // If an object has no references and is not gen 2, we can discard it, because it means it will never reference any
         // other gen 2 object, which is actually what we are looking for
-        if object_ref_ids.len() == 0 && !Self::is_gen_2(self.clr(), object_id) {
+        if object_ref_ids.is_empty() && !Self::is_gen_2(self.clr(), object_id) {
             return Ok(());
         }
 
