@@ -74,10 +74,10 @@ public class MemoryLeakProfilerTests : ProfilerTests
         Console.WriteLine(node.Name);
         Console.WriteLine(baseNode.Name);
 
-        // TODO
+        // TODO: Assert on results
     }
 }
-
+    
 public class Node
 {
     public string Name;

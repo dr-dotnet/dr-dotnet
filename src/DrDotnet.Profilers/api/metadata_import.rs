@@ -8,6 +8,8 @@ use crate::{
 use std::{mem::MaybeUninit, ptr};
 use widestring::U16CString;
 
+use super::ffi::{mdTypeDef, mdGenericParam};
+
 #[derive(Clone)]
 pub struct MetadataImport {
     import: *const FFIMetaDataImport,
@@ -137,6 +139,134 @@ impl MetadataImportTrait for MetadataImport {
                     type_def_flags,
                     base_type
                 })
+            }
+            _ => Err(hr),
+        }
+    }
+
+    fn get_nested_class_props(&self, td: crate::ffi::mdTypeDef) -> Result<crate::ffi::mdTypeDef, HRESULT> {
+        let mut enclosing_type_def = MaybeUninit::uninit();
+        let hr = unsafe {
+            self.import().GetNestedClassProps(
+                td,
+                enclosing_type_def.as_mut_ptr()
+            )
+        };
+
+        match hr {
+            HRESULT::S_OK => {
+                let enclosing_type_def = unsafe { enclosing_type_def.assume_init() };
+                Ok(enclosing_type_def)
+            }
+            _ => Err(hr),
+        }
+    }
+
+    fn enum_generic_params(&self, td: crate::ffi::mdTypeDef) -> Result<Vec<crate::ffi::mdGenericParam>, HRESULT> {
+        let mut enumerator_handle = MaybeUninit::uninit();
+        let mut generic_param_buffer = Vec::<mdGenericParam>::with_capacity(10);
+        unsafe { generic_param_buffer.set_len(10) };
+        let mut params_fetched = MaybeUninit::uninit();
+
+        info!("open 2");
+
+        let hr = unsafe {
+            self.import().EnumGenericParams(
+                enumerator_handle.as_mut_ptr(),
+                td,
+                generic_param_buffer.as_mut_ptr(),
+                1,
+                params_fetched.as_mut_ptr()
+            )
+        };
+
+        info!("mid");
+
+        return Err(HRESULT::S_OK);
+
+        // let result = match hr {
+        //     HRESULT::S_OK => {
+        //         let params_fetched = unsafe { params_fetched.assume_init() } as usize;
+        //         info!("mid {}", params_fetched);
+        //         generic_param_buffer.truncate(params_fetched);
+        //         Ok(generic_param_buffer)
+        //     }
+        //     _ => Err(hr),
+        // };
+
+        // //info!("mid {:?}", result);
+
+        // // Enumeration must be closed
+        // unsafe {
+        //     let enumerator_handle = enumerator_handle.assume_init();
+        //     self.import().CloseEnum(enumerator_handle);
+        // };
+
+        // info!("close");
+
+        // result
+    }
+
+    fn get_generic_params_props(&self, generic_param: crate::ffi::mdGenericParam) -> Result<crate::ffi::mdTypeDef, HRESULT> {
+        info!("1");
+        let mut pul_param_seq = MaybeUninit::uninit();
+        let mut pdw_param_flags = MaybeUninit::uninit();
+        let mut type_def = MaybeUninit::uninit();
+        let mut reserved = MaybeUninit::uninit();
+        let mut wz_name = MaybeUninit::uninit();
+        let mut pch_name = MaybeUninit::uninit();
+        let hr = unsafe {
+            self.import().GetGenericParamProps(
+                generic_param,
+                pul_param_seq.as_mut_ptr(),
+                pdw_param_flags.as_mut_ptr(),
+                type_def.as_mut_ptr(),
+                reserved.as_mut_ptr(),
+                wz_name.as_mut_ptr(),
+                0, // For now we don't care about the generic parameter name
+                pch_name.as_mut_ptr()
+            )
+        };
+
+        info!("2");
+
+        match hr {
+            HRESULT::S_OK => {
+                let type_def = unsafe { type_def.assume_init() };
+                Ok(type_def)
+            }
+            _ => Err(hr),
+        }
+    }
+
+    fn get_version_string(&self) -> Result<String, HRESULT> {
+        let mut buffer_length = MaybeUninit::uninit();
+        unsafe {
+            self.import().GetVersionString(
+                ptr::null_mut(),
+                0,
+                buffer_length.as_mut_ptr()
+            )
+        };
+
+        let buffer_length = unsafe { buffer_length.assume_init() };
+        let mut name_buffer = Vec::<WCHAR>::with_capacity(buffer_length as usize);
+        unsafe { name_buffer.set_len(buffer_length as usize) };
+        let hr = unsafe {
+            self.import().GetVersionString(
+                name_buffer.as_mut_ptr(),
+                buffer_length,
+                ptr::null_mut()
+            )
+        };
+
+        match hr {
+            HRESULT::S_OK => {
+                let version = U16CString::from_vec_with_nul(name_buffer)
+                    .unwrap()
+                    .to_string_lossy();
+
+                Ok(version)
             }
             _ => Err(hr),
         }

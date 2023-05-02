@@ -680,12 +680,20 @@ bitflags! {
     const tdVisibilityMask        =   0x00000007;   // Used for type visibility information.
     const tdNotPublic             =   0x00000000;   // Specifies that the type is not in public scope.
     const tdPublic                =   0x00000001;   // Specifies that the type is in public scope.
+
+    const tdNestedMask            =   0x00000006;   // Used for nested information.
     const tdNestedPublic          =   0x00000002;   // Specifies that the type is nested with public visibility.
     const tdNestedPrivate         =   0x00000003;   // Specifies that the type is nested with private visibility.
     const tdNestedFamily          =   0x00000004;   // Specifies that the type is nested with family visibility.
     const tdNestedAssembly        =   0x00000005;   // Specifies that the type is nested with assembly visibility.
     const tdNestedFamANDAssem     =   0x00000006;   // Specifies that the type is nested with family and assembly visibility.
     const tdNestedFamORAssem      =   0x00000007;   // Specifies that the type is nested with family or assembly visibility.
+    const nested = Self::tdNestedPublic.bits()
+                 | Self::tdNestedPrivate.bits()
+                 | Self::tdNestedFamily.bits()
+                 | Self::tdNestedAssembly.bits()
+                 | Self::tdNestedFamANDAssem.bits()
+                 | Self::tdNestedFamORAssem.bits();
   
     const tdLayoutMask            =   0x00000018;   // Gets layout information for the type.
     const tdAutoLayout            =   0x00000000;   // Specifies that the fields of this type are laid out automatically.
@@ -718,4 +726,10 @@ bitflags! {
     const tdRTSpecialName         =   0x00000800;   // Specifies that the common language runtime should check the name encoding.
     const tdHasSecurity           =   0x00040000;   // Specifies that the type has security associated with it.
 }
+}
+
+impl CorTypeAttr {
+    pub fn is_nested(&self) -> bool {
+        (*self & CorTypeAttr::tdNestedMask).intersects(CorTypeAttr::nested)
+    }
 }
