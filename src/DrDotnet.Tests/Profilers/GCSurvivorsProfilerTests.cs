@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -58,11 +59,10 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         string content = File.ReadAllText(summary.FullName);
         
         string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
-        string expectedArrayEntry = $"<li><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</li>";
+        string expectedArrayEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</summary>";
 
-
-        Assert.True(content.Contains(expectedEntry));
-        Assert.True(content.Contains(expectedArrayEntry));
+        content.Should().Contain(expectedEntry);
+        content.Should().Contain(expectedArrayEntry);
 
         // Check that the objects are in the GEN 2 heap
         Assert.AreEqual(2, GC.GetGeneration(survivorObjects));

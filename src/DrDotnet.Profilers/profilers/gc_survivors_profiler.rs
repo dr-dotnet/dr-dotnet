@@ -12,10 +12,11 @@ use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::TreeNode;
+use crate::utils::{TreeNode, NameResolver};
 
 #[derive(Default)]
 pub struct GCSurvivorsProfiler {
+    name_resolver: NameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
@@ -299,7 +300,7 @@ impl GCSurvivorsProfiler
     fn print_html(&self, tree: &TreeNode<ClassID, References>, report: &mut Report)
     {
         let refs = &tree.get_inclusive_value();
-        let class_name = if tree.key == 0 { "Path truncated because of depth limit reached".to_owned() } else { self.clr().get_class_name(tree.key) };
+        let class_name = if tree.key == 0 { "Path truncated because of depth limit reached".to_owned() } else { self.name_resolver.get_class_name(tree.key) };
 
         let has_children = tree.children.len() > 0;
 
@@ -394,14 +395,16 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), HRESULT>
     {
+        self.name_resolver = NameResolver::new(self.clr().clone());
+
         // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
-        let p_clone = self.clr().clone();
+        let clr = self.clr().clone();
 
         let _ = thread::spawn(move || {
             debug!("Force GC");
             
-            match p_clone.force_gc() {
+            match clr.force_gc() {
                 Ok(_) => debug!("GC Forced!"),
                 Err(hresult) => error!("Error forcing GC: {:?}", hresult)
             };

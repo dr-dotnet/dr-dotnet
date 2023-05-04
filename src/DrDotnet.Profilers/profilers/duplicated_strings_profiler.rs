@@ -8,6 +8,7 @@ use crate::api::*;
 use crate::api::ffi::{ClassID, HRESULT, ObjectID};
 use crate::macros::*;
 use crate::profilers::*;
+use crate::utils::NameResolver;
 
 #[derive(Default)]
 pub struct DuplicatedStringsProfiler {
@@ -78,10 +79,7 @@ impl CorProfilerCallback for DuplicatedStringsProfiler {
             },
             None => {
                 let clr = self.clr();
-                let type_name = match clr.get_class_id_info(class_id) {
-                    Ok(class_info) => clr.get_type_name(class_info.module_id, class_info.token),
-                    _ => "unknown".to_owned()
-                };
+                let type_name = NameResolver::new(clr.clone()).get_class_name(class_id);
 
                 if type_name == "System.String" {
                     self.string_class_id = Option::Some(class_id);

@@ -1,16 +1,13 @@
 use std::cmp::min;
-use std::collections::HashMap;
-use dashmap::DashMap;
 use std::sync::{ Arc, Mutex };
-use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
 use itertools::Itertools;
-use protobuf::well_known_types::timestamp::Timestamp;
 
 use crate::api::*;
-use crate::api::ffi::{FunctionID, HRESULT, ThreadID};
+use crate::api::ffi::{FunctionID, ThreadID};
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
+use crate::utils::NameResolver;
 
 const PADDING: usize = 5;
 /// if < 0 will print all thread ids
@@ -48,7 +45,7 @@ impl StackFrame {
     fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
         match frame.kind {
             StackFrameType::Native => "unmanaged".to_string(),
-            StackFrameType::Managed =>  unsafe { clr.get_full_method_name(frame.fct_id) }
+            StackFrameType::Managed =>  unsafe { NameResolver::new(clr.clone()).get_full_method_name(frame.fct_id) }
         }
     }
 }
