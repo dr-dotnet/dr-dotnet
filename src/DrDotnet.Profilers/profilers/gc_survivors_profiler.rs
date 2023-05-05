@@ -124,30 +124,28 @@ impl GCSurvivorsProfiler
                 }
             }
 
-            if current_id.1 < max_depth {
-                match self.object_to_referencers.get(&current_id.0) {
-                    Some(referencers) => {
-                        if referencers.len() == 0 {
-                            // We reached the end of a path, copy the branch and add it to our branches
-                            branches.push(branch.clone());
-                        } else {
-                            // Push new referencers if we are within our allowed depth
-                            for i in 0..referencers.len() {
-                                stack.push((referencers[i], current_id.1 + 1));
-                            }
-                        }
-                    },
-                    None => {
+            match self.object_to_referencers.get(&current_id.0) {
+                Some(referencers) => {
+                    if referencers.len() == 0 {
                         // We reached the end of a path, copy the branch and add it to our branches
                         branches.push(branch.clone());
+                    } else if current_id.1 < max_depth {
+                        // Push new referencers if we are within our allowed depth
+                        for i in 0..referencers.len() {
+                            stack.push((referencers[i], current_id.1 + 1));
+                        }
                     }
+                    else {
+                        // If max depth is reached, we push a 0 terminated branch to indicate that branch is truncated
+                        let mut deep_branch = branch.clone();
+                        deep_branch.push(0);
+                        branches.push(deep_branch);
+                    }
+                },
+                None => {
+                    // We reached the end of a path, copy the branch and add it to our branches
+                    branches.push(branch.clone());
                 }
-            }
-            else {
-                // If max depth is reached, we push a 0 terminated branch to indicate that branch is truncated
-                let mut deep_branch = branch.clone();
-                deep_branch.push(0);
-                branches.push(deep_branch);
             }
         }
 
