@@ -13,6 +13,9 @@ pub use runtime_pause_profiler::RuntimePauseProfiler;
 pub mod gc_survivors_profiler;
 pub use gc_survivors_profiler::GCSurvivorsProfiler;
 
+pub mod gc_survivors_profiler_2;
+pub use gc_survivors_profiler_2::GCSurvivorsProfiler as GCSurvivorsProfiler2;
+
 pub mod cpu_hotpath_profiler;
 pub use cpu_hotpath_profiler::CpuHotpathProfiler;
 
