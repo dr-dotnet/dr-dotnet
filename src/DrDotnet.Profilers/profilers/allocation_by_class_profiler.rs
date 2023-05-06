@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
+use crate::utils::NameResolver;
 
 #[derive(Default)]
 pub struct AllocationByClassProfiler {
@@ -33,10 +34,7 @@ impl CorProfilerCallback for AllocationByClassProfiler {
         for i in 0..class_ids.len() {
             
             let clr = self.clr();
-            let name = match clr.get_class_id_info(class_ids[i]) {
-                Ok(class_info) => clr.get_type_name(class_info.module_id, class_info.token),
-                _ => "unknown2".to_owned()
-            };
+            let name = clr.clone().get_class_name(class_ids[i]);
 
             let key = name;
             let count = num_objects[i] as isize;

@@ -4,6 +4,8 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use crate::api::*;
 use crate::profilers::*;
 use crate::macros::*;
+use crate::utils::CachedNameResolver;
+use crate::utils::NameResolver;
 
 #[derive(Default)]
 pub struct ExceptionsProfiler {
@@ -43,12 +45,8 @@ impl CorProfilerCallback for ExceptionsProfiler
         let clr = self.clr();
         let name = 
         match clr.get_class_from_object(thrown_object_id) {
-            Ok(class_id) =>
-            match clr.get_class_id_info(class_id) {
-                Ok(class_info) => clr.get_type_name(class_info.module_id, class_info.token),
-                _ => "unknown2".to_owned()
-            },
-            _ => "unknown1".to_owned()
+            Ok(class_id) => clr.clone().get_class_name(class_id),
+            _ => "unknown".to_owned()
         };
 
         let key = name;
