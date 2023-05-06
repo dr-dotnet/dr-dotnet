@@ -8,7 +8,7 @@ use crate::api::*;
 use crate::api::ffi::{ClassID, HRESULT, ObjectID};
 use crate::macros::*;
 use crate::profilers::*;
-use crate::utils::NameResolver;
+use crate::utils::{CachedNameResolver, NameResolver};
 
 #[derive(Default)]
 pub struct DuplicatedStringsProfiler {
@@ -79,7 +79,7 @@ impl CorProfilerCallback for DuplicatedStringsProfiler {
             },
             None => {
                 let clr = self.clr();
-                let type_name = NameResolver::new(clr.clone()).get_class_name(class_id);
+                let type_name = clr.clone().get_class_name(class_id);
 
                 if type_name == "System.String" {
                     self.string_class_id = Option::Some(class_id);
@@ -134,9 +134,9 @@ impl CorProfilerCallback2 for DuplicatedStringsProfiler {
 
         // We're done, we can detach :)
         let profiler_info = self.clr().clone();
-    if let Err(e) = profiler_info.request_profiler_detach(3000) {
-        error!("Failed to detach in garbage_collection_finished: {:?}", e);
-    }
+        if let Err(e) = profiler_info.request_profiler_detach(3000) {
+            error!("Failed to detach in garbage_collection_finished: {:?}", e);
+        }
         
         Ok(())
     }

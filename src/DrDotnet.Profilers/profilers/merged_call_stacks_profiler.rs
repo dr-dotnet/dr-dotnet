@@ -45,7 +45,7 @@ impl StackFrame {
     fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
         match frame.kind {
             StackFrameType::Native => "unmanaged".to_string(),
-            StackFrameType::Managed =>  unsafe { NameResolver::new(clr.clone()).get_full_method_name(frame.fct_id) }
+            StackFrameType::Managed =>  unsafe { clr.clone().get_full_method_name(frame.fct_id) }
         }
     }
 }

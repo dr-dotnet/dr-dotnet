@@ -12,11 +12,11 @@ use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::{TreeNode, NameResolver};
+use crate::utils::{TreeNode, CachedNameResolver, NameResolver};
 
 #[derive(Default)]
 pub struct GCSurvivorsProfiler {
-    name_resolver: NameResolver,
+    name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
@@ -395,7 +395,7 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
 
     fn profiler_attach_complete(&mut self) -> Result<(), HRESULT>
     {
-        self.name_resolver = NameResolver::new(self.clr().clone());
+        self.name_resolver = CachedNameResolver::new(self.clr().clone());
 
         // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method

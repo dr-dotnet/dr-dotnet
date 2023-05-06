@@ -34,7 +34,7 @@ impl CorProfilerCallback for AllocationByClassProfiler {
         for i in 0..class_ids.len() {
             
             let clr = self.clr();
-            let name = NameResolver::new(clr.clone()).get_class_name(class_ids[i]);
+            let name = clr.clone().get_class_name(class_ids[i]);
 
             let key = name;
             let count = num_objects[i] as isize;

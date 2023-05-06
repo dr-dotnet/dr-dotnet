@@ -19,6 +19,7 @@ use itertools::Itertools;
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
+use crate::utils::CachedNameResolver;
 use crate::utils::NameResolver;
 
 #[derive(Default, Clone)]
@@ -144,7 +145,7 @@ impl MemoryLeakProfiler
                 let class_id = MemoryLeakProfiler::get_inner_type(clr, class_id, &mut array_dimension);
                 // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-getclassidinfo-method
                 // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
-                NameResolver::new(clr.clone()).get_class_name(class_id).clone()
+                clr.clone().get_class_name(class_id)
             }
             Err(error) => format!("error: {:?}", error)
         };
