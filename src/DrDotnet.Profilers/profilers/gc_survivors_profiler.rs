@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
@@ -7,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use deepsize::DeepSizeOf;
 use thousands::{digits, Separable, SeparatorPolicy};
+use hashbrown::HashMap;
 
 use crate::ffi::*;
 use crate::api::*;
@@ -383,7 +383,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
-        info!("Deep size of object references: {} bytes", self.object_to_referencers.deep_size_of());
+        //info!("Deep size of object references: {} bytes", self.object_to_referencers.deep_size_of());
 
         let mut sequences = self.build_sequences();
         let tree = self.build_tree(&mut sequences);
