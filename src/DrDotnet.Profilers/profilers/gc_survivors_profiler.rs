@@ -186,7 +186,7 @@ impl GCSurvivorsProfiler
 
         for object in self.object_to_referencers.iter() {
             
-            let object_id = object.key().clone();
+            let object_id: ObjectID = object.key().clone();
 
             if !Self::is_gen_2(info, object_id) {
                 continue;
@@ -266,18 +266,6 @@ impl GCSurvivorsProfiler
 
         let now = std::time::Instant::now();
 
-        // fn print<T, V, F>(tree: &TreeNode<T, V>, depth: usize, format: &F)
-        //     where F: Fn(&TreeNode<T, V>) -> String
-        // {
-        //     let tabs = " ".repeat(depth);
-        //     info!("{}- {}", tabs, format(tree));
-        // 
-        //     for child in &tree.children {
-        //         print(child, depth + 1, format);
-        //     }
-        // }
-        // print(&tree, 0, &|node: &TreeNode<ClassID, References>| format!("{} [inc:{}, exc:{:?}]",  self.clr().get_class_name(node.key), node.get_inclusive_value(), node.value));
-
         let nb_classes = tree.children.len();
         let nb_objects: usize = tree.children.iter().map(|x| x.get_inclusive_value().0.len()).sum();
 
@@ -298,13 +286,19 @@ impl GCSurvivorsProfiler
     fn print_html(&self, tree: &TreeNode<ClassID, References>, report: &mut Report)
     {
         let refs = &tree.get_inclusive_value();
-        let mut class_name = if tree.key == 0 { "Path truncated because of depth limit reached".to_owned() } else { self.name_resolver.get_class_name(tree.key) };
+
+        if tree.key == 0 { 
+            report.write_line(format!("Path truncated because of depth limit reached"));
+            return;
+        }
+        
+        let mut class_name = self.name_resolver.get_class_name(tree.key);
         let escaped_class_name = html_escape::encode_text(&mut class_name);
 
         let has_children = tree.children.len() > 0;
 
         if has_children {
-            report.write_line(format!("<details><summary><span>{refs}</span>{escaped_class_name}</summary>"));
+            report.write_line(format!("<details><summary><span>{refs}</span><code>{escaped_class_name}</code></summary>"));
             report.write_line(format!("<ul>"));
             for child in &tree.children {
                 self.print_html(child, report);
@@ -312,7 +306,7 @@ impl GCSurvivorsProfiler
             report.write_line(format!("</ul>"));
             report.write_line(format!("</details>"));
         } else {
-            report.write_line(format!("<li><span>{refs}</span>{escaped_class_name}</li>"));
+            report.write_line(format!("<li><span>{refs}</span><code>{escaped_class_name}</code></li>"));
         }
     }
 }
