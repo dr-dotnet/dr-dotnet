@@ -200,7 +200,7 @@ pub type StackSnapshotCallback = unsafe extern "system" fn(
 pub type ObjectReferenceCallback = unsafe extern "system" fn(
     root: ObjectID,
     reference: *const ObjectID,
-    clientData: *const c_void,
+    clientData: *mut c_void,
 ) -> BOOL;
 
 // profiler types

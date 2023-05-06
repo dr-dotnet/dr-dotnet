@@ -19,7 +19,7 @@ pub struct GCSurvivorsProfiler {
     name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
+    root_objects: Vec<ObjectID>,
     is_triggered_gc: AtomicBool
 }
 
@@ -101,12 +101,16 @@ impl Profiler for GCSurvivorsProfiler {
 
 impl GCSurvivorsProfiler
 {
-    pub fn append_references(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: usize) -> Vec<Vec<ClassID>>
-    {
-        let mut branches: Vec<Vec<ClassID>> = Vec::new();
+    pub fn drill_retention_path(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID) -> Vec<Vec<ClassID>> {
 
-        let mut branch: Vec<ClassID> = vec![]; // A branch we update live and copy every time we reached the end of a path
+        let max_retention_depth = self.session_info().get_parameter::<usize>("max_retention_depth").unwrap();
+
+        let mut branches: Vec<Vec<ObjectID>> = Vec::new();
+
+        let mut branch: Vec<ObjectID> = vec![]; // A branch we update live and copy every time we reached the end of a path
         let mut stack: Vec<(ObjectID, usize)> = vec![(object_id, 0)]; // A stack to iterate without recursions
+
+        let mut references = Vec::<ObjectID>::new();
 
         while !stack.is_empty() {
 
@@ -117,64 +121,49 @@ impl GCSurvivorsProfiler
                 branch.pop();
             }
 
-            match info.get_class_from_object(current_id.0) {
-                Ok(class_id) => branch.push(class_id),
-                Err(_) => {
-                    error!("Impossible to get class ID for object ID {}", current_id.0);
-                    continue;
-                }
+            if current_id.0 == 0 {
+                continue;
             }
 
-            match self.object_to_referencers.get(&current_id.0) {
-                Some(referencers) => {
-                    if referencers.len() == 0 {
-                        // We reached the end of a path, copy the branch and add it to our branches
-                        branches.push(branch.clone());
-                    } else if current_id.1 < max_depth {
-                        // Push new referencers if we are within our allowed depth
-                        for i in 0..referencers.len() {
-                            stack.push((referencers[i], current_id.1 + 1));
-                        }
-                    }
-                    else {
-                        // If max depth is reached, we push a 0 terminated branch to indicate that branch is truncated
-                        let mut deep_branch = branch.clone();
-                        deep_branch.push(0);
-                        branches.push(deep_branch);
-                    }
-                },
-                None => {
-                    // We reached the end of a path, copy the branch and add it to our branches
-                    branches.push(branch.clone());
+            if current_id.1 > max_retention_depth {
+                continue;
+            }
+
+            branch.push(current_id.0);
+
+            references.clear();
+            
+            // We must pass this data as a pointer for callback to mutate it with actual object references ids
+            let references_ptr_c = &references as *const Vec<ObjectID> as *mut std::ffi::c_void;
+            
+            let _ = info.enumerate_object_references(
+                current_id.0, 
+                crate::utils::enum_references_callback,
+                references_ptr_c
+            );    
+
+            if references.len() == 0 {
+                // We reached the end of a path, copy the branch and add it to our branches, but only if final object lies in gen 2
+                if Self::is_gen_2(info, current_id.0) {
+                    let mut branch_copy = branch.clone();
+                    branch_copy.reverse();
+                    branches.push(branch_copy);
+                }
+            } else {
+                // Push new referencers if we are within our allowed depth
+                for i in 0..references.len() {
+                    stack.push((references[i], current_id.1 + 1));
                 }
             }
         }
 
-        // Example:
-        // M
-        // ├─ A
-        // │  └─ D
-        // ├─ B
-        // └─ C
-        //    ├─ F
-        //    └─ G
-        // 0  1  2
-        // Iteration 1: We pop M, which is added to the branch. A, B and C are pushed to the stack
-        // Iteration 2: We pop C, which is added to the branch. F and G are pushed to the stack
-        // Iteration 3: We pop G, which is added to the branch. There are no child, so the branch MCG is completed
-        // Iteration 4: We pop F. F depth is 2, but the branch is currently of len 3, so G is removed from the branch. F is then added to the branch. There are no child, so the branch MCF is completed
-        // Iteration 5: We pop B. B depth is 1, but the branch is currently of len 3, so C and F are removed from the branch. B is then added to the branch. There are no child, so the branch MB is completed
-        // Iteration 6: We pop A. A depth is 1, but the branch is currently of len 2, so B is removed from the branch. A is then added to the branch
-        // Iteration 7: We pop D. which is added to the branch. There are no child, so the branch MAD is completed
-        // The stack is now empty, we're done :)
-
-        return branches;
+        branches
     }
 
     // Post-process tracked persisting references
     fn build_sequences(&mut self) -> HashMap<Vec<usize>, References>
     {
-        info!("Building graph of surviving references... {} objects to process", self.object_to_referencers.len());
+        info!("Building graph of surviving references... {} roots to process", self.root_objects.len());
 
         let now = std::time::Instant::now();
 
@@ -182,22 +171,31 @@ impl GCSurvivorsProfiler
 
         let info = self.clr();
 
-        let max_retention_depth = self.session_info().get_parameter::<usize>("max_retention_depth").unwrap();
+        for object in self.root_objects.iter() {
 
-        for object in self.object_to_referencers.iter() {
-            
-            let object_id: ObjectID = object.key().clone();
+            for branch in self.drill_retention_path(info, *object) {
 
-            if !Self::is_gen_2(info, object_id) {
-                continue;
-            }
+                if let Some(leaf_id) = branch.first() {
+                    let leaf_id = *leaf_id;
+                    let size = 0;//info.get_object_size_2(leaf_id).unwrap_or(0);
 
-            let size = info.get_object_size_2(object_id).unwrap_or(0);
+                    let k = branch.iter().map(|x| {
+                        match info.get_class_from_object(*x) {
+                            Ok(class_id) => class_id,
+                            Err(_) => {
+                                error!("Impossible to get class ID for object ID {}", x);
+                                0
+                            }
+                        }
+                    }).collect();
 
-            for branch in self.append_references(info, object_id, max_retention_depth) {
-                sequences.entry(branch)
-                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
-                    .or_insert(References(HashMap::from([(object_id.clone(), size)])));
+                    sequences.entry(k)
+                        .and_modify(|referencers| {referencers.0.insert(leaf_id, size);})
+                        .or_insert_with(|| References(HashMap::from([(leaf_id, size)])));
+                }
+                else {
+                    error!("Empty branch");
+                }
             }
         }
 
@@ -311,34 +309,7 @@ impl GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback for GCSurvivorsProfiler
-{
-    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), HRESULT>
-    {
-        if !self.is_triggered_gc.load(Ordering::Relaxed) {
-            error!("Early return of object_references because GC wasn't forced yet");
-            // Early return if we received an event before the forced GC started
-            return Ok(());
-        }
-
-        // If an object has no references and is not gen 2, we can discard it, because it means it will never reference any
-        // other gen 2 object, which is actually what we are looking for
-        if object_ref_ids.is_empty() && !Self::is_gen_2(self.clr(), object_id) {
-            return Ok(());
-        }
-
-        // Create dependency tree, but from object to referencers, instead of object to its references.
-        // This is usefull for being able to browse from any object back to its roots.
-        for object_ref_id in object_ref_ids {
-            self.object_to_referencers.entry(*object_ref_id).or_insert(Vec::new()).push(object_id);
-        }
-
-        // Also add this object, with no referencers, just in case this object isn't referenced 
-        self.object_to_referencers.entry(object_id).or_insert(Vec::new());
-
-        Ok(())
-    }
-}
+impl CorProfilerCallback for GCSurvivorsProfiler {}
 
 impl CorProfilerCallback2 for GCSurvivorsProfiler
 {
@@ -376,6 +347,27 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         let profiler_info = self.clr().clone();
         profiler_info.request_profiler_detach(3000).ok();
 
+        Ok(())
+    }
+
+    fn root_references_2(
+        &mut self,
+        root_ref_ids: &[ObjectID],
+        root_kinds: &[COR_PRF_GC_ROOT_KIND],
+        root_flags: &[COR_PRF_GC_ROOT_FLAGS],
+        root_ids: &[UINT_PTR], // TODO: Maybe this should be a single array of some struct kind.
+    ) -> Result<(), HRESULT> {
+
+        if !self.is_triggered_gc.load(Ordering::Relaxed) {
+            error!("Early return of garbage_collection_finished because GC wasn't forced yet");
+            // Early return if we received an event before the forced GC started
+            return Ok(());
+        }
+
+        for root_id in root_ref_ids {
+            self.root_objects.push(*root_id);
+        }
+        
         Ok(())
     }
 }
