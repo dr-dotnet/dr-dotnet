@@ -300,12 +300,13 @@ impl GCSurvivorsProfiler
     fn print_html(&self, tree: &TreeNode<ClassID, References>, report: &mut Report)
     {
         let refs = &tree.get_inclusive_value();
-        let class_name = if tree.key == 0 { "Path truncated because of depth limit reached".to_owned() } else { self.name_resolver.get_class_name(tree.key) };
+        let mut class_name = if tree.key == 0 { "Path truncated because of depth limit reached".to_owned() } else { self.name_resolver.get_class_name(tree.key) };
+        let escaped_class_name = html_escape::encode_text(&mut class_name);
 
         let has_children = tree.children.len() > 0;
 
         if has_children {
-            report.write_line(format!("<details><summary><span>{refs}</span>{class_name}</summary>"));
+            report.write_line(format!("<details><summary><span>{refs}</span>{escaped_class_name}</summary>"));
             report.write_line(format!("<ul>"));
             for child in &tree.children {
                 self.print_html(child, report);
@@ -313,7 +314,7 @@ impl GCSurvivorsProfiler
             report.write_line(format!("</ul>"));
             report.write_line(format!("</details>"));
         } else {
-            report.write_line(format!("<li><span>{refs}</span>{class_name}</li>"));
+            report.write_line(format!("<li><span>{refs}</span>{escaped_class_name}</li>"));
         }
     }
 }

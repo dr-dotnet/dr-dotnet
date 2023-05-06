@@ -240,8 +240,8 @@ impl NameResolver for ClrProfilerInfo {
                                 return arg_name;
                             }).join(", ");
 
-                            // Surrounds generic arguments with < > in html
-                            outstring.push_str(&format!("&lt;{}&gt;", arg_names));
+                            // Surrounds generic arguments with < >
+                            outstring.push_str(&format!("<{}>", arg_names));
                         },
                         Err(_) => {
                             error!("We have an error...");
