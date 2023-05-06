@@ -24,6 +24,7 @@ thousands = "0.2.0"
 rayon = "1.7"
 crate = "0.0.2"
 html-escape = "0.2.13"
+hashbrown = "0.13.2"
 
 [dev-dependencies]
 criterion = "0.3"
