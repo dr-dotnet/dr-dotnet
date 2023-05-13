@@ -20,7 +20,7 @@ pub struct GCSurvivorsProfiler {
     name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
+    object_to_referencers: HashMap<ObjectID, Option<Vec<ObjectID>>>,
     is_triggered_gc: AtomicBool,
     gc_start_time: Option<Instant>
 }
@@ -128,21 +128,23 @@ impl GCSurvivorsProfiler
             }
 
             match self.object_to_referencers.get(&current_id.0) {
-                Some(referencers) => {
-                    if referencers.len() == 0 {
+                Some(referencers) => match referencers {
+                    Some(referencers) => {
+                        if current_id.1 < max_depth {
+                            // Push new referencers if we are within our allowed depth
+                            for i in 0..referencers.len() {
+                                stack.push((referencers[i], current_id.1 + 1));
+                            }
+                        } else {
+                            // If max depth is reached, we push a 0 terminated branch to indicate that branch is truncated
+                            let mut deep_branch = branch.clone();
+                            deep_branch.push(0);
+                            branches.push(deep_branch);
+                        }
+                    },
+                    None => {
                         // We reached the end of a path, copy the branch and add it to our branches
                         branches.push(branch.clone());
-                    } else if current_id.1 < max_depth {
-                        // Push new referencers if we are within our allowed depth
-                        for i in 0..referencers.len() {
-                            stack.push((referencers[i], current_id.1 + 1));
-                        }
-                    }
-                    else {
-                        // If max depth is reached, we push a 0 terminated branch to indicate that branch is truncated
-                        let mut deep_branch = branch.clone();
-                        deep_branch.push(0);
-                        branches.push(deep_branch);
                     }
                 },
                 None => {
@@ -203,6 +205,9 @@ impl GCSurvivorsProfiler
             }
         }
 
+        // Free some memory
+        self.object_to_referencers = HashMap::new();
+
         info!("Graph built in {} ms", now.elapsed().as_millis());
 
         sequences
@@ -240,14 +245,6 @@ impl GCSurvivorsProfiler
             }
         };
         
-        // Start by sorting the tree "roots" (only the first level of childrens)
-        tree.children.sort_by(compare);
-
-        // Keep the first "max_types_display" roots
-        let mut max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
-        max_types_display = min(max_types_display, tree.children.len());
-        tree.children.truncate(max_types_display);
-
         // Then sort the whole tree (all levels of childrens)
         let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();
         if sort_multithreaded {
@@ -332,11 +329,19 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         // Create dependency tree, but from object to referencers, instead of object to its references.
         // This is usefull for being able to browse from any object back to its roots.
         for object_ref_id in object_ref_ids {
-            self.object_to_referencers.entry(*object_ref_id).or_insert(Vec::new()).push(object_id);
+            self.object_to_referencers.entry(*object_ref_id)
+                .and_modify(|e| {
+                    if let Some(vec) = e.as_mut() {
+                        vec.push(object_id);
+                    } else {
+                        *e = Some(vec![object_id]);
+                    }
+                })
+                .or_insert_with(|| Some(vec![object_id]));
         }
 
         // Also add this object, with no referencers, just in case this object isn't referenced 
-        self.object_to_referencers.entry(object_id).or_insert(Vec::new());
+        self.object_to_referencers.entry(object_id).or_insert(None);
 
         Ok(())
     }
