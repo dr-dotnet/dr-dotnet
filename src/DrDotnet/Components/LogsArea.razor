@@ -26,13 +26,13 @@
         if (firstRender)
         {
             await OnAfterRendered.InvokeAsync(Id);
-            await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
+            //await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
         }
     }
 
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
-        await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
+        //await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
     }
 }

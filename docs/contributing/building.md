@@ -5,11 +5,11 @@
 - .NET SDK 7.0
 - Rust toolchain
 - *Recommended OS*: Any desktop platform you'd like (Windows / Linux / MacOS ARM64 or Intel)
-- *Recommended IDE*: Any of Visual Studio, Visual Studio Code or JetBrains Rider. Make sur you have both C# and Rust LSP for a comfortable experience, with everything in a single IDE.
+- *Recommended IDE*: Any of Visual Studio, Visual Studio Code or JetBrains Rider. Make sure you have both C# and Rust LSP for a comfortable experience, with everything in a single IDE.
 
 ## Building
 
-As Dr-Dotnet is an hybrid C# / Rust project, it makes little sense to build the C# and Rust parts separately.
+As Dr-Dotnet is a hybrid C# / Rust project, it makes little sense to build the C# and Rust parts separately.
 The recommended workflow is the following:
 - Clone the repository
 - Open `src/DrDotnet.sln` in your IDE
