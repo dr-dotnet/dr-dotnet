@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::AddAssign;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 use deepsize::DeepSizeOf;
 use thousands::{digits, Separable, SeparatorPolicy};
 
@@ -20,7 +21,8 @@ pub struct GCSurvivorsProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
-    is_triggered_gc: AtomicBool
+    is_triggered_gc: AtomicBool,
+    gc_start_time: Option<Instant>
 }
 
 #[derive(Clone, Default, Debug)]
@@ -349,6 +351,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             self.is_triggered_gc.store(true, Ordering::Relaxed);
         }
 
+        self.gc_start_time = Some(std::time::Instant::now());
+
         Ok(())
     }
 
@@ -361,6 +365,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
+
+        info!("Garbage collection done in {} ms", self.gc_start_time.unwrap().elapsed().as_millis());
 
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
