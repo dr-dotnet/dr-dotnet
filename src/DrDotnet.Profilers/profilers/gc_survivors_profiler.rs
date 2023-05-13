@@ -1,6 +1,6 @@
-use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -13,20 +13,20 @@ use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::{TreeNode, CachedNameResolver, NameResolver};
+use crate::utils::{TreeNode, CachedNameResolver, NameResolver, SimpleHasher};
 
 #[derive(Default)]
 pub struct GCSurvivorsProfiler {
     name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: HashMap<ObjectID, Option<Vec<ObjectID>>>,
+    object_to_referencers: HashMap<ObjectID, Option<Vec<ObjectID>>, BuildHasherDefault::<SimpleHasher>>,
     is_triggered_gc: AtomicBool,
     gc_start_time: Option<Instant>
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct References(HashMap<ObjectID, usize>);
+pub struct References(HashMap<ObjectID, usize, BuildHasherDefault::<SimpleHasher>>);
 
 // Implement AddAssign for get_inclusive_value to be usable
 impl AddAssign<&References> for References {
@@ -201,12 +201,16 @@ impl GCSurvivorsProfiler
             for branch in self.append_references(info, object_id, max_retention_depth) {
                 sequences.entry(branch)
                     .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
-                    .or_insert(References(HashMap::from([(object_id.clone(), size)])));
+                    .or_insert_with(|| {
+                        let mut map = HashMap::default();
+                        map.insert(object_id.clone(), size);
+                        References(map)
+                    });
             }
         }
 
         // Free some memory
-        self.object_to_referencers = HashMap::new();
+        self.object_to_referencers = HashMap::default();
 
         info!("Graph built in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
