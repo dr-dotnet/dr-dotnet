@@ -9,7 +9,8 @@ jobs:
       - name: shalzz/zola-deploy-action
         uses: shalzz/zola-deploy-action@master
         env:
-          PAGES_BRANCH: gh-pages
+          REPOSITORY: dr-dotnet/dr-dotnet.github.io
+          PAGES_BRANCH: main
           BUILD_DIR: docs
           BUILD_FLAGS: --drafts
           TOKEN: ${{ secrets.DEPLOY_DOCS }}
