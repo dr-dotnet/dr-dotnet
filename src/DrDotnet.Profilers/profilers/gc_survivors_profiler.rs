@@ -208,7 +208,7 @@ impl GCSurvivorsProfiler
         // Free some memory
         self.object_to_referencers = HashMap::new();
 
-        info!("Graph built in {} ms", now.elapsed().as_millis());
+        info!("Graph built in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
         sequences
     }
@@ -227,7 +227,7 @@ impl GCSurvivorsProfiler
 
         sequences.clear();
 
-        info!("Tree built in {} ms", now.elapsed().as_millis());
+        info!("Tree built in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
         info!("Sorting tree");
 
@@ -254,7 +254,7 @@ impl GCSurvivorsProfiler
             tree.sort_by_iterative(compare);
         }
  
-        info!("Tree sorted in {} ms", now.elapsed().as_millis());
+        info!("Tree sorted in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
         return tree;
     }
@@ -277,7 +277,7 @@ impl GCSurvivorsProfiler
             self.print_html(&tree_node, &mut report);
         }
 
-        info!("Report written in {} ms", now.elapsed().as_millis());
+        info!("Report written in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
         Ok(())
     }
@@ -371,7 +371,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             return Ok(());
         }
 
-        info!("Garbage collection done in {} ms", self.gc_start_time.unwrap().elapsed().as_millis());
+        info!("Garbage collection done in {} ms", 0.001 * self.gc_start_time.unwrap().elapsed().as_micros() as f64);
 
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
@@ -379,8 +379,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
-        // Before Option<T> : 1555856 bytes
-        info!(">>> Deep size of object references: {} bytes", self.object_to_referencers.deep_size_of());
+        info!("Deep size of object references: {} bytes", self.object_to_referencers.deep_size_of());
 
         let mut sequences = self.build_sequences();
         let tree = self.build_tree(&mut sequences);
