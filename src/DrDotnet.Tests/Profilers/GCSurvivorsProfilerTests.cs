@@ -37,7 +37,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
-        profiler.Parameters.First(x => x.Key == "max_types_display").Value = int.MaxValue.ToString();
+        profiler.Parameters.First(x => x.Key == "minimum_bytes").Value = 1000.ToString();
         profiler.Parameters.First(x => x.Key == "max_retention_depth").Value = 3.ToString();
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 

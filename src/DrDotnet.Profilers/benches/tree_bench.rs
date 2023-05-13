@@ -1,4 +1,5 @@
-use std::{ops::AddAssign, collections::HashMap, cell::RefCell};
+use std::{ops::AddAssign, cell::RefCell};
+use std::collections::HashMap;
 use profilers::utils::*;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::prelude::*;
