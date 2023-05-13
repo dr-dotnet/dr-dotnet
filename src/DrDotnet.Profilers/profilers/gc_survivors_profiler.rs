@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::AddAssign;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
-use dashmap::DashMap;
+use deepsize::DeepSizeOf;
 use thousands::{digits, Separable, SeparatorPolicy};
 
 use crate::ffi::*;
@@ -19,7 +19,7 @@ pub struct GCSurvivorsProfiler {
     name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: DashMap<ObjectID, Vec<ObjectID>>,
+    object_to_referencers: HashMap<ObjectID, Vec<ObjectID>>,
     is_triggered_gc: AtomicBool
 }
 
@@ -186,7 +186,7 @@ impl GCSurvivorsProfiler
 
         for object in self.object_to_referencers.iter() {
             
-            let object_id: ObjectID = object.key().clone();
+            let object_id: ObjectID = object.0.clone();
 
             if !Self::is_gen_2(info, object_id) {
                 continue;
@@ -367,6 +367,9 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
+
+        // Before Option<T> : 1555856 bytes
+        info!(">>> Deep size of object references: {} bytes", self.object_to_referencers.deep_size_of());
 
         let mut sequences = self.build_sequences();
         let tree = self.build_tree(&mut sequences);
