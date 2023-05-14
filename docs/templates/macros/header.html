@@ -29,9 +29,15 @@
 			<ul class="navbar-nav main-nav me-auto order-5 order-md-2">
 				{% if config.extra.menu.main %}
 					{% for val in config.extra.menu.main %}
+						{% if val.section is defined %}
 						<li class="nav-item{% if current_section == val.section %} {{ current_section }} active{% endif %}">
 							<a class="nav-link" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{ val.name }}</a>
 						</li>
+						{% else %}
+						<li class="nav-item">
+							<a class="nav-link" href="{{ val.url }}">{{ val.name }}</a>
+						</li>
+						{% endif %}
 					{% endfor %}
 				{% else %}
 				<li class="nav-item">

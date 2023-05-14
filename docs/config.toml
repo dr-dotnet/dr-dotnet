@@ -1,6 +1,6 @@
 # The URL the site will be built for
 base_url = "https://dr-dotnet.github.io/"
-title = "🐶 FFIDJI"
+title = "Dr Dotnet 🩺"
 description = "AdiDoks is a Zola theme helping you build modern documentation websites, which is a port of the Hugo theme Doks for Zola."
 
 # The default language; used in feeds and search index
@@ -103,7 +103,7 @@ site_links_search_box = false
 [[extra.menu.main]]
 name = "Docs"
 section = "docs"
-url = "/docs/introduction/"
+url = "/docs/getting-started/quick-start/"
 weight = 10
 
 [[extra.menu.main]]
@@ -111,6 +111,11 @@ name = "Blog"
 section = "blog"
 url = "/blog/"
 weight = 20
+
+[[extra.menu.main]]
+name = "Contributing"
+url = "https://github.com/dr-dotnet/dr-dotnet/blob/master/CONTRIBUTING.md"
+weight = 30
 
 [[extra.menu.social]]
 name = "Twitter"

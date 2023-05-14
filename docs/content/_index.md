@@ -11,19 +11,19 @@ repo_license = "Open-source MIT License."
 repo_url = "https://github.com/dr-dotnet/dr-dotnet"
 
 [[extra.list]]
-title = "Easy"
+title = "1Easy"
 content = "Define the contract between the two languages, and FFIDJI will generate the bindings for each language automatically."
 
 [[extra.list]]
-title = "Fast ⚡"
+title = "2Fast ⚡"
 content = "Unlike non FFI alternatives, there is no serialization/deserialization involved. It can hardly be faster than just sharing memory."
 
 [[extra.list]]
-title = "Adaptative"
+title = "3Adaptastive"
 content = "Define primitives, strings, arrays, structures, nested structures..."
 
 [[extra.list]]
-title = "CI/CD Compliant"
+title = "4CI/CD Compliant"
 content = "Make room for a FFIDJI step in your CI/CD or make workflow to always have up to date contract implementations."
 
 +++
