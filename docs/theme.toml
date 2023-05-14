@@ -1,7 +1,7 @@
 name = "ffidji"
 description = "FFIDJI documentation."
 license = "MIT"
-homepage = "https://ogxd.github.io/ffidji/"
+homepage = "https://dr-dotnet.github.io/"
 min_version = "0.13.0"
 
 [extra]

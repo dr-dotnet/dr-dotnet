@@ -8,7 +8,7 @@ url = "/docs/introduction/"
 url_button = "Get started"
 repo_version = "GitHub v0.1.0"
 repo_license = "Open-source MIT License."
-repo_url = "https://github.com/ogxd/ffidji"
+repo_url = "https://github.com/dr-dotnet/dr-dotnet"
 
 [[extra.list]]
 title = "Easy"
