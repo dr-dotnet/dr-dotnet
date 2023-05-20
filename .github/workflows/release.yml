@@ -1,4 +1,7 @@
-on: [workflow_dispatch, release]
+on:
+  push:
+    tags:
+      - v*
 
 name: release
 
