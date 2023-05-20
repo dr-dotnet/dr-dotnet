@@ -1,4 +1,4 @@
-on: [workflow_dispatch, release]
+on: [push]
 
 name: release
 
