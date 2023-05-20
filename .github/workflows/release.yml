@@ -67,8 +67,8 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Release Asset
-        id: upload-release-asset 
+      - name: Upload Release Linux
+        id: upload-release-linux
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -78,8 +78,8 @@ jobs:
           asset_name: drdotnet-desktop-linux.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload Release Asset
-        id: upload-release-asset 
+      - name: Upload Release MacOS
+        id: upload-release-macos 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,8 +89,8 @@ jobs:
           asset_name: drdotnet-desktop-macos.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload Release Asset
-        id: upload-release-asset 
+      - name: Upload Release Windows
+        id: upload-release-windows 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
