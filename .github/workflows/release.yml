@@ -1,4 +1,4 @@
-on: [push]
+on: [workflow_dispatch, release]
 
 name: release
 
@@ -6,9 +6,6 @@ jobs:
   release:
     name: Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet-version: ['7.0']
 
     steps:
       - name: Checkout
@@ -20,23 +17,15 @@ jobs:
           toolchain: stable
 
       - name: Install Dotnet SDK
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-
-      - name: Install Dependencies
-        working-directory: src
-        run: dotnet restore
+          dotnet-version: 7.0
 
       - name: Get Version Number
         run: |
           echo "VERSION=$(head -1 CHANGELOG.md | grep -o "[0-9]\.[0-9]\.[0-9]")" >> $GITHUB_ENV
           echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
           echo Version is: $(VERSION).$(BUILD_NUMBER)
-
-      - name: Build
-        working-directory: src
-        run: dotnet build --configuration Release --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Publish for Linux
         run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime linux-x64 --output ./dist/linux
