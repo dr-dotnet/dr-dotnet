@@ -39,13 +39,13 @@ jobs:
         run: dotnet build --configuration Release --no-restore -p:BuildNumber=${{ github.run_number }}
 
       - name: Publish for Linux
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --no-build --self-contained true --runtime linux-x64 --output ./dist/linux
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime linux-x64 --output ./dist/linux
 
       - name: Publish for macOS
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --no-build --self-contained true --runtime osx-x64 --output ./dist/linux
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime osx-x64 --output ./dist/linux
 
       - name: Publish for Windows
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --no-build --self-contained true --runtime win-x64 --output ./dist/linux
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime win-x64 --output ./dist/linux
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
