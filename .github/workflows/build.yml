@@ -11,7 +11,8 @@ jobs:
         dotnet-version: ['7.0']
         
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout 
+        uses: actions/checkout@v3
 
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1

@@ -1,0 +1,101 @@
+on: [workflow_dispatch, release]
+
+name: release
+
+jobs:
+  release:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['7.0']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Dotnet SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Install Dependencies
+        working-directory: src
+        run: dotnet restore
+
+      - name: Get Version Number
+        run: |
+          echo "VERSION=$(head -1 CHANGELOG.md | grep -o "[0-9]\.[0-9]\.[0-9]")" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+          echo Version is: $(VERSION).$(BUILD_NUMBER)
+
+      - name: Build
+        working-directory: src
+        run: dotnet build --configuration Release --no-restore -p:BuildNumber=${{ github.run_number }}
+
+      - name: Publish for Linux
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release -o pub --no-build --self-contained true --runtime linux-x64 --output ./dist/linux
+
+      - name: Publish for macOS
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release -o pub --no-build --self-contained true --runtime osx-x64 --output ./dist/linux
+
+      - name: Publish for Windows
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release -o pub --no-build --self-contained true --runtime win-x64 --output ./dist/linux
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dotnet-app
+          path: |
+            dist/linux
+            dist/macos
+            dist/windows
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/linux/drdotnet-desktop.tar.gz
+          asset_name: drdotnet-desktop-linux.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/macos/drdotnet-desktop.tar.gz
+          asset_name: drdotnet-desktop-macos.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/windows/drdotnet-desktop.zip
+          asset_name: drdotnet-desktop-windows.zip
+          asset_content_type: application/zip
