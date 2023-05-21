@@ -11,7 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target-os: ['win-x64', 'linux-x64', 'osx-x64']
+        include:
+          - target-os: 'win-x64'
+            libname: 'profilers.dll'
+          - target-os: 'linux-x64'
+            libname: 'libprofilers.so'
+          - target-os: 'osx-arm64'
+            libname: 'libprofilers.dylib'
 
     steps:
       - name: Checkout
@@ -34,10 +40,10 @@ jobs:
           echo Version is: $(VERSION).$(BUILD_NUMBER)
 
       - name: Publish for ${{ matrix.target-os }}
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime ${{ matrix.target-os }} -o pub
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --sc -r ${{ matrix.target-os }} -o pub
 
       - name: Copy Native Profilers
-        run: cp bin/release/libprofilers.so pub/
+        run: cp bin/release/${{ matrix.libname }} pub/
 
       - name: Zip
         shell: bash
