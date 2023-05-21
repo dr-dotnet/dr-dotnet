@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using DrDotnet.Utils;
+using Microsoft.Diagnostics.Tracing.AutomatedAnalysis;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet;
@@ -51,20 +53,30 @@ public class ProcessDiscovery : IProcessDiscovery
 
         try
         {
-            var processes = DiagnosticsClient.GetPublishedProcesses().ToArray();
+            var processes = DiagnosticsClient.GetPublishedProcesses().ToHashSet();
             
-            for (int i = 0; i < processes.Length; i++)
+            if (Application.IsDesktop)
             {
-                progressCallback(1f * i / processes.Length);
+#pragma warning disable CA1416
+                int thisPid = System.Diagnostics.Process.GetCurrentProcess().Id;
+#pragma warning restore CA1416
+                processes = processes.Where(pid => thisPid != pid).ToHashSet();
+            }
+
+            int i = 0;
+            foreach (int processId in processes)
+            {
+                progressCallback(1f * i / processes.Count);
             
-                _logger.LogInformation($"- Process Id: {processes[i]}");
+                _logger.LogInformation($"- Process Id: {processId}");
                 
-                if (!TryGetManagedAssemblyNameFromPid(processes[i], out string? assemblyName, out string? version))
+                if (!TryGetManagedAssemblyNameFromPid(processId, out string? assemblyName, out string? version))
                 {
                     continue;
                 }
 
-                dotnetProcesses.Add(new ProcessInfo { Id = processes[i], ManagedAssemblyName = assemblyName, Version = version });
+                dotnetProcesses.Add(new ProcessInfo { Id = processId, ManagedAssemblyName = assemblyName, Version = version });
+                i++;
             }
         
             _logger.LogInformation("Finished listing dotnet processes.");

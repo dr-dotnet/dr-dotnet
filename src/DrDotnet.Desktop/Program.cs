@@ -12,12 +12,12 @@ class Program
     [STAThread]
     static void Main(string[] args)
     {
+        Application.IsDesktop = true;
+        
         var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
         appBuilder.Services.AddLogging();
 
-        //appBuilder.Services.AddRazorPages();
-        //appBuilder.Services.AddServerSideBlazor();
         appBuilder.Services.AddMatBlazor();
 
         appBuilder.Services.AddSingleton<HttpClient>();
@@ -30,19 +30,15 @@ class Program
         appBuilder.Services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         appBuilder.Services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
 
-        // register root component and selector
+        // Register root component and selector
         appBuilder.RootComponents.Add<App>("app");
 
         var app = appBuilder.Build();
 
-        // customize window
+        // Customize window
         app.MainWindow
             .SetIconFile("favicon.ico")
             .SetTitle("Dr-Dotnet");
-
-        AppDomain.CurrentDomain.UnhandledException += (sender, error) => {
-            app.MainWindow.OpenAlertWindow("Fatal exception", error.ExceptionObject.ToString());
-        };
 
         app.Run();
     }
