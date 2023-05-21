@@ -7,8 +7,11 @@ name: release
 
 jobs:
   release:
-    name: Build
+    name: Release
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target-os: ['win-64', 'linux-64', 'osx-64']
 
     steps:
       - name: Checkout
@@ -30,25 +33,19 @@ jobs:
           echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
           echo Version is: $(VERSION).$(BUILD_NUMBER)
 
-      - name: Publish for Linux
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime linux-x64 --output ./dist/linux
+      - name: Publish for ${{ matrix.target-os }}
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime ${{ matrix.target-os }} -o pub
 
-      - name: Publish for macOS
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime osx-x64 --output ./dist/osx
-
-      - name: Publish for Windows
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime win-x64 --output ./dist/windows
+      - name: Copy Native Profilers
+        run: cp bin/release/libprofilers.so pub/
 
       - name: Zip
         shell: bash
-        run: |
-          zip -r "drdotnet-windows.zip" "dist/windows"
-          tar -czvf "drdotnet-linux.tar.gz" "dist/linux"
-          tar -czvf "drdotnet-osx.tar.gz" "dist/osx"
+        run: (cd pub && zip -r ../drdotnet-${{ matrix.target-os }}.zip .)
 
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
-          files: "drdotnet-*"
+          files: "drdotnet-${{ matrix.target-os }}*"
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
