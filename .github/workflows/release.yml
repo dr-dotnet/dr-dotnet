@@ -1,7 +1,6 @@
 on:
-  push:
-    tags:
-      - v*
+  release:
+    types: [published]
 
 name: release
 
@@ -34,57 +33,21 @@ jobs:
         run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime linux-x64 --output ./dist/linux
 
       - name: Publish for macOS
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime osx-x64 --output ./dist/linux
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime osx-x64 --output ./dist/osx
 
       - name: Publish for Windows
-        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime win-x64 --output ./dist/linux
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --self-contained true --runtime win-x64 --output ./dist/windows
 
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+      - name: Zip
+        shell: bash
+        run: |
+          zip -r "drdotnet-windows.zip" "dist/windows"
+          tar -czvf "drdotnet-linux.tar.gz" "dist/linux"
+          tar -czvf "drdotnet-osx.tar.gz" "dist/osx"
+
+      - name: Publish
+        uses: softprops/action-gh-release@v1
         with:
-          name: dotnet-app
-          path: |
-            dist/linux
-            dist/macos
-            dist/windows
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+          files: "drdotnet-*"
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/linux/drdotnet-desktop.tar.gz
-          asset_name: drdotnet-desktop-linux-${BUILD_NUMBER}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload Release MacOS
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/macos/drdotnet-desktop.tar.gz
-          asset_name: drdotnet-desktop-macos-${BUILD_NUMBER}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload Release Windows
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/windows/drdotnet-desktop.zip
-          asset_name: drdotnet-desktop-windows-${BUILD_NUMBER}.zip
-          asset_content_type: application/zip
