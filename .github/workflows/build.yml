@@ -1,6 +1,9 @@
-on: [push]
-
 name: build
+
+on:
+  push:
+    branches:
+      - '**'
 
 jobs:
   check:

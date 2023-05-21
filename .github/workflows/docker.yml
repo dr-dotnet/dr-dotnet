@@ -1,7 +1,7 @@
-on: [workflow_dispatch]
-
 name: docker
 run-name: Docker ${{ github.ref_name }}
+
+on: [workflow_dispatch]
 
 jobs:
   check:

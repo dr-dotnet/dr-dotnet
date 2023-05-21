@@ -1,9 +1,9 @@
+name: release
+
 on:
   push:
     tags:
       - v*
-
-name: release
 
 jobs:
   release:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target-os: ['win-64', 'linux-64', 'osx-64']
+        target-os: ['win-x64', 'linux-x64', 'osx-x64']
 
     steps:
       - name: Checkout
