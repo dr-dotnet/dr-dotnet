@@ -8,16 +8,21 @@ on:
 jobs:
   release:
     name: Release
-    runs-on: ubuntu-latest
+
     strategy:
       matrix:
         include:
           - target-os: 'win-x64'
             libname: 'profilers.dll'
+            os: 'windows-latest'
           - target-os: 'linux-x64'
             libname: 'libprofilers.so'
+            os: 'ubuntu-latest'
           - target-os: 'osx-arm64'
             libname: 'libprofilers.dylib'
+            os: 'macos-latest'
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
