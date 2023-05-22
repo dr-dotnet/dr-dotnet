@@ -66,8 +66,6 @@ jobs:
           security default-keychain -s build.keychain
           echo "Import Certificate"
           security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PASSWORD -T /usr/bin/codesign
-          echo "Set key partition list"
-          security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
           rm certificate.p12
           echo "Sign"
           codesign --keychain build.keychain --sign "Olivier Giniaux" --timestamp --options runtime --verbose --deep ./pub/DrDotnet.Desktop
