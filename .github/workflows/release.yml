@@ -24,7 +24,6 @@ jobs:
             libname: 'libprofilers.dylib'
             os: 'macos-latest'
             zip-command: 'zip -r'
-            sign-macos: true
 
     runs-on: ${{ matrix.os }}
 
@@ -51,24 +50,6 @@ jobs:
 
       - name: Publish for ${{ matrix.target-os }}
         run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --sc -r ${{ matrix.target-os }} -o pub
-
-      - if: ${{ matrix.sign-macos }}
-        name: Self-sign MacOS Certificate
-        env:
-          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-        run: |
-          echo "Read Certificate"
-          echo $MACOS_CERTIFICATE_P12 | base64 --decode > certificate.p12
-          echo "Create Keychain"
-          security create-keychain -p actions build.keychain
-          echo "Build Keychain"
-          security default-keychain -s build.keychain
-          echo "Import Certificate"
-          security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PASSWORD -T /usr/bin/codesign
-          rm certificate.p12
-          echo "Sign"
-          codesign --keychain build.keychain --sign "Olivier Giniaux" --timestamp --options runtime --verbose --deep ./pub/DrDotnet.Desktop
 
       - name: Copy Native Profilers
         run: cp bin/release/${{ matrix.libname }} pub/
