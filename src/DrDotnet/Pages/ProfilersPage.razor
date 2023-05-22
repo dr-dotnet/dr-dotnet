@@ -3,22 +3,22 @@
 @inject IProfilerDiscovery ProfilersDiscovery;
 @inject NavigationManager NavigationManager;
 
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
+<MudIconButton Style="float: left;" OnClick="@OnBackClick"/>
 
 <h3 class="mat-h3">Profilers</h3>
 
-<MatTable Items="@Profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
-    <MatTableHeader>
-        <th>Name</th>
-        <th style="min-width:300px;">Id</th>
-        <th>Description</th>
-    </MatTableHeader>
-    <MatTableRow>
-        <td>@context.Name</td>
-        <td>@context.Uuid</td>
-        <td>@context.Description</td>
-    </MatTableRow>
-</MatTable>
+<MudTable Items="@Profilers" class="mat-elevation-z5" AllowSelection="true" OnRowClick="OnSelectionChanged" T="ProfilerInfo" PageSize="Int32.MaxValue" ShowPaging="false">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh style="min-width:300px;">Id</MudTh>
+        <MudTh>Description</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd> 
+        <MudTd>@context.Uuid</MudTd>
+        <MudTd>@context.Description</MudTd>
+    </RowTemplate>
+</MudTable>
 
 @code {
     private IList<ProfilerInfo> Profilers { get; set; } = Array.Empty<ProfilerInfo>();
@@ -33,9 +33,9 @@
         Profilers = ProfilersDiscovery.GetProfilers();
     }
 
-    private void OnSelectionChanged(object data)
+    private void OnSelectionChanged(TableRowClickEventArgs<ProfilerInfo> tableRowClickEventArgs)
     {
-        NavigationManager.NavigateTo($"/job/{ProcessId}/{(data as ProfilerInfo)!.Uuid}", true);
+        NavigationManager.NavigateTo($"/job/{ProcessId}/{tableRowClickEventArgs.Item.Uuid}", true);
     }
 
     private void OnBackClick(object data)

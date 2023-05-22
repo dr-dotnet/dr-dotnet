@@ -3,22 +3,22 @@
 @inject ISessionDiscovery SessionDiscovery;
 @inject NavigationManager NavigationManager
 
-<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"/>
+<MudButton Raised="true" StartIcon="@Icons.Material.Filled.Add" OnClick="OnNewSessionClicked" Style="float: right;">New session</MudButton>
 
 <h3 class="mat-h3">Recent Sessions</h3>
 
-<MatTable Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
-    <MatTableHeader>
-        <th>Process</th>
-        <th style="min-width:300px;">Date (UTC)</th>
-        <th>Profiler</th>
-    </MatTableHeader>
-    <MatTableRow>
-        <td>@context.ProcessName</td>
-        <td>@context.TimestampDate</td>
-        <td>@context.Profiler?.Name</td>
-    </MatTableRow>
-</MatTable>
+<MudTable Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" OnRowClick="OnSelectionChanged" T="SessionInfo" PageSize="Int32.MaxValue" ShowPaging="false">
+    <HeaderContent>
+        <MudTh>Process</MudTh>
+        <MudTh style="min-width:300px;">Date (UTC)</MudTh>
+        <MudTh>Profiler</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.ProcessName</MudTd>
+        <MudTd>@context.TimestampDate</MudTd>
+        <MudTd>@context.Profiler?.Name</MudTd>
+    </RowTemplate>
+</MudTable>
 
 @code
 {
@@ -31,9 +31,9 @@
         Sessions = SessionDiscovery.GetSessions().OrderByDescending(x => x.TimestampDate);
     }
 
-    private void OnSelectionChanged(object data)
+    private void OnSelectionChanged(TableRowClickEventArgs<SessionInfo> tableRowClickEventArgs)
     {
-        NavigationManager.NavigateTo($"/sessions/{(data as SessionInfo)!.Guid}", true);
+        NavigationManager.NavigateTo($"/sessions/{tableRowClickEventArgs.Item.Guid}", true);
     }
 
     private void OnNewSessionClicked(object data)

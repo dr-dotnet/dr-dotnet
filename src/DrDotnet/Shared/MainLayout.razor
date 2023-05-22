@@ -4,13 +4,17 @@
 @implements IDisposable
 @inherits LayoutComponentBase
 
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode"/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
 <div class="page">
     <div class="main">
         <div class="top-row px-4">
             <b style="flex-grow: 1;">Dr.Dotnet</b>
             <i>Version @VersionUtils.CurrentVersion</i>
-            <MatButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MatButton>
-            <MatButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MatButton>
+            <MudButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MudButton>
+            <MudButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MudButton>
         </div>
         <div class="content px-4">
             @Body
@@ -18,24 +22,27 @@
     </div>
 </div>
 
-<MatDialog @bind-IsOpen="@IsLogDialogOpen">
-    <MatDialogContent>
-        <MatTabGroup>
-            <MatTab Label="App Logs">
+<MudDialog @bind-IsOpen="@IsLogDialogOpen">
+    <DialogContent>
+        <MudTabs>
+            <MudTabPanel Text="App Logs">
                 <LogsArea>@AppLogs</LogsArea>
-            </MatTab>
-            <MatTab Label="Profiler Logs">
+            </MudTabPanel>
+            <MudTabPanel Text="Profiler Logs">
                 <LogsArea>@ProfilerLogs</LogsArea>
-            </MatTab>
-        </MatTabGroup>
-    </MatDialogContent>
-    <MatDialogActions>
-        <MatButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MatButton>
-    </MatDialogActions>
-</MatDialog>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MudButton>
+    </DialogActions>
+</MudDialog>
  
 @code
 {
+    private bool _isDarkMode;
+    private MudThemeProvider? _mudThemeProvider;
+    
     private const int MaximumBufferSize = 65536;
     private readonly FileSystemWatcher _watcher = new(PathUtils.DrDotnetBaseDirectory);
 
@@ -97,6 +104,15 @@
         {
             // Trigger refresh of the logs view in case dialog is open and new log arrives
             InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await _mudThemeProvider!.GetSystemPreference();
+            StateHasChanged();
         }
     }
 

@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MatBlazor;
 using System.Net.Http;
 using DrDotnet.Logging;
 using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 
 namespace DrDotnet.Web;
 
@@ -19,7 +19,7 @@ public class Startup
     {
         services.AddRazorPages();
         services.AddServerSideBlazor();
-        services.AddMatBlazor();
+        services.AddMudServices();
 
         services.AddSingleton<HttpClient>();
 
