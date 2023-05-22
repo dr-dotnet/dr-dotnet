@@ -1,17 +1,18 @@
-on: [push]
-
 name: build
+
+on:
+  push:
+    branches:
+      - '**'
 
 jobs:
   check:
     name: Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet-version: ['7.0']
-        
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout 
+        uses: actions/checkout@v3
 
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
@@ -21,7 +22,7 @@ jobs:
       - name: Install Dotnet SDK
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
+          dotnet-version: '7.0'
           
       - name: Install Dependencies
         working-directory: src

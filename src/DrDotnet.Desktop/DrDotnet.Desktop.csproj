@@ -6,25 +6,24 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>..\..\bin\$(Configuration.toLower())\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DrDotnet\DrDotnet.csproj" />
-    <PackageReference Include="Photino.Blazor" Version="2.4.0" />
+    <PackageReference Include="Photino.Blazor" Version="2.6.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="wwwroot\index.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Update="wwwroot\**">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
     <None Update="favicon.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

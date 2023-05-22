@@ -1,0 +1,66 @@
+name: release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    name: Release
+
+    strategy:
+      matrix:
+        include:
+          - target-os: 'win-x64'
+            libname: 'profilers.dll'
+            os: 'windows-latest'
+            zip-command: '7z a -tzip'
+          - target-os: 'linux-x64'
+            libname: 'libprofilers.so'
+            os: 'ubuntu-latest'
+            zip-command: 'zip -r'
+          - target-os: 'osx-arm64'
+            libname: 'libprofilers.dylib'
+            os: 'macos-latest'
+            zip-command: 'zip -r'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Dotnet SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0
+
+      - name: Get Version Number
+        shell: bash
+        run: |
+          echo "VERSION=$(head -1 CHANGELOG.md | grep -o "[0-9]\.[0-9]\.[0-9]")" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+          echo Version is: $(VERSION).$(BUILD_NUMBER)
+
+      - name: Publish for ${{ matrix.target-os }}
+        run: dotnet publish src/DrDotnet.Desktop/DrDotnet.Desktop.csproj -c Release --sc -r ${{ matrix.target-os }} -o pub
+
+      - name: Copy Native Profilers
+        run: cp bin/release/${{ matrix.libname }} pub/
+
+      - name: Zip
+        shell: bash
+        run: (cd pub && ${{ matrix.zip-command }} ../drdotnet-${{ matrix.target-os }}.zip .)
+
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "drdotnet-${{ matrix.target-os }}*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
