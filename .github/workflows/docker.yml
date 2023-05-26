@@ -1,7 +1,9 @@
 name: docker
-run-name: Docker ${{ github.ref_name }}
 
-on: [workflow_dispatch]
+on:
+  push:
+    tags:
+      - '*'
 
 jobs:
   check:
@@ -24,7 +26,7 @@ jobs:
 
       - name: Get Version Number
         run: |
-          echo "VERSION=$(head -1 CHANGELOG.md | grep -o "[0-9]\.[0-9]\.[0-9]")" >> $GITHUB_ENV
+          echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
           echo Version is: $(VERSION).$(BUILD_NUMBER)
 
