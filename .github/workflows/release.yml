@@ -43,10 +43,10 @@ jobs:
       - name: Docker Build branch
         if: ${{ github.ref_name != 'master' }}
         run: |
-          BRANCH_NAME=$(git branch -r --contains ${{ github.ref }})
-          echo $BRANCH_NAME
+          git fetch
+          BRANCH_NAME=$(git branch -r --contains ${{ github.ref_name }} --format='%(refname:short)')
           BRANCH_NAME=${BRANCH_NAME#*/}
-          echo $BRANCH_NAME
+          echo "> branch name: $BRANCH_NAME"
           docker build -f src/Dockerfile -t drdotnet/web:${VERSION}.${BUILD_NUMBER}-${BRANCH_NAME} .
 
       - name: Docker Build master
