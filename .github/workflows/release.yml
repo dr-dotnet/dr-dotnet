@@ -3,12 +3,62 @@ name: release
 on:
   push:
     tags:
-      - v*
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
-  release:
-    name: Release
 
+  push-docker:
+    name: Push Docker
+    runs-on: ubuntu-20.04 # had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
+        
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Dotnet SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '7.0'
+
+      - name: Get Version Number
+        run: |
+          echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+          echo Version is: $(VERSION).$(BUILD_NUMBER)
+
+      - name: Publish
+        run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
+
+      - name: Copy Native Profilers
+        run: cp bin/release/libprofilers.so pub/
+
+      - name: Docker Login
+        run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+
+      - name: Docker Build branch
+        if: ${{ github.ref_name != 'master' }}
+        run: |
+          git fetch
+          BRANCH_NAME=$(git branch -r --contains ${{ github.ref_name }} --format='%(refname:short)')
+          BRANCH_NAME=${BRANCH_NAME#*/}
+          echo "> branch name: $BRANCH_NAME"
+          docker build -f src/Dockerfile -t drdotnet/web:${VERSION}.${BUILD_NUMBER}-${BRANCH_NAME} .
+
+      - name: Docker Build master
+        if: ${{ github.ref_name == 'master' }}
+        run: docker build -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
+ 
+      - name: Docker Push
+        run: docker push --all-tags drdotnet/web
+
+  create-release:
+    name: Create Release
+    if: github.ref == 'refs/heads/master' # We only allow releases from master branch
     strategy:
       matrix:
         include:
@@ -44,7 +94,7 @@ jobs:
       - name: Get Version Number
         shell: bash
         run: |
-          echo "VERSION=$(head -1 CHANGELOG.md | grep -o "[0-9]\.[0-9]\.[0-9]")" >> $GITHUB_ENV
+          echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
           echo Version is: $(VERSION).$(BUILD_NUMBER)
 
