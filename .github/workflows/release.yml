@@ -42,7 +42,9 @@ jobs:
 
       - name: Docker Build branch
         if: ${{ github.ref_name != 'master' }}
-        run: docker build -f src/Dockerfile -t drdotnet/web:${VERSION}.${BUILD_NUMBER}-${{ github.ref_name }} .
+        run: |
+          BRANCH_NAME=$(git branch --show-current)
+          docker build -f src/Dockerfile -t drdotnet/web:${VERSION}.${BUILD_NUMBER}-${BRANCH_NAME} .
 
       - name: Docker Build master
         if: ${{ github.ref_name == 'master' }}
