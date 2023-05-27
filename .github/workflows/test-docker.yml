@@ -1,7 +1,6 @@
-on: workflow_dispatch
-
 name: 'Push Test Docker Image'
-description: 'Create a push a docker image to docker hub for testing purposes'
+
+on: workflow_dispatch
 
 jobs:
   push-docker:
