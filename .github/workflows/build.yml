@@ -6,7 +6,7 @@ on:
       - '**'
 
 jobs:
-  check:
+  build-test:
     name: Build & Test
     runs-on: ubuntu-latest
 
@@ -35,3 +35,11 @@ jobs:
       - name: Test
         working-directory: src
         run: dotnet test --no-restore --verbosity normal
+
+  publish:
+    needs: [build-test]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: publish
+        run: echo 'publishing'
