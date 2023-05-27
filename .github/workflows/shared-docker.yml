@@ -4,7 +4,7 @@ on:
       version:
         description: 'The version (x.x.x)'
         required: true
-      image-suffix:
+      suffix:
         description: 'The docker image suffix'
         required: false
 
