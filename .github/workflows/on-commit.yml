@@ -1,4 +1,4 @@
-name: 'Build & Test'
+name: 'On Commit'
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - '**'
 
 jobs:
+
   build-test:
     name: Build & Test
     runs-on: ubuntu-latest
@@ -17,7 +18,7 @@ jobs:
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: stable
+          toolchain: stable
 
       - name: Install Dotnet SDK
         uses: actions/setup-dotnet@v2
@@ -36,10 +37,19 @@ jobs:
         working-directory: src
         run: dotnet test --no-restore --verbosity normal
 
-  publish:
+  push-docker:
+    if: github.ref != 'refs/heads/master'
+    name: Push Test Docker Image
     needs: [build-test]
-    runs-on: ubuntu-latest
-    environment: production
+    environment: dev
+    runs-on: ubuntu-20.04 # Had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
+        
     steps:
-      - name: publish
-        run: echo 'publishing'
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create Docker Image
+        uses: ./.github/actions/docker.yml
+        with:
+          version: '0.0.0' # A test docker image has no version
+          suffix: ${{ github.ref_name }} # A test docker image can be identified by the branch name
