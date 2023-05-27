@@ -1,16 +1,22 @@
-name: 'Docker'
-description: 'Create a push a docker image to docker hub'
+name: 'Push Docker'
+
 inputs:
   version:
     description: 'The version (x.x.x)'
     required: true
-  image-suffix:
+  suffix:
     description: 'The docker image suffix'
     required: false
+  docker-token:
+    description: 'Docker deploy token'
+    required: true
+  docker-username:
+    description: 'Docker username'
+    required: true
+
 runs:
   using: "composite"
-  name: Docker
-   
+
   steps:
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
@@ -23,25 +29,33 @@ runs:
         dotnet-version: '7.0'
 
     - name: Publish
-      run: |
-        VERSION=${{ inputs.version }}
-        dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        BUILD_NUMBER: ${{ github.run_number }}
+      run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
 
     - name: Copy Native Profilers
+      shell: bash
       run: cp bin/release/libprofilers.so pub/
 
     - name: Docker Login
-      run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      shell: bash
+      run: echo ${{ inputs.docker-token }} | docker login -u ${{ inputs.docker-username }} --password-stdin
 
     - name: Docker Build (with suffix)
       if: ${{ inputs.suffix != '' }}
+      shell: bash
       run: docker build -f src/Dockerfile -t drdotnet/web:${{ inputs.version }}.${{ github.run_number }}-${{ inputs.suffix }} .
 
     - name: Docker Build
       if: ${{ inputs.suffix == '' }}
-      run: |
-        VERSION=${{ inputs.version }}
-        docker build -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
+      env:
+        VERSION: ${{ inputs.version }}
+      shell: bash
+      run: docker build -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
 
     - name: Docker Push
+      shell: bash
       run: docker push --all-tags drdotnet/web
+      
