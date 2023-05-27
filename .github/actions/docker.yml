@@ -1,47 +1,52 @@
-name: 'Docker'
-description: 'Create a push a docker image to docker hub'
-inputs:
-  version:
-    description: 'The version (x.x.x)'
-    required: true
-  image-suffix:
-    description: 'The docker image suffix'
-    required: false
-runs:
-  using: "composite"
-  name: Docker
-   
-  steps:
-    - name: Install Rust Toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'The version (x.x.x)'
+        required: true
+      image-suffix:
+        description: 'The docker image suffix'
+        required: false
 
-    - name: Install Dotnet SDK
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: '7.0'
+jobs:
+  push-docker:
+    using: "composite"
+    name: Docker
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Publish
-      run: |
-        VERSION=${{ inputs.version }}
-        dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - name: Copy Native Profilers
-      run: cp bin/release/libprofilers.so pub/
+      - name: Install Dotnet SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '7.0'
 
-    - name: Docker Login
-      run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Publish
+        run: |
+          VERSION=${{ inputs.version }}
+          dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
 
-    - name: Docker Build (with suffix)
-      if: ${{ inputs.suffix != '' }}
-      run: docker build -f src/Dockerfile -t drdotnet/web:${{ inputs.version }}.${{ github.run_number }}-${{ inputs.suffix }} .
+      - name: Copy Native Profilers
+        run: cp bin/release/libprofilers.so pub/
 
-    - name: Docker Build
-      if: ${{ inputs.suffix == '' }}
-      run: |
-        VERSION=${{ inputs.version }}
-        docker build -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
+      - name: Docker Login
+        run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
-    - name: Docker Push
-      run: docker push --all-tags drdotnet/web
+      - name: Docker Build (with suffix)
+        if: ${{ inputs.suffix != '' }}
+        run: docker build -f src/Dockerfile -t drdotnet/web:${{ inputs.version }}.${{ github.run_number }}-${{ inputs.suffix }} .
+
+      - name: Docker Build
+        if: ${{ inputs.suffix == '' }}
+        run: |
+          VERSION=${{ inputs.version }}
+          docker build -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
+
+      - name: Docker Push
+        run: docker push --all-tags drdotnet/web
