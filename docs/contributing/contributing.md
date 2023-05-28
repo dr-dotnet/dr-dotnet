@@ -10,8 +10,8 @@
     - If you want to propose a Pull Request
       - Checkout the [architecture](achitecture.md) and the [building guidelines](BUILDING.md) to get started
       - Make sure it builds and that tests are passing
-      - Add changes in [Changelog](../../CHANGELOG.md) and increment version (semver). The first line is parsed and becomes the release version in the CD pipeline.
-        - Prefer starting changelog entries with one of the following (in this order): Add, Update, Change, Improve, Remove or Fix.
+
+Also checkout the [CI/CD](ci-cd.md) for more information on how versioning and releases work.
 
 ## Project Spirit
 

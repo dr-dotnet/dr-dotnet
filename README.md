@@ -2,17 +2,17 @@
 
 # Dr. Dotnet
 
-![build](https://github.com/ogxd/dr-dotnet/actions/workflows/build.yml/badge.svg)
-![docker](https://github.com/ogxd/dr-dotnet/actions/workflows/docker.yml/badge.svg)    
-![](https://badgen.net/badge/windows/supported/green)
-![](https://badgen.net/badge/linux/supported/green)
-![](https://badgen.net/badge/macos/supported/green)
+![](https://img.shields.io/badge/build-passing-success)
+![](https://img.shields.io/badge/tests-passing-success)    
+![](https://img.shields.io/badge/windows-supported-success)
+![](https://img.shields.io/badge/macos-supported-success)
+![](https://img.shields.io/badge/linux-supported-success)
 
-Dr. Dotnet is a profiling tool for .NET applications, created with a specific vision in mind. It aims to offer an alternative approach to conventional profiling methods, focusing on specific problem areas and providing the flexibility for both local and remote profiling.
+Dr. Dotnet is a profiling tool for .NET applications, created with a specific vision in mind. It aims to offer an alternative approach to conventional profiling methods, focusing on specific problem areas and providing flexibility for both local and remote profiling.
 
-While traditional profilers often generate substantial amounts of data, making the process of identifying issues a complex task, Dr-Dotnet takes a different route. It is designed to highlight specific problem areas such as memory leaks, deadlocks, CPU hotpaths, zombie threads, or stuck tasks. This approach aims to simplify the process of troubleshooting by focusing on common issues, providing analysis results that are often compact enough to be summarized in a few lines or a table.
+While traditional profilers often generate substantial amounts of data, making the process of identifying issues a complex task, Dr-Dotnet takes a different route. It is designed to highlight specific problem areas such as memory leaks, deadlocks, CPU hotpaths, zombie threads, or stuck tasks. This approach aims to simplify the process of troubleshooting by focusing on common issues, and providing analysis results that are often compact enough to be summarized in a few lines or a table.
 
-Furthermore, unlike many traditional profiling tools, Dr-Dotnet offers the possibility of remote profiling. This for instance allows developers to profile production containerized microservices from their laptops. This also enables profiling sessions to be historized and shared to teammates with a simple link. 
+Furthermore, unlike many traditional profiling tools, Dr-Dotnet offers the possibility of remote profiling. This for instance allows developers to profile production containerized microservices from their laptops. This also enables profiling sessions to be historized and shared with teammates with a simple link. 
 
 ![](res/demo.png)
 
