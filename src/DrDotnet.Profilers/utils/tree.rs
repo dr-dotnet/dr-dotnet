@@ -56,16 +56,18 @@ impl<K, V> TreeNode<K, V>
         }
     }
 
-    pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
+    pub fn build_from_sequences<H, I>(sequences: &HashMap<I, V, H>, root_key: K) -> TreeNode<K, V> 
+        where I: AsRef<[K]>
+    {
         let mut root = TreeNode::new(root_key);
         
         for (sequence, value) in sequences {
             let mut current = &mut root;
-            for y in sequence {
-                let mut child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
+            for y in sequence.as_ref() {
+                let child: &mut TreeNode<K, V> = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
                     &mut current.children[i]
                 } else {
-                    let mut new_child: TreeNode<K, V> = TreeNode::new(*y);
+                    let new_child: TreeNode<K, V> = TreeNode::new(y.clone());
                     current.children.push(new_child);
                     let len = current.children.len();
                     &mut current.children[len - 1]

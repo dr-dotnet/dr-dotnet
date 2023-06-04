@@ -21,8 +21,8 @@ impl Hasher for SimpleHasher {
     }
 
     #[inline]
-    fn write_u32(&mut self, i: u32) {
-        let mut hash: u64 = i as u64;
+    fn write_usize(&mut self, i: usize) {
+        let mut hash = i as u64;
         hash ^= hash >> 33;
         hash = hash.wrapping_mul(0xff51afd7ed558ccd);
         hash ^= hash >> 33;
@@ -34,17 +34,6 @@ impl Hasher for SimpleHasher {
     #[inline]
     fn write_u64(&mut self, i: u64) {
         let mut hash = i;
-        hash ^= hash >> 33;
-        hash = hash.wrapping_mul(0xff51afd7ed558ccd);
-        hash ^= hash >> 33;
-        hash = hash.wrapping_mul(0xc4ceb9fe1a85ec53);
-        hash ^= hash >> 33;
-        self.0 = hash;
-    }
-
-    #[inline]
-    fn write_usize(&mut self, i: usize) {
-        let mut hash = i as u64;
         hash ^= hash >> 33;
         hash = hash.wrapping_mul(0xff51afd7ed558ccd);
         hash ^= hash >> 33;
