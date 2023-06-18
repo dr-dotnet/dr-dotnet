@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
-public class CpuHotpathProfilerTests : ProfilerTests
+public class LockContentionProfilerTests : ProfilerTests
 {
     protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-A485B2056E71}");
 
@@ -28,16 +28,18 @@ public class CpuHotpathProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(160_000)]
     [NonParallelizable]
-    public async Task Profiler_Lists_Cpu_Hotpaths()
+    public async Task Profiler_Lists_Hot_Locks()
     {
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        using var service1 = new FibonacciSimulation();
-        using var service2 = new FibonacciSimulation();
-        using var service3 = new FibonacciSimulation();
-        using var service4 = new FibonacciSimulation();
+        object lockObject = new object();
+        
+        using var service1 = new LockingSimulation(lockObject);
+        using var service2 = new LockingSimulation(lockObject);
+        using var service3 = new LockingSimulation(lockObject);
+        using var service4 = new LockingSimulation(lockObject);
         
         await Task.Delay(3000);
   

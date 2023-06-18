@@ -37,7 +37,7 @@ impl Profiler for CpuHotpathProfiler {
                     key: "time_interval_ms".to_owned(),
                     description: "Time interval between two samples in milliseconds".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "40".to_owned(),
+                    value: "10".to_owned(),
                     ..std::default::Default::default()
                 }
             ],
