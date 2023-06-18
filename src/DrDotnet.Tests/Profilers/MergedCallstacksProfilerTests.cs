@@ -34,10 +34,10 @@ public class MergedCallstacksProfilerTests : ProfilerTests
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        using var service1 = new FibonacciSimulation();
-        using var service2 = new FibonacciSimulation();
-        using var service3 = new FibonacciSimulation();
-        using var service4 = new FibonacciSimulation();
+        using var service1 = new PrimeSimulation();
+        using var service2 = new PrimeSimulation();
+        using var service3 = new PrimeSimulation();
+        using var service4 = new PrimeSimulation();
         
         await Task.Delay(3000);
   

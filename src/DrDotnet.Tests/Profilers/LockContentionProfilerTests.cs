@@ -34,21 +34,16 @@ public class CpuHotpathProfilerTests : ProfilerTests
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        using var service1 = new PrimeSimulation();
-        using var service2 = new PrimeSimulation();
-        using var service3 = new PrimeSimulation();
-        using var service4 = new PrimeSimulation();
+        using var service1 = new FibonacciSimulation();
+        using var service2 = new FibonacciSimulation();
+        using var service3 = new FibonacciSimulation();
+        using var service4 = new FibonacciSimulation();
         
         await Task.Delay(3000);
   
         SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
 
         await session.AwaitUntilCompletion();
-        
-        Console.WriteLine("Prime 1: " + service1.CurrentPrime);
-        Console.WriteLine("Prime 2: " + service2.CurrentPrime);
-        Console.WriteLine("Prime 3: " + service3.CurrentPrime);
-        Console.WriteLine("Prime 4: " + service4.CurrentPrime);
 
         Console.WriteLine("Session Directory: " + session.Path);
 
