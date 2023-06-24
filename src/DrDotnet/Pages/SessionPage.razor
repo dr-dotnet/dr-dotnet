@@ -48,7 +48,7 @@
     public required Guid SessionId { get; init; }
 
     private SessionInfo? _session;
-    private SessionInfo Session => _session ??= SessionDiscovery.GetSession(SessionId);
+    private SessionInfo Session => _session ??= SessionDiscovery.TryGetSession(SessionId, out SessionInfo? session) ? session : throw new InvalidOperationException($"Session {SessionId} not found");
 
     private static MarkupString ConvertFileToMarkup(FileInfo file)
     {

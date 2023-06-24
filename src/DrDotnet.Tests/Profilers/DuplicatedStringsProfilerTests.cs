@@ -40,7 +40,8 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
             list.Add(new string('6',6));
         }
 
-        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
+        Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
 
         await session.AwaitUntilCompletion();
 

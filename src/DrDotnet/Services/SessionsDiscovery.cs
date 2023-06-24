@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using DrDotnet.Utils;
 using Microsoft.Extensions.Logging;
@@ -36,8 +37,17 @@ public class SessionsDiscovery : ISessionDiscovery
         return sessions;
     }
 
-    public SessionInfo GetSession(Guid sessionId)
+    public bool TryGetSession(Guid sessionId, [NotNullWhen(true)] out SessionInfo? sessionInfo)
     {
-        return SessionInfo.FromPath(SessionInfo.GetPath(sessionId));
+        try
+        {
+            sessionInfo = SessionInfo.FromPath(SessionInfo.GetPath(sessionId))!;
+            return true;
+        }
+        catch
+        {
+            sessionInfo = null;
+            return false;
+        }
     }
 }

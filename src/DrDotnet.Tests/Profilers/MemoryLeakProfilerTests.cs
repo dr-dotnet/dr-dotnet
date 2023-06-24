@@ -35,7 +35,8 @@ public class MemoryLeakProfilerTests : ProfilerTests
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
+        Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
 
         // Intentionally allocates memory
         int i = 0;

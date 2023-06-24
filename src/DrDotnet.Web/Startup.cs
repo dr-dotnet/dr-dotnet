@@ -30,6 +30,8 @@ public class Startup
         services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
+
+        services.AddControllers();
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -55,6 +57,7 @@ public class Startup
         {
             endpoints.MapBlazorHub();
             endpoints.MapFallbackToPage("/_Host");
+            endpoints.MapControllers();
         });
     }
 }

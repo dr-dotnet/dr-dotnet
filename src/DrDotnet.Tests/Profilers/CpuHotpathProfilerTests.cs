@@ -41,7 +41,8 @@ public class CpuHotpathProfilerTests : ProfilerTests
         
         await Task.Delay(3000);
   
-        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
+        Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
 
         await session.AwaitUntilCompletion();
 
