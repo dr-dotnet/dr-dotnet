@@ -9,7 +9,7 @@ macro_rules! register{
     ($($type:ty),+) => (
 
         use crate::api::*;
-        use profilers::*;
+        use crate::profilers::*;
         use crate::rust_protobuf_protos::interop::*;
 
         // Attaches the profiler with the given rclsid to the targeted process.
