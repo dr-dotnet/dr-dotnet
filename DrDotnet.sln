@@ -3,18 +3,18 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet", "DrDotnet\DrDotnet.csproj", "{62AF041E-429E-4FE9-9819-DBF3BCFDB45E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet", "src\DrDotnet\DrDotnet.csproj", "{62AF041E-429E-4FE9-9819-DBF3BCFDB45E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Web", "DrDotnet.Web\DrDotnet.Web.csproj", "{D717472D-14CA-405C-8258-F6C1875F0F2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Web", "src\DrDotnet.Web\DrDotnet.Web.csproj", "{D717472D-14CA-405C-8258-F6C1875F0F2C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{62AF041E-429E-4FE9-9819-DBF3BCFDB45E} = {62AF041E-429E-4FE9-9819-DBF3BCFDB45E}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Tests", "DrDotnet.Tests\DrDotnet.Tests.csproj", "{7CABBABF-0595-4EC2-892F-36986B4AB43D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Tests", "tests\DrDotnet.Tests\DrDotnet.Tests.csproj", "{7CABBABF-0595-4EC2-892F-36986B4AB43D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "src\DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
 	ProjectSection(SolutionItems) = preProject
 		..\README.md = ..\README.md
 		..\CODE_OF_CONDUCT.md = ..\CODE_OF_CONDUCT.md
@@ -24,20 +24,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 		..\BUILDING.md = ..\BUILDING.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Github", "Github", "{AC974AE4-3CB7-41BE-B9D2-129759DEAA0B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github", "github", "{AC974AE4-3CB7-41BE-B9D2-129759DEAA0B}"
 	ProjectSection(SolutionItems) = preProject
-		..\.github\workflows\build.yml = ..\.github\workflows\build.yml
-		..\.github\workflows\docker.yml = ..\.github\workflows\docker.yml
+		.github\workflows\build.yml = .github\workflows\build.yml
+		.github\workflows\docker.yml = .github\workflows\docker.yml
 		Dockerfile = Dockerfile
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Properties", "Properties", "{5DD991BF-55D5-459C-9DCD-CE3E1B657D60}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "properties", "properties", "{5DD991BF-55D5-459C-9DCD-CE3E1B657D60}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
-		..\CHANGELOG.md = ..\CHANGELOG.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DrDotnet.Web.Tests", "DrDotnet.Web.Tests\DrDotnet.Web.Tests.csproj", "{C6E77384-FF51-4194-8036-7413BEBEB829}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DrDotnet.Web.Tests", "tests\DrDotnet.Web.Tests\DrDotnet.Web.Tests.csproj", "{C6E77384-FF51-4194-8036-7413BEBEB829}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{81BB7ACF-EFC4-417F-9603-3AB8444D13C2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C5DA4F27-53B6-456E-A9C2-DDA4FD0F2549}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -115,5 +118,12 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A87AC77F-7D77-46A7-B184-D2B15919F131}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{62AF041E-429E-4FE9-9819-DBF3BCFDB45E} = {81BB7ACF-EFC4-417F-9603-3AB8444D13C2}
+		{D717472D-14CA-405C-8258-F6C1875F0F2C} = {81BB7ACF-EFC4-417F-9603-3AB8444D13C2}
+		{5291DB37-405F-44C6-862F-7898D9D96903} = {81BB7ACF-EFC4-417F-9603-3AB8444D13C2}
+		{7CABBABF-0595-4EC2-892F-36986B4AB43D} = {C5DA4F27-53B6-456E-A9C2-DDA4FD0F2549}
+		{C6E77384-FF51-4194-8036-7413BEBEB829} = {C5DA4F27-53B6-456E-A9C2-DDA4FD0F2549}
 	EndGlobalSection
 EndGlobal
