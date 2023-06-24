@@ -26,14 +26,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{0FACCB27-B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github", "github", "{AC974AE4-3CB7-41BE-B9D2-129759DEAA0B}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\build.yml = .github\workflows\build.yml
-		.github\workflows\docker.yml = .github\workflows\docker.yml
-		Dockerfile = Dockerfile
+		.github\workflows\on-commit.yml = .github\workflows\on-commit.yml
+		.github\workflows\on-version-tag.yml = .github\workflows\on-version-tag.yml
+		.github\actions\push-docker\action.yml = .github\actions\push-docker\action.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "properties", "properties", "{5DD991BF-55D5-459C-9DCD-CE3E1B657D60}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
+		src\Dockerfile = src\Dockerfile
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DrDotnet.Web.Tests", "tests\DrDotnet.Web.Tests\DrDotnet.Web.Tests.csproj", "{C6E77384-FF51-4194-8036-7413BEBEB829}"

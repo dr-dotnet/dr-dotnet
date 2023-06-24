@@ -7,13 +7,20 @@ using NUnit.Framework;
 
 namespace DrDotnet.Web.Tests;
 
+[NonParallelizable]
 public class RestApiTests
 {
-    private HttpClient CreateClient()
+    [SetUp]
+    public void Setup()
     {
         Environment.SetEnvironmentVariable("CONSOLE_LOGGING_ENABLED", "false");
         Environment.SetEnvironmentVariable("FILE_LOGGING_ENABLED", "false");
-        
+        Environment.SetEnvironmentVariable("REST_API_ENABLED", "true");
+        Environment.SetEnvironmentVariable("WEB_UI_ENABLED", "true");
+    }
+    
+    private HttpClient CreateClient()
+    {
         var webApplication = new WebApplicationFactory<Startup>();
 
         var sessionDiscovery = new Mock<ISessionDiscovery>();
