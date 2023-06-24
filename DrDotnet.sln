@@ -14,16 +14,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Tests", "tests\DrD
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DrDotnet.Desktop", "src\DrDotnet.Desktop\DrDotnet.Desktop.csproj", "{5291DB37-405F-44C6-862F-7898D9D96903}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{0FACCB27-B1AC-433E-A0EF-4458F1BF2344}"
-	ProjectSection(SolutionItems) = preProject
-		..\README.md = ..\README.md
-		..\CODE_OF_CONDUCT.md = ..\CODE_OF_CONDUCT.md
-		..\LICENSE.md = ..\LICENSE.md
-		..\CONTRIBUTING.md = ..\CONTRIBUTING.md
-		..\ARCHITECTURE.md = ..\ARCHITECTURE.md
-		..\BUILDING.md = ..\BUILDING.md
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github", "github", "{AC974AE4-3CB7-41BE-B9D2-129759DEAA0B}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\on-commit.yml = .github\workflows\on-commit.yml
