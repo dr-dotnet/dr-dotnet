@@ -45,7 +45,7 @@ public class ProcessDiscovery : IProcessDiscovery
         }
     }
 
-    public List<ProcessInfo> GetDotnetProcesses(Action<float> progressCallback)
+    public List<ProcessInfo> GetDotnetProcesses(Action<float>? progressCallback)
     {
         _logger.LogInformation("Listing dotnet processes...");
 
@@ -66,7 +66,7 @@ public class ProcessDiscovery : IProcessDiscovery
             int i = 0;
             foreach (int processId in processes)
             {
-                progressCallback(1f * i / processes.Count);
+                progressCallback?.Invoke(1f * i / processes.Count);
             
                 _logger.LogInformation($"- Process Id: {processId}");
                 

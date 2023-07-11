@@ -46,3 +46,29 @@ Then go ahead and open your browser at `http://localhost:8000`
 ## Using web app version - Kubernetes
 
 This is possible, but currently, the workflow is a little rough. We are working on making it easier. Please come back later :)
+
+# Rest API
+
+## Context
+
+There is an usecase of using DrDotnet via a REST API, such as automation. A quite common usecase is to be able to automatically trigger a profiling session when an issue is detected. For instance, if a metric reports a likely memory leak, a memory leak analysis can be triggered automatically immediately and analyzed later by developers from the UI.
+
+## Solution
+
+### Scope
+Only Web version of DrDotnet. Desktop version remains usable through UI only.
+
+### Endpoints
+- POST `/api/sessions` Start a new session
+- GET `/api/sessions` Return previous sessions
+- GET `/api/sessions/{guid}` Return session for given guid
+- GET `/api/sessions/{guid}/download` Return session reports as .zip for given guid
+- GET `/api/processes` Return list of processes available to profile
+- GET `/api/profilers` Return list of profilers available
+
+In development you can launch the Web app and navigate to http://localhost:92/swagger to find the Swagger UI and an accurate and complete documentation of the API.
+
+### Configuration
+- `WEB_UI_ENABLED=false` or `--no-web-ui` arg will disable web UI (only REST API)
+- `REST_API_ENABLED=false` or `--no-rest-api` arg will disable REST API (only web UI)
+  Otherwise both are enabled by default.

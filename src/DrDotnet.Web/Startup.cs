@@ -70,6 +70,7 @@ public class Startup
         if (_restApiEnabled)
         {
             services.AddControllers();
+            services.AddSwaggerGen();
         }
     }
 
@@ -79,6 +80,8 @@ public class Startup
         if (env.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
         else
         {
