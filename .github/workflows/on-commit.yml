@@ -26,15 +26,12 @@ jobs:
           dotnet-version: '7.0'
           
       - name: Install Dependencies
-        working-directory: src
         run: dotnet restore
 
       - name: Build
-        working-directory: src
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        working-directory: src
         run: dotnet test --no-restore --verbosity normal
 
   push-docker:

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DrDotnet
 {
@@ -7,6 +8,6 @@ namespace DrDotnet
     {
         List<SessionInfo> GetSessions();
 
-        SessionInfo GetSession(Guid sessionId);
+        bool TryGetSession(Guid sessionId, [NotNullWhen(true)] out SessionInfo? sessionInfo);
     }
 }

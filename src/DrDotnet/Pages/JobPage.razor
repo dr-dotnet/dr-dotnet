@@ -114,7 +114,10 @@
         {
             try
             {
-                ProcessInfo process = ProcessDiscovery.GetProcessInfoFromPid(ProcessId)!;
+                if (!ProcessDiscovery.TryGetProcessInfoFromPid(ProcessId, out ProcessInfo? process))
+                {
+                    throw new InvalidOperationException("Could not find process with PID {ProcessId}");
+                }
 
                 // Todo check profiler and check process
                 Logger.LogInformation("Start profiling!");

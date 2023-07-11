@@ -11,9 +11,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
-public class MergedCallstacksProfilerTests : ProfilerTests
+public class CpuHotpathProfilerTests : ProfilerTests
 {
-    protected override Guid ProfilerGuid => new Guid("{9404d16c-b49e-11ed-afa1-0242ac120002}");
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-A485B2056E71}");
 
     [Test]
     [Order(0)]
@@ -28,7 +28,7 @@ public class MergedCallstacksProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(160_000)]
     [NonParallelizable]
-    public async Task Profiler_Merged_Callstacks()
+    public async Task Profiler_Lists_Cpu_Hotpaths()
     {
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
@@ -41,13 +41,14 @@ public class MergedCallstacksProfilerTests : ProfilerTests
         
         await Task.Delay(3000);
   
-        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
+        Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
 
         await session.AwaitUntilCompletion();
 
         Console.WriteLine("Session Directory: " + session.Path);
 
-        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.md");
+        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "stacks.html");
 
         Assert.NotNull(summary, "No summary have been created!");
 

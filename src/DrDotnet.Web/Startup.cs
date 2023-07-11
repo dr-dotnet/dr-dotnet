@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,29 +9,68 @@ using MatBlazor;
 using System.Net.Http;
 using DrDotnet.Logging;
 using DrDotnet.Utils;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet.Web;
 
 public class Startup
 {
+    private readonly bool _webUiEnabled;
+    private readonly bool _restApiEnabled;
+    private readonly bool _consoleLoggingEnabled;
+    private readonly bool _fileLoggingEnabled;
+    
+    public Startup(IConfiguration configuration)
+    {
+        _consoleLoggingEnabled = configuration.GetValue("CONSOLE_LOGGING_ENABLED", true) && !Environment.GetCommandLineArgs().Contains("--no-console-logging");
+        _fileLoggingEnabled = configuration.GetValue("FILE_LOGGING_ENABLED", true) && !Environment.GetCommandLineArgs().Contains("--no-file-logging");
+        _webUiEnabled = configuration.GetValue("WEB_UI_ENABLED", true) && !Environment.GetCommandLineArgs().Contains("--no-web-ui");
+        _restApiEnabled = configuration.GetValue("REST_API_ENABLED", true) && !Environment.GetCommandLineArgs().Contains("--no-rest-api");
+
+        if (!_webUiEnabled) Console.WriteLine("Web UI is disabled");
+        if (!_restApiEnabled) Console.WriteLine("REST API is disabled");
+
+        if (!_webUiEnabled && !_restApiEnabled)
+        {
+            throw new InvalidOperationException("Both Web UI and REST API are disabled. There should be at least one of the two enabled.");
+        }
+    }
+
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddRazorPages();
-        services.AddServerSideBlazor();
-        services.AddMatBlazor();
-
         services.AddSingleton<HttpClient>();
 
-        services.AddLogging(lb => lb
-            .AddSimpleConsole()
-            .AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.debug.log")));
+        services.AddLogging(lb =>
+        {
+            if (_consoleLoggingEnabled)
+            {
+                lb.AddSimpleConsole();
+            }
+
+            if (_fileLoggingEnabled)
+            {
+                lb.AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.debug.log"));
+            }
+        });
         
         services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
+        
+        if (_webUiEnabled)
+        {
+            services.AddRazorPages();
+            services.AddServerSideBlazor();
+            services.AddMatBlazor();
+        }
+
+        if (_restApiEnabled)
+        {
+            services.AddControllers();
+        }
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -53,8 +94,16 @@ public class Startup
 
         app.UseEndpoints(endpoints =>
         {
-            endpoints.MapBlazorHub();
-            endpoints.MapFallbackToPage("/_Host");
+            if (_webUiEnabled)
+            {
+                endpoints.MapBlazorHub();
+                //endpoints.MapFallbackToPage("/_Host");
+            }
+            
+            if (_restApiEnabled)
+            {
+                endpoints.MapControllers();
+            }
         });
     }
 }

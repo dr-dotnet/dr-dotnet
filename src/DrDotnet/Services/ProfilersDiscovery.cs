@@ -5,13 +5,8 @@ namespace DrDotnet;
 
 public class ProfilersDiscovery : IProfilerDiscovery
 {
-    private List<ProfilerInfo>? _profilers;
-
     public List<ProfilerInfo> GetProfilers(bool listUnreleasedProfilers = false)
     {
-        if (_profilers != null)
-            return _profilers;
-
         var profilers = new List<ProfilerInfo>();
 
         var interopProfilers = NativeProfilersInterface.GetAvailableProfilers();
@@ -24,6 +19,6 @@ public class ProfilersDiscovery : IProfilerDiscovery
             }
         }
 
-        return _profilers = profilers;
+        return profilers;
     }
 }

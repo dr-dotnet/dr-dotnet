@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,17 +12,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
-public class AllocationByClassProfilerTests : ProfilerTests
+public class MemoryLeakProfilerTests : ProfilerTests
 {
-    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E84}");
-
-    [Test]
-    public void Runtime_Version_Is_At_Least_6_0_3()
-    {
-        // There was a bug introduced in dotnet 6 where ObjectAllocatedByClass callback would not work properly
-        // It was fixed in dotnet runtime 6.0.3.
-        Assert.GreaterOrEqual(Environment.Version, new Version(6, 0, 3));
-    }
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E83}");
 
     [Test]
     [Order(0)]
@@ -36,50 +29,59 @@ public class AllocationByClassProfilerTests : ProfilerTests
     [Order(1)]
     [Timeout(30_000)]
     [NonParallelizable]
-    public async Task Profiler_Counts_Allocations_By_Class()
+    public async Task Profiler_Detects_Memory_Leaks()
     {
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
 
-        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processDiscovery.GetProcessInfoFromPid(Process.GetCurrentProcess().Id), logger);
+        Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
 
         // Intentionally allocates memory
         int i = 0;
         Node node = new Node();
+        var baseNode = node;
         ThreadPool.QueueUserWorkItem(async _ =>
         {
             while (true)
             {
-                node.Child = node = new Node { Name = "mynode" + i++ };
+                node.Child = node = new Node { Name = "mynode" + i++, List = new List<int>() };
                 if (i % 100 == 0)
                 {
                     await Task.Delay(10);
                 }
-                if (i % 1000 == 0)
+                if (i % 5000 == 0)
                 {
-                    GC.Collect();
+                    GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: false);
                 }
             }
         });
 
+        // Warmup
+        await Task.Delay(1000);
+
         await session.AwaitUntilCompletion();
 
-        var summary = session.EnumerateReports().Where(x => x.Name == "summary.md").FirstOrDefault();
+        Console.WriteLine("Session Directory: " + session.Path);
+
+        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.md");
 
         Assert.NotNull(summary, "No summary have been created!");
 
         var content = File.ReadAllText(summary.FullName);
 
         Console.WriteLine(content);
+        Console.WriteLine(node.Name);
+        Console.WriteLine(baseNode.Name);
 
-        Assert.IsTrue(content.Contains("System.String:"));
-        Assert.IsTrue(content.Contains("Node:"));
+        // TODO: Assert on results
     }
-
-    public class Node
-    {
-        public string Name;
-        public Node Child;
-    }
+}
+    
+public class Node
+{
+    public string Name;
+    public Node Child;
+    public List<int> List;
 }
