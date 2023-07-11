@@ -76,8 +76,8 @@ public class SessionsController : ControllerBase
     [HttpPost]
     public ActionResult<SessionInfo> CreateSession([FromBody] CreateSessionDto createSessionDto)
     {
-        var profilers = _profilerDiscovery.GetProfilers().Where(x => x.Guid == createSessionDto.ProfilerGuid).ToArray();
-        if (profilers.Length == 0)
+        ProfilerInfo? profiler = _profilerDiscovery.GetProfilers().FirstOrDefault(x => x.Guid == createSessionDto.ProfilerGuid);
+        if (profiler == null)
         {
             return NotFound($"No profiler found with guid '{createSessionDto.ProfilerGuid}'");
         }
@@ -86,16 +86,13 @@ public class SessionsController : ControllerBase
             return NotFound($"No process found with pid '{createSessionDto.ProcessId}'");
         }
 
-        ProfilerInfo profiler = profilers[0];
-
         foreach (var parameter in createSessionDto.Parameters)
         {
-            var matchingParameters = profiler.Parameters.Where(x => x.Key == parameter.Key).ToArray();
-            if (matchingParameters.Length == 0)
+            var matchingParameter = profiler.Parameters.FirstOrDefault(x => x.Key == parameter.Key);
+            if (matchingParameter == null)
             {
                 return NotFound($"No parameter found with key '{parameter.Key}'");
             }
-            var matchingParameter = matchingParameters[0];
             // Don't bother checking which value type it is, just set them all
             matchingParameter.ValueBoolean = parameter.ValueBoolean;
             matchingParameter.ValueInt32 = parameter.ValueInt32;
@@ -103,7 +100,7 @@ public class SessionsController : ControllerBase
             matchingParameter.Value = parameter.Value;
         }
 
-        return Ok(ProfilingExtensions.StartProfilingSession(profilers[0], processInfo, _logger));
+        return Ok(ProfilingExtensions.StartProfilingSession(profiler, processInfo, _logger));
     }
 
     public record CreateSessionDto

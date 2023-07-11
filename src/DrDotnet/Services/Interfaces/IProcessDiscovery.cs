@@ -6,7 +6,7 @@ namespace DrDotnet
 {
     public interface IProcessDiscovery
     {
-        List<ProcessInfo> GetDotnetProcesses(Action<float> progressCallback);
+        List<ProcessInfo> GetDotnetProcesses(Action<float>? progressCallback = null);
         bool TryGetProcessInfoFromPid(int pid, [NotNullWhen(true)] out ProcessInfo? processInfo);
     }
 }

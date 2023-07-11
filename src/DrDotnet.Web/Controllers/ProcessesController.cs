@@ -19,6 +19,6 @@ public class ProcessesController : ControllerBase
     [HttpGet]
     public ActionResult<IReadOnlyList<SessionInfo>> GetProfilers()
     {
-        return Ok(_processDiscovery.GetDotnetProcesses(static _ => { }));
+        return Ok(_processDiscovery.GetDotnetProcesses());
     }
 }
