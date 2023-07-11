@@ -80,8 +80,11 @@ public class Startup
         if (env.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            if (_restApiEnabled)
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
         }
         else
         {
