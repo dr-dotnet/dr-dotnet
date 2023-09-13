@@ -10,11 +10,12 @@ public class Program
         CreateHostBuilder(args).Build().Run();
     }
 
-    private static IHostBuilder CreateHostBuilder(string[] args) {
+    private static IHostBuilder CreateHostBuilder(string[] args)
+    {
         return Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder => {
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
                 webBuilder.UseStartup<Startup>();
-                //webBuilder.UseUrls("http://localhost:51376");
                 webBuilder.UseUrls(@"http://*:92");
                 webBuilder.UseSetting(WebHostDefaults.DetailedErrorsKey, "true");
             });
