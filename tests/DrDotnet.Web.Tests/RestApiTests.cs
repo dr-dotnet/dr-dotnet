@@ -69,14 +69,14 @@ public class RestApiTests
     }
     
     [Test]
-    public async Task GetSessions_WhenRestApiIsDisabled_ReturnsNotFound()
+    public async Task GetSessions_WhenRestApiIsDisabled_FallbackToWeb()
     {
         Environment.SetEnvironmentVariable("REST_API_ENABLED", "false");
         
         var httpResponse = await CreateClient().GetAsync("api/sessions");
         var httpContentString = await httpResponse.Content.ReadAsStringAsync();
         
-        Assert.That(httpResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound), httpContentString);
+        Assert.That(httpResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), httpContentString);
     }
     
     [Test]
