@@ -103,7 +103,7 @@ public class Startup
             if (_webUiEnabled)
             {
                 endpoints.MapBlazorHub();
-                //endpoints.MapFallbackToPage("/_Host");
+                endpoints.MapFallbackToPage("/_Host");
             }
             
             if (_restApiEnabled)
