@@ -1,19 +1,22 @@
 use std::sync::{ Arc, Mutex };
-use std::sync::atomic::{ Ordering, AtomicBool, AtomicIsize };
+use dashmap::DashMap;
+use gxhash::GxHasher;
 use itertools::Itertools;
+use std::hash::Hasher;
 
 use crate::api::*;
-use crate::api::ffi::{ FunctionID, HRESULT };
+use crate::api::ffi::{ FunctionID, HRESULT, ThreadID };
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::NameResolver;
+use crate::utils::{NameResolver, StackSnapshotCallbackReceiver};
 
 #[derive(Default)]
 pub struct CpuHotpathProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    merged_stack: Arc<Mutex<MergedStack>>
+    merged_stack: Arc<Mutex<MergedStack>>,
+    threads_by_state: Arc<Mutex<DashMap<ThreadID, u64>>>,
 }
 
 #[derive(Default, Debug, Eq, PartialEq, Hash, Clone)]
@@ -55,7 +58,7 @@ impl MergedStack {
     pub fn add_stack(&mut self, clr: &ClrProfilerInfo, stack_trace: Vec<StackFrame>, index: Option<usize>) {
         self.samples += 1;
 
-        let mut index = index.unwrap_or(0);
+        let index = index.unwrap_or(0);
         let first_frame = &stack_trace[index];
 
         let mut merged_stack = self.stacks.iter_mut()
@@ -176,6 +179,14 @@ impl Profiler for CpuHotpathProfiler {
                     type_: ParameterType::INT.into(),
                     value: "40".to_owned(),
                     ..std::default::Default::default()
+                },
+                ProfilerParameter { 
+                    name: "Filter Suspended Threads".to_owned(),
+                    key: "filter_suspended_threads".to_owned(),
+                    description: "If set, the profiler will attempt to detect suspended thread and filter them out from the analysis to only focus on working threads, hereby improving accuracy on actual CPU hotpaths".to_owned(),
+                    type_: ParameterType::BOOLEAN.into(),
+                    value: "true".to_owned(),
+                    ..std::default::Default::default()
                 }
             ],
             ..std::default::Default::default()
@@ -183,30 +194,58 @@ impl Profiler for CpuHotpathProfiler {
     }
 }
 
+#[derive(Default)]
+pub struct CpuHotpathStackSnapshotCallbackReceiver {
+    method_ids: Vec::<ffi::FunctionID>,
+    hasher: GxHasher
+}
+
+impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
+    type AssociatedType = Self;
+
+    fn callback(&mut self, method_id: FunctionID, _instruction_pointer: usize, _frame_info: usize, context: &[u8]) {
+        self.method_ids.push(method_id);
+        // Detect suspended threads appart from actual working threads
+        // Inspired from: https://www.usenix.org/legacy/publications/library/proceedings/coots99/full_papers/liang/liang_html/node10.html
+        // Not sure which is the best approach between utilizing the instruction pointer or the context
+        //self.hasher.write_usize(instruction_pointer);
+        self.hasher.write(context);
+    }
+}
+
 impl CpuHotpathProfiler {
 
-    fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>)
+    fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>, threads: std::sync::MutexGuard<DashMap<ThreadID, u64>>, filter_suspended_threads: bool)
     {
         info!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
 
-            let method_ids = Vec::<ffi::FunctionID>::new();
+            let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::default();
 
-            // We must pass this data as a pointer for callback to mutate it with actual method ids from stack walking
-            let method_ids_ptr_c = &method_ids as *const Vec<ffi::FunctionID> as *mut std::ffi::c_void;
+            stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id);
 
-            let _ =  pinfo.do_stack_snapshot(
-                managed_thread_id,
-                crate::utils::stack_snapshot_callback,
-                ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT,
-                method_ids_ptr_c,
-                std::ptr::null(), 0);
+            if filter_suspended_threads {
+                let hash = stack_snapshot_receiver.hasher.finish();
+
+                let mut ignore_thread = true;
+                threads.entry(managed_thread_id)
+                    .and_modify(|existing_value| {
+                        // Ignore the thread if the stack context hash is unchanged
+                        ignore_thread = *existing_value == hash;
+                        *existing_value = hash;
+                    })
+                    .or_insert(hash);
+    
+                if ignore_thread {
+                    continue;
+                }
+            }
 
             let mut stack_trace = Vec::<StackFrame>::new();
 
-            for method_id in method_ids.iter().rev() {
+            for method_id in stack_snapshot_receiver.method_ids.iter().rev() {
                 let frame = StackFrame {
                     kind: if *method_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
                     fct_id: *method_id,
@@ -236,20 +275,24 @@ impl CorProfilerCallback3 for CpuHotpathProfiler {
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
         let clr = self.clr().clone();
         let merged_stack = self.merged_stack.clone();
+        let threads = self.threads_by_state.clone();
 
         let time_interval_ms = self.session_info().get_parameter::<u64>("time_interval_ms").unwrap();
         let duration_seconds = self.session_info().get_parameter::<u64>("duration_seconds").unwrap();
+        let filter_suspended_threads = self.session_info().get_parameter::<bool>("filter_suspended_threads").unwrap();
 
         std::thread::spawn(move || {
             let iterations = 1000 * duration_seconds / time_interval_ms;
-            for i in 0..iterations {
+            for _ in 0..iterations {
                 std::thread::sleep(std::time::Duration::from_millis(time_interval_ms));
 
                 // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
                 if clr.suspend_runtime().is_ok() {
 
+                    info!("Suspend runtime");
                     let k = merged_stack.lock().unwrap();
-                    CpuHotpathProfiler::build_callstacks(clr.clone(), k);
+                    let x = threads.lock().unwrap();
+                    CpuHotpathProfiler::build_callstacks(clr.clone(), k, x, filter_suspended_threads);
 
                     if clr.resume_runtime().is_err() {
                         error!("Can't resume runtime!");

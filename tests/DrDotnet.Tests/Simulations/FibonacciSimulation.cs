@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace DrDotnet.Tests.Simulations;
@@ -9,7 +10,7 @@ public class FibonacciSimulation : IDisposable
 
     public FibonacciSimulation()
     {
-        var task = Task.Run(() =>
+        _ = Task.Run(() =>
         {
             while (!_disposed)
             {
@@ -18,7 +19,8 @@ public class FibonacciSimulation : IDisposable
         });
     }
 
-    public long Calculate(int len)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private long Calculate(int len)
     {
         long a = 0, b = 1, c = 0;   
         for (int i = 2; i < len; i++)  

@@ -7,7 +7,7 @@ use crate::api::ffi::{FunctionID, ThreadID};
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::NameResolver;
+use crate::utils::{NameResolver, StackSnapshotCallbackReceiver};
 
 const PADDING: usize = 5;
 /// if < 0 will print all thread ids
@@ -217,6 +217,19 @@ impl Profiler for MergedCallStacksProfiler {
     }
 }
 
+#[derive(Default)]
+pub struct MergedCallstacksStackSnapshotCallbackReceiver {
+    method_ids: Vec::<ffi::FunctionID>
+}
+
+impl StackSnapshotCallbackReceiver for MergedCallstacksStackSnapshotCallbackReceiver {
+    type AssociatedType = Self;
+
+    fn callback(&mut self, method_id: FunctionID, ip: usize, _: usize, _: &[u8]) {
+        self.method_ids.push(method_id);
+    }
+}
+
 impl MergedCallStacksProfiler {
 
     fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>)
@@ -226,21 +239,13 @@ impl MergedCallStacksProfiler {
         
         for managed_thread_id in pinfo.enum_threads().unwrap() {
             
-            let method_ids = Vec::<ffi::FunctionID>::new();
-            
-            // We must pass this data as a pointer for callback to mutate it with actual method ids from stack walking
-            let method_ids_ptr_c = &method_ids as *const Vec<ffi::FunctionID> as *mut std::ffi::c_void;
-            
-            let _ =  pinfo.do_stack_snapshot(
-                managed_thread_id, 
-                crate::utils::stack_snapshot_callback, 
-                ffi::COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT, 
-                method_ids_ptr_c, 
-                std::ptr::null(), 0);    
+            let mut stack_snapshot_receiver = MergedCallstacksStackSnapshotCallbackReceiver::default();
+
+            stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id);
 
             let mut stack_trace = Vec::<StackFrame>::new();
             
-            for method_id in method_ids.iter().rev() {
+            for method_id in stack_snapshot_receiver.method_ids.iter().rev() {
                 let frame = StackFrame {
                     kind: if *method_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
                     fct_id: *method_id,
