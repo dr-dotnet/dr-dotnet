@@ -8,7 +8,7 @@ use crate::api::*;
 use crate::api::ffi::{ClassID, HRESULT, ObjectID};
 use crate::macros::*;
 use crate::profilers::*;
-use crate::utils::{CachedNameResolver, NameResolver};
+use crate::utils::NameResolver;
 
 #[derive(Default)]
 pub struct DuplicatedStringsProfiler {
@@ -212,6 +212,8 @@ impl CorProfilerCallback3 for DuplicatedStringsProfiler {
 
         report.new_line();
         report.write_line(format!("Total wasted bytes: {}", total_wasted_bytes.separate_by_policy(policy)));
+
+        self.session_info.finish();
 
         info!("Report written");
 

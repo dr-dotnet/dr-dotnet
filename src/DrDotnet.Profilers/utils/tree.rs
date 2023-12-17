@@ -11,7 +11,7 @@ pub struct TreeNode<K, V> {
 }
 
 impl<K, V> TreeNode<K, V>
-    where K: PartialEq + Copy + Sync + Send, V: Clone + Sync + Send
+    where K: PartialEq + Eq + Copy + Sync + Send, V: Clone + Sync + Send
 {
     pub fn new(key: K) -> Self {
         TreeNode {
@@ -56,16 +56,32 @@ impl<K, V> TreeNode<K, V>
         }
     }
 
+    pub fn add_sequence<I>(&mut self, sequence: I) -> &mut TreeNode<K, V>
+    where I: IntoIterator<Item = K>,
+    {
+        let mut current_node = self;
+        for element in sequence {
+            if let Some(i) = current_node.children.iter().position(|x| x.key == element) {
+                current_node = &mut current_node.children[i];
+            } else {
+                current_node.children.push(TreeNode::new(element));
+                let new_index = current_node.children.len() - 1;
+                current_node = &mut current_node.children[new_index];
+            }
+        }
+        current_node
+    }
+
     pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
         let mut root = TreeNode::new(root_key);
         
         for (sequence, value) in sequences {
             let mut current = &mut root;
             for y in sequence {
-                let mut child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
+                let child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
                     &mut current.children[i]
                 } else {
-                    let mut new_child: TreeNode<K, V> = TreeNode::new(*y);
+                    let new_child: TreeNode<K, V> = TreeNode::new(*y);
                     current.children.push(new_child);
                     let len = current.children.len();
                     &mut current.children[len - 1]

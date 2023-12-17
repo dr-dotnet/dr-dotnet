@@ -164,6 +164,8 @@ impl CorProfilerCallback3 for RuntimePauseProfiler {
             }
         }
 
+        self.session_info.finish();
+
         info!("Report written");
 
         Ok(())

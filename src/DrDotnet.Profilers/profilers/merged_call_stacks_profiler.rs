@@ -325,6 +325,8 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
                 error!("Failed to reverse lines of html report: {}", e)
             }
         };
+
+        self.session_info.finish();
         
         Ok(())
     }

@@ -81,6 +81,8 @@ impl CorProfilerCallback3 for AllocationByClassProfiler {
             report.write_line(format!("- {}: {}", allocations_for_class.key(), allocations_for_class.value().load(Ordering::Relaxed)));
         }
 
+        self.session_info.finish();
+
         info!("Report written");
 
         Ok(())

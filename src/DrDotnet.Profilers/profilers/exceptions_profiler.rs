@@ -85,6 +85,8 @@ impl CorProfilerCallback3 for ExceptionsProfiler {
             report.write_line(format!("- {}: {}", exception.key(), exception.value().load(Ordering::Relaxed)));
         }
 
+        self.session_info.finish();
+
         info!("Report written");
 
         Ok(())
