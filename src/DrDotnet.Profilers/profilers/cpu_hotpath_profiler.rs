@@ -170,7 +170,9 @@ impl CpuHotpathProfiler {
 
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
-        report.write_line(format!("<h3>{} samples <small class=\"text-muted\">with {} roots</small></h3>", total_samples, tree.children.len()));
+        report.write_line(format!("<h3>Hotpaths <small class=\"text-muted\">{}</small></h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
+        report.write_line(format!("<li>{} samples</li>", total_samples));
+        report.write_line(format!("<li>{} roots</li>", tree.children.len()));
         tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
 
         if let Err(e) = clr.request_profiler_detach(3000) {
