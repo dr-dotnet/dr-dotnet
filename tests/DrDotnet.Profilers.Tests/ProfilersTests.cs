@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using NUnit.Framework;
 
@@ -23,13 +24,11 @@ public class ProfilersTests
         };
 
         process.Start();
-
-        //string output = process.StandardOutput.ReadToEnd();
-        string errors = process.StandardError.ReadToEnd();
-
         process.WaitForExit();
+        
+        Console.WriteLine(process.StandardOutput.ReadToEnd());
 
         // Assert that the process completed successfully
-        Assert.That(process.ExitCode, Is.EqualTo(0), errors);
+        Assert.That(process.ExitCode, Is.EqualTo(0), process.StandardError.ReadToEnd());
     }
 }

@@ -281,6 +281,8 @@ impl GCSurvivorsProfiler
             self.print_html(&tree_node, &mut report);
         }
 
+        self.session_info.finish();
+
         info!("Report written in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
         Ok(())

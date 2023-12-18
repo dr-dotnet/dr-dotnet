@@ -1,4 +1,4 @@
-<img src="https://github.com/dr-dotnet/dr-dotnet/blob/docs-md/res/logo.png" align="right" width="128" height="128">
+<img src="https://github.com/dr-dotnet/dr-dotnet/blob/master/res/logo.png" align="right" width="128" height="128">
 
 # Dr. Dotnet
 

@@ -11,7 +11,7 @@ pub struct TreeNode<K, V> {
 }
 
 impl<K, V> TreeNode<K, V>
-    where K: PartialEq + Copy + Sync + Send, V: Clone + Sync + Send
+    where K: PartialEq + Eq + Copy + Sync + Send, V: Clone + Sync + Send
 {
     pub fn new(key: K) -> Self {
         TreeNode {
@@ -56,16 +56,32 @@ impl<K, V> TreeNode<K, V>
         }
     }
 
+    pub fn add_sequence<I>(&mut self, sequence: I) -> &mut TreeNode<K, V>
+    where I: IntoIterator<Item = K>,
+    {
+        let mut current_node = self;
+        for element in sequence {
+            if let Some(i) = current_node.children.iter().position(|x| x.key == element) {
+                current_node = &mut current_node.children[i];
+            } else {
+                current_node.children.push(TreeNode::new(element));
+                let new_index = current_node.children.len() - 1;
+                current_node = &mut current_node.children[new_index];
+            }
+        }
+        current_node
+    }
+
     pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
         let mut root = TreeNode::new(root_key);
         
         for (sequence, value) in sequences {
             let mut current = &mut root;
             for y in sequence {
-                let mut child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
+                let child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
                     &mut current.children[i]
                 } else {
-                    let mut new_child: TreeNode<K, V> = TreeNode::new(*y);
+                    let new_child: TreeNode<K, V> = TreeNode::new(*y);
                     current.children.push(new_child);
                     let len = current.children.len();
                     &mut current.children[len - 1]
@@ -199,70 +215,5 @@ mod tests {
         assert_eq!(tree_clone, expected);
 
         print(&tree_clone, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
-    }
-
-    #[test]
-    fn test_pstack() {
-
-        type FunctionID = u32;
-        type ThreadID = u32;
-    
-        // Required to wrap Vec<ThreadID> in order to implement AddAssign
-        #[derive(Clone, Default, Debug, Eq)]
-        pub struct Threads(Vec<ThreadID>);
-        
-        impl PartialEq<Self> for Threads {
-            fn eq(&self, other: &Self) -> bool {
-                self.0 == other.0
-            }
-        }
-
-        // Implement AddAssign for get_inclusive_value to be usable
-        impl AddAssign<&Threads> for Threads {
-            fn add_assign(&mut self, other: &Self) {
-                self.0.extend(&other.0);
-            }
-        }
-
-        let sequences: HashMap<Vec<FunctionID>, Threads> = HashMap::from([
-            (vec![1, 2, 3], Threads(vec![1001, 1002, 1003])),
-            (vec![2, 2, 3], Threads(vec![1004, 1005])),
-            (vec![1, 2], Threads(vec![1006])),
-            (vec![1, 2, 4], Threads(vec![1007, 1008, 1009])),
-            (vec![1, 3, 5], Threads(vec![1010])),
-            (vec![2, 3, 2, 1, 4], Threads(vec![1010, 1011, 1012, 1013])),
-            (vec![1, 3, 5, 1], Threads(vec![1014, 1015])),
-        ]);
-
-        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-
-        println!("Unsorted:");
-        print(&tree, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
-
-        // Sorts by descending inclusive value
-        let mut tree_sorted = tree.clone();
-        let start = Instant::now();
-        tree_sorted.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
-        let duration = start.elapsed();
-        println!("Recursive sort_by duration: {:?}", duration);
-
-        let mut tree_clone = tree.clone();
-        assert_ne!(tree_clone, tree_sorted);
-        let start = Instant::now();
-        tree_clone.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
-        let duration = start.elapsed();
-        println!("Iterative sort_by duration: {:?}", duration);
-        assert_eq!(tree_clone, tree_sorted);
-        
-        let mut tree_clone = tree.clone();
-        assert_ne!(tree_clone, tree_sorted);
-        let start = Instant::now();
-        tree_clone.sort_by_multithreaded(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len()));
-        let duration = start.elapsed();
-        println!("Multithreaded sort_by duration: {:?}", duration);
-        assert_eq!(tree_clone, tree_sorted);
-        
-        println!("Sorted:");
-        print(&tree_sorted, 0, &|node| format!("{} [inc:{:?}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
     }
 }

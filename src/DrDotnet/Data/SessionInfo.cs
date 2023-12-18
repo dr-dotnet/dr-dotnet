@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using Google.Protobuf;
 
 public partial class SessionInfo
 {
@@ -38,17 +38,21 @@ public partial class SessionInfo
 
     public static SessionInfo FromPath(string sessionFilePath)
     {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
         if (!File.Exists(sessionFilePath))
             throw new FileNotFoundException($"There is no session file at path '{sessionFilePath}'");
 
         var jsonString = File.ReadAllText(sessionFilePath);
-        var session = JsonSerializer.Deserialize<SessionInfo>(jsonString, options);
-
+        
+        // Unfortunately, System.Text.Json is unable to deserialize special fields like RepeatedFields
+        // var options = new JsonSerializerOptions
+        // {
+        //     PropertyNameCaseInsensitive = true
+        // };
+        //var session = JsonSerializer.Deserialize<SessionInfo>(jsonString, options);
+        
+        var message = (IMessage)Activator.CreateInstance(typeof(SessionInfo))!;
+        var session = (SessionInfo)JsonParser.Default.Parse(jsonString, message?.Descriptor);
+        
         return session!;
     }
     

@@ -12,7 +12,7 @@ impl SessionInfo {
 
     // Returns a Session from its UID and ProfilerData.
     // If the Session report is not present on the disk, it will be written at the same time.
-    pub fn create_session_json(&self) {
+    pub fn finish(&self) {
 
         // Serialize to JSON
         let json = protobuf_json_mapping::print_to_string(self).unwrap();
@@ -27,7 +27,6 @@ impl SessionInfo {
 
     // Create a new report for a given Session, ready to be filled up.
     pub fn create_report(&self, filename: String) -> Report {
-        self.create_session_json(); // Could be done once instead of once per report written
         let path = PathBuf::from(format!(r"{}/{}", SessionInfo::get_directory(&self.uuid), filename));
         let file = File::create(&path).unwrap();
         return Report { writer: BufWriter::new(file), filepath: path  };

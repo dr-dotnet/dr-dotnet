@@ -1,5 +1,5 @@
-pub mod stack;
-pub use stack::*;
+pub mod stack_snapshot_receiver;
+pub use stack_snapshot_receiver::*;
 
 pub mod tree;
 pub use tree::*;

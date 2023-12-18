@@ -22,7 +22,6 @@ protobuf = "3.2.0"
 protobuf-json-mapping = "3.2.0"
 thousands = "0.2.0"
 rayon = "1.7"
-crate = "0.0.2"
 html-escape = "0.2.13"
 deepsize = "0.2.0"
 

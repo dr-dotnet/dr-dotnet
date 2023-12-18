@@ -13,13 +13,12 @@
 //      - Remove every non-flagged entry from A. We have our set of persisting references.
 //      - When garbage collection ends, for each flagged entry in A, pull the whole retention path and aggregate count by name + the total increase in retained bytes
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use itertools::Itertools;
 
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
-use crate::utils::CachedNameResolver;
 use crate::utils::NameResolver;
 
 #[derive(Default, Clone)]
@@ -326,6 +325,8 @@ impl CorProfilerCallback3 for MemoryLeakProfiler {
                 report.write_line(format!("- ({}) {}", surviving_reference.1, surviving_reference.0));
             }
         }
+
+        self.session_info.finish();
 
         info!("Report written");
 
