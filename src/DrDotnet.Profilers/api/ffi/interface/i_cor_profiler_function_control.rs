@@ -4,16 +4,8 @@ use crate::ffi::{COR_IL_MAP, DWORD, GUID, HRESULT, LPCBYTE, ULONG};
 #[repr(C)]
 pub struct ICorProfilerFunctionControl<T> {
     pub SetCodegenFlags: unsafe extern "system" fn(this: &T, flags: DWORD) -> HRESULT,
-    pub SetILFunctionBody: unsafe extern "system" fn(
-        this: &T,
-        cbNewILMethodHeader: ULONG,
-        pbNewILMethodHeader: LPCBYTE,
-    ) -> HRESULT,
-    pub SetILInstrumentedCodeMap: unsafe extern "system" fn(
-        this: &T,
-        cILMapEntries: ULONG,
-        rgILMapEntries: *const COR_IL_MAP,
-    ) -> HRESULT,
+    pub SetILFunctionBody: unsafe extern "system" fn(this: &T, cbNewILMethodHeader: ULONG, pbNewILMethodHeader: LPCBYTE) -> HRESULT,
+    pub SetILInstrumentedCodeMap: unsafe extern "system" fn(this: &T, cILMapEntries: ULONG, rgILMapEntries: *const COR_IL_MAP) -> HRESULT,
 }
 
 impl ICorProfilerFunctionControl<()> {

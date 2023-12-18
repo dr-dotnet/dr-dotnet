@@ -1,5 +1,5 @@
 use std::hash::Hasher;
-        
+
 pub struct SimpleHasher(u64);
 
 impl Default for SimpleHasher {
@@ -9,14 +9,13 @@ impl Default for SimpleHasher {
 }
 
 impl Hasher for SimpleHasher {
-
     #[inline]
     fn finish(&self) -> u64 {
         self.0
     }
 
     #[inline]
-    fn write(&mut self, _bytes: &[u8]) { 
+    fn write(&mut self, _bytes: &[u8]) {
         panic!("Not supposed to be called");
     }
 

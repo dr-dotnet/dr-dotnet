@@ -1,9 +1,6 @@
 #![allow(unused_variables)]
 use crate::{
-    ffi::{
-        GCHandleID, ObjectID, ThreadID, BOOL, COR_PRF_FINALIZER_FLAGS, COR_PRF_GC_REASON,
-        COR_PRF_GC_ROOT_FLAGS, COR_PRF_GC_ROOT_KIND, HRESULT, UINT_PTR,
-    },
+    ffi::{GCHandleID, ObjectID, ThreadID, BOOL, COR_PRF_FINALIZER_FLAGS, COR_PRF_GC_REASON, COR_PRF_GC_ROOT_FLAGS, COR_PRF_GC_ROOT_KIND, HRESULT, UINT_PTR},
     CorProfilerCallback,
 };
 
@@ -12,11 +9,7 @@ pub trait CorProfilerCallback2: CorProfilerCallback {
         Ok(())
     }
 
-    fn garbage_collection_started(
-        &mut self,
-        generation_collected: &[BOOL],
-        reason: COR_PRF_GC_REASON,
-    ) -> Result<(), HRESULT> {
+    fn garbage_collection_started(&mut self, generation_collected: &[BOOL], reason: COR_PRF_GC_REASON) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -32,11 +25,7 @@ pub trait CorProfilerCallback2: CorProfilerCallback {
         Ok(())
     }
 
-    fn finalizeable_object_queued(
-        &mut self,
-        finalizer_flags: COR_PRF_FINALIZER_FLAGS,
-        object_id: ObjectID,
-    ) -> Result<(), HRESULT> {
+    fn finalizeable_object_queued(&mut self, finalizer_flags: COR_PRF_FINALIZER_FLAGS, object_id: ObjectID) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -50,11 +39,7 @@ pub trait CorProfilerCallback2: CorProfilerCallback {
         Ok(())
     }
 
-    fn handle_created(
-        &mut self,
-        handle_id: GCHandleID,
-        initial_object_id: ObjectID,
-    ) -> Result<(), HRESULT> {
+    fn handle_created(&mut self, handle_id: GCHandleID, initial_object_id: ObjectID) -> Result<(), HRESULT> {
         Ok(())
     }
 

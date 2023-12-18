@@ -3,19 +3,10 @@ use crate::ffi::{FunctionID, BOOL, GUID, HRESULT, LPCBYTE, ULONG};
 
 #[repr(C)]
 pub struct ICorProfilerCallback8<T> {
-    pub DynamicMethodJITCompilationStarted: unsafe extern "system" fn(
-        this: &mut T,
-        functionId: FunctionID,
-        fIsSafeToBlock: BOOL,
-        pILHeader: LPCBYTE,
-        cbILHeader: ULONG,
-    ) -> HRESULT,
-    pub DynamicMethodJITCompilationFinished: unsafe extern "system" fn(
-        this: &mut T,
-        functionId: FunctionID,
-        hrStatus: HRESULT,
-        fIsSafeToBlock: BOOL,
-    ) -> HRESULT,
+    pub DynamicMethodJITCompilationStarted:
+        unsafe extern "system" fn(this: &mut T, functionId: FunctionID, fIsSafeToBlock: BOOL, pILHeader: LPCBYTE, cbILHeader: ULONG) -> HRESULT,
+    pub DynamicMethodJITCompilationFinished:
+        unsafe extern "system" fn(this: &mut T, functionId: FunctionID, hrStatus: HRESULT, fIsSafeToBlock: BOOL) -> HRESULT,
 }
 
 impl ICorProfilerCallback8<()> {

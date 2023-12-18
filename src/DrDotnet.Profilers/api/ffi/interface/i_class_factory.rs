@@ -4,12 +4,7 @@ use std::ffi::c_void;
 
 #[repr(C)]
 pub struct IClassFactory<T> {
-    pub CreateInstance: unsafe extern "system" fn(
-        this: &mut T,
-        pUnkOuter: *mut IUnknown<()>,
-        riid: REFIID,
-        ppvObject: *mut *mut c_void,
-    ) -> HRESULT,
+    pub CreateInstance: unsafe extern "system" fn(this: &mut T, pUnkOuter: *mut IUnknown<()>, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT,
     pub LockServer: unsafe extern "system" fn(this: &mut T, fLock: BOOL) -> HRESULT,
 }
 

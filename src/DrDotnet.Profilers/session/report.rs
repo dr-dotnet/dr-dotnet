@@ -1,11 +1,11 @@
-use std::io::{BufRead, BufReader, BufWriter, Result, Seek, SeekFrom, Write};
 use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Result, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 // A Session can contain several reports, which are usually files like markdown summaries or charts.
 pub struct Report {
     pub writer: BufWriter<File>,
-    pub(crate) filepath: PathBuf
+    pub(crate) filepath: PathBuf,
 }
 
 impl Report {
@@ -13,7 +13,10 @@ impl Report {
         self.writer.write(format!("{}\r\n", text).as_bytes()).unwrap();
     }
 
-    pub fn write<S>(&mut self, text: S) where S: Into<String> {
+    pub fn write<S>(&mut self, text: S)
+    where
+        S: Into<String>,
+    {
         self.writer.write(text.into().as_bytes()).unwrap();
     }
 
@@ -46,5 +49,4 @@ impl Report {
 
         Ok(())
     }
-
 }

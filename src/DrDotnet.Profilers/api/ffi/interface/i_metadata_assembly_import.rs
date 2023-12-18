@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef,
-    ASSEMBLYMETADATA, DWORD, GUID, HCORENUM, HRESULT, LPCWSTR, ULONG, WCHAR,
+    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef, ASSEMBLYMETADATA, DWORD, GUID, HCORENUM, HRESULT, LPCWSTR,
+    ULONG, WCHAR,
 };
 use std::ffi::c_void;
 
@@ -62,47 +62,16 @@ pub struct IMetaDataAssemblyImport<T> {
         pdwOffset: *mut DWORD,
         pdwResourceFlags: *mut DWORD,
     ) -> HRESULT,
-    pub EnumAssemblyRefs: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rAssemblyRefs: *mut mdAssemblyRef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumFiles: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rFiles: *mut mdFile,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumExportedTypes: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rExportedTypes: *mut mdExportedType,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumManifestResources: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rManifestResources: *mut mdManifestResource,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
-    pub GetAssemblyFromScope:
-        unsafe extern "system" fn(this: &T, ptkAssembly: *mut mdAssembly) -> HRESULT,
-    pub FindExportedTypeByName: unsafe extern "system" fn(
-        this: &T,
-        szName: LPCWSTR,
-        mdtExportedType: mdToken,
-        ptkExportedType: *mut mdExportedType,
-    ) -> HRESULT,
-    pub FindManifestResourceByName: unsafe extern "system" fn(
-        this: &T,
-        szName: LPCWSTR,
-        ptkManifestResource: *mut mdManifestResource,
-    ) -> HRESULT,
+    pub EnumAssemblyRefs:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rAssemblyRefs: *mut mdAssemblyRef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
+    pub EnumFiles: unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rFiles: *mut mdFile, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
+    pub EnumExportedTypes:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rExportedTypes: *mut mdExportedType, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
+    pub EnumManifestResources:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rManifestResources: *mut mdManifestResource, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
+    pub GetAssemblyFromScope: unsafe extern "system" fn(this: &T, ptkAssembly: *mut mdAssembly) -> HRESULT,
+    pub FindExportedTypeByName: unsafe extern "system" fn(this: &T, szName: LPCWSTR, mdtExportedType: mdToken, ptkExportedType: *mut mdExportedType) -> HRESULT,
+    pub FindManifestResourceByName: unsafe extern "system" fn(this: &T, szName: LPCWSTR, ptkManifestResource: *mut mdManifestResource) -> HRESULT,
     pub CloseEnum: unsafe extern "system" fn(this: &T, hEnum: HCORENUM) -> (),
     pub FindAssembliesByName: unsafe extern "system" fn(
         this: &T,

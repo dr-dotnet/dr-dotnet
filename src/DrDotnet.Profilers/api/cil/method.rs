@@ -55,8 +55,7 @@ impl Method {
             }
             MethodHeader::Tiny(header) => {
                 let size = header.code_size as u128 + prelude_length as u128;
-                header.code_size = u8::try_from(size)
-                    .or_else(|err| todo!("Expand into fat header!, {:?}", err))?;
+                header.code_size = u8::try_from(size).or_else(|err| todo!("Expand into fat header!, {:?}", err))?;
             }
         }
         // update try offset
@@ -66,21 +65,17 @@ impl Method {
                 Section::FatSection(_, clauses) => {
                     for clause in clauses {
                         let try_offset = clause.try_offset as u128 + prelude_length as u128;
-                        clause.try_offset =
-                            u32::try_from(try_offset).or(Err(Error::PreludeTooBig))?;
+                        clause.try_offset = u32::try_from(try_offset).or(Err(Error::PreludeTooBig))?;
                         let handler_offset = clause.handler_offset as u128 + prelude_length as u128;
-                        clause.handler_offset =
-                            u32::try_from(handler_offset).or(Err(Error::PreludeTooBig))?;
+                        clause.handler_offset = u32::try_from(handler_offset).or(Err(Error::PreludeTooBig))?;
                     }
                 }
                 Section::SmallSection(_, clauses) => {
                     for clause in clauses {
                         let try_offset = clause.try_offset as u128 + prelude_length as u128;
-                        clause.try_offset = u16::try_from(try_offset)
-                            .or_else(|err| todo!("Expand into fat section!, {:?}", err))?;
+                        clause.try_offset = u16::try_from(try_offset).or_else(|err| todo!("Expand into fat section!, {:?}", err))?;
                         let handler_offset = clause.handler_offset as u128 + prelude_length as u128;
-                        clause.handler_offset = u16::try_from(handler_offset)
-                            .or_else(|err| todo!("Expand into fat section!, {:?}", err))?;
+                        clause.handler_offset = u16::try_from(handler_offset).or_else(|err| todo!("Expand into fat section!, {:?}", err))?;
                     }
                 }
             }
@@ -112,10 +107,7 @@ impl Method {
         Ok(sections)
     }
     fn instructions_to_bytes(&self) -> Vec<u8> {
-        self.instructions
-            .iter()
-            .flat_map(|i| i.into_bytes())
-            .collect()
+        self.instructions.iter().flat_map(|i| i.into_bytes()).collect()
     }
     fn sections_to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();

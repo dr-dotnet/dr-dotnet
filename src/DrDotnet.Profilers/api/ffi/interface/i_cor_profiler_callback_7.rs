@@ -3,8 +3,7 @@ use crate::ffi::{ModuleID, GUID, HRESULT};
 
 #[repr(C)]
 pub struct ICorProfilerCallback7<T> {
-    pub ModuleInMemorySymbolsUpdated:
-        unsafe extern "system" fn(this: &mut T, moduleId: ModuleID) -> HRESULT,
+    pub ModuleInMemorySymbolsUpdated: unsafe extern "system" fn(this: &mut T, moduleId: ModuleID) -> HRESULT,
 }
 
 impl ICorProfilerCallback7<()> {

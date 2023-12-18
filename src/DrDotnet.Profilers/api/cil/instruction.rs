@@ -1,6 +1,4 @@
-use crate::cil::{
-    il_f32, il_f64, il_i32, il_i64, il_i8, il_u16, il_u32, il_u8, opcode::*, Error, OperandParams,
-};
+use crate::cil::{il_f32, il_f64, il_i32, il_i64, il_i8, il_u16, il_u32, il_u8, opcode::*, Error, OperandParams};
 
 #[derive(Debug)]
 pub enum Operand {
@@ -177,8 +175,7 @@ impl Instruction {
                     val[3].to_le_bytes(),
                     val[4].to_le_bytes(),
                 );
-                let mut target_bytes: Vec<u8> =
-                    val.iter().flat_map(|s| s.to_le_bytes().to_vec()).collect();
+                let mut target_bytes: Vec<u8> = val.iter().flat_map(|s| s.to_le_bytes().to_vec()).collect();
                 bytes.append(&mut target_bytes);
             }
             Operand::InlineType(val) => bytes.extend_from_slice(&val.to_le_bytes()),

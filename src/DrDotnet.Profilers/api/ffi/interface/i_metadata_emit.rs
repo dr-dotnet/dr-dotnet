@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    mdCustomAttribute, mdEvent, mdFieldDef, mdMemberRef, mdMethodDef, mdModuleRef, mdParamDef,
-    mdPermission, mdProperty, mdSignature, mdString, mdToken, mdTypeDef, mdTypeRef, mdTypeSpec,
-    CorSaveSize, MetaDataAssemblyEmit, MetaDataAssemblyImport, MetaDataImport, Unknown,
-    COR_FIELD_OFFSET, COR_SECATTR, DWORD, GUID, HRESULT, LPCWSTR, PCCOR_SIGNATURE, PCOR_SIGNATURE,
-    ULONG,
+    mdCustomAttribute, mdEvent, mdFieldDef, mdMemberRef, mdMethodDef, mdModuleRef, mdParamDef, mdPermission, mdProperty, mdSignature, mdString, mdToken,
+    mdTypeDef, mdTypeRef, mdTypeSpec, CorSaveSize, MetaDataAssemblyEmit, MetaDataAssemblyImport, MetaDataImport, Unknown, COR_FIELD_OFFSET, COR_SECATTR, DWORD,
+    GUID, HRESULT, LPCWSTR, PCCOR_SIGNATURE, PCOR_SIGNATURE, ULONG,
 };
 use std::ffi::c_void;
 
@@ -17,8 +15,7 @@ pub struct IMetaDataEmit<T> {
         pIStream: *const Unknown, // TODO: Implement ISequentialStream, IStream and then Stream co-class
         dwSaveFlags: DWORD,
     ) -> HRESULT,
-    pub GetSaveSize:
-        unsafe extern "system" fn(this: &T, fSave: CorSaveSize, pdwSaveSize: *mut DWORD) -> HRESULT,
+    pub GetSaveSize: unsafe extern "system" fn(this: &T, fSave: CorSaveSize, pdwSaveSize: *mut DWORD) -> HRESULT,
     pub DefineTypeDef: unsafe extern "system" fn(
         this: &T,
         szTypeDef: LPCWSTR,
@@ -48,18 +45,8 @@ pub struct IMetaDataEmit<T> {
         dwImplFlags: DWORD,
         pmd: *const mdMethodDef,
     ) -> HRESULT,
-    pub DefineMethodImpl: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        tkBody: mdToken,
-        tkDecl: mdToken,
-    ) -> HRESULT,
-    pub DefineTypeRefByName: unsafe extern "system" fn(
-        this: &T,
-        tkResolutionScope: mdToken,
-        szName: LPCWSTR,
-        ptr: *mut mdTypeRef,
-    ) -> HRESULT,
+    pub DefineMethodImpl: unsafe extern "system" fn(this: &T, td: mdTypeDef, tkBody: mdToken, tkDecl: mdToken) -> HRESULT,
+    pub DefineTypeRefByName: unsafe extern "system" fn(this: &T, tkResolutionScope: mdToken, szName: LPCWSTR, ptr: *mut mdTypeRef) -> HRESULT,
     pub DefineImportType: unsafe extern "system" fn(
         this: &T,
         pAssemImport: *const MetaDataAssemblyImport,
@@ -70,14 +57,8 @@ pub struct IMetaDataEmit<T> {
         pAssemEmit: *const MetaDataAssemblyEmit,
         ptr: *mut mdTypeRef,
     ) -> HRESULT,
-    pub DefineMemberRef: unsafe extern "system" fn(
-        this: &T,
-        tkImport: mdToken,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmr: *mut mdMemberRef,
-    ) -> HRESULT,
+    pub DefineMemberRef:
+        unsafe extern "system" fn(this: &T, tkImport: mdToken, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmr: *mut mdMemberRef) -> HRESULT,
     pub DefineImportMember: unsafe extern "system" fn(
         this: &T,
         pbHashValue: *const c_void,
@@ -100,55 +81,22 @@ pub struct IMetaDataEmit<T> {
         rmdOtherMethods: *const mdMethodDef,
         pmdEvent: *mut mdEvent,
     ) -> HRESULT,
-    pub SetClassLayout: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        dwPackSize: DWORD,
-        rFieldOffsets: *const COR_FIELD_OFFSET,
-        ulClassSize: ULONG,
-    ) -> HRESULT,
+    pub SetClassLayout:
+        unsafe extern "system" fn(this: &T, td: mdTypeDef, dwPackSize: DWORD, rFieldOffsets: *const COR_FIELD_OFFSET, ulClassSize: ULONG) -> HRESULT,
     pub DeleteClassLayout: unsafe extern "system" fn(this: &T, td: mdTypeDef) -> HRESULT,
     pub DeleteFieldMarshal: unsafe extern "system" fn(this: &T, tk: mdToken) -> HRESULT,
-    pub DefinePermissionSet: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        dwAction: DWORD,
-        pvPermission: *const c_void,
-        cbPermission: ULONG,
-        ppm: *mut mdPermission,
-    ) -> HRESULT,
+    pub DefinePermissionSet:
+        unsafe extern "system" fn(this: &T, tk: mdToken, dwAction: DWORD, pvPermission: *const c_void, cbPermission: ULONG, ppm: *mut mdPermission) -> HRESULT,
     pub SetRVA: unsafe extern "system" fn(this: &T, md: mdMethodDef, ulRVA: ULONG) -> HRESULT,
-    pub GetTokenFromSig: unsafe extern "system" fn(
-        this: &T,
-        pvSig: PCCOR_SIGNATURE,
-        cbSig: ULONG,
-        pmsig: *mut mdSignature,
-    ) -> HRESULT,
-    pub DefineModuleRef:
-        unsafe extern "system" fn(this: &T, szName: LPCWSTR, pmur: *mut mdModuleRef) -> HRESULT,
+    pub GetTokenFromSig: unsafe extern "system" fn(this: &T, pvSig: PCCOR_SIGNATURE, cbSig: ULONG, pmsig: *mut mdSignature) -> HRESULT,
+    pub DefineModuleRef: unsafe extern "system" fn(this: &T, szName: LPCWSTR, pmur: *mut mdModuleRef) -> HRESULT,
     pub SetParent: unsafe extern "system" fn(this: &T, mr: mdMemberRef, tk: mdToken) -> HRESULT,
-    pub GetTokenFromTypeSpec: unsafe extern "system" fn(
-        this: &T,
-        pvSig: PCCOR_SIGNATURE,
-        cbSig: ULONG,
-        ptypespec: *mut mdTypeSpec,
-    ) -> HRESULT,
-    pub SaveToMemory:
-        unsafe extern "system" fn(this: &T, pbData: *mut c_void, cbData: ULONG) -> HRESULT,
-    pub DefineUserString: unsafe extern "system" fn(
-        this: &T,
-        szString: LPCWSTR,
-        cchString: ULONG,
-        pstk: *mut mdString,
-    ) -> HRESULT,
+    pub GetTokenFromTypeSpec: unsafe extern "system" fn(this: &T, pvSig: PCCOR_SIGNATURE, cbSig: ULONG, ptypespec: *mut mdTypeSpec) -> HRESULT,
+    pub SaveToMemory: unsafe extern "system" fn(this: &T, pbData: *mut c_void, cbData: ULONG) -> HRESULT,
+    pub DefineUserString: unsafe extern "system" fn(this: &T, szString: LPCWSTR, cchString: ULONG, pstk: *mut mdString) -> HRESULT,
     pub DeleteToken: unsafe extern "system" fn(this: &T, tkObj: mdToken) -> HRESULT,
-    pub SetTypeDefProps: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        dwTypeDefFlags: DWORD,
-        tkExtends: mdToken,
-        rtkImplements: *const mdToken,
-    ) -> HRESULT,
+    pub SetTypeDefProps:
+        unsafe extern "system" fn(this: &T, td: mdTypeDef, dwTypeDefFlags: DWORD, tkExtends: mdToken, rtkImplements: *const mdToken) -> HRESULT,
     pub SetEventProps: unsafe extern "system" fn(
         this: &T,
         ev: mdEvent,
@@ -159,28 +107,10 @@ pub struct IMetaDataEmit<T> {
         mdFire: mdMethodDef,
         rmdOtherMethods: *const mdMethodDef,
     ) -> HRESULT,
-    pub SetPermissionSetProps: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        dwAction: DWORD,
-        pvPermission: *const c_void,
-        cbPermission: ULONG,
-        ppm: *mut mdPermission,
-    ) -> HRESULT,
-    pub DefinePinvokeMap: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        dwMappingFlags: DWORD,
-        szImportName: LPCWSTR,
-        mrImportDLL: mdModuleRef,
-    ) -> HRESULT,
-    pub SetPinvokeMap: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        dwMappingFlags: DWORD,
-        szImportName: LPCWSTR,
-        mrImportDLL: mdModuleRef,
-    ) -> HRESULT,
+    pub SetPermissionSetProps:
+        unsafe extern "system" fn(this: &T, tk: mdToken, dwAction: DWORD, pvPermission: *const c_void, cbPermission: ULONG, ppm: *mut mdPermission) -> HRESULT,
+    pub DefinePinvokeMap: unsafe extern "system" fn(this: &T, tk: mdToken, dwMappingFlags: DWORD, szImportName: LPCWSTR, mrImportDLL: mdModuleRef) -> HRESULT,
+    pub SetPinvokeMap: unsafe extern "system" fn(this: &T, tk: mdToken, dwMappingFlags: DWORD, szImportName: LPCWSTR, mrImportDLL: mdModuleRef) -> HRESULT,
     pub DeletePinvokeMap: unsafe extern "system" fn(this: &T, tk: mdToken) -> HRESULT,
     pub DefineCustomAttribute: unsafe extern "system" fn(
         this: &T,
@@ -190,12 +120,8 @@ pub struct IMetaDataEmit<T> {
         cbCustomAttribute: ULONG,
         pcv: *mut mdCustomAttribute,
     ) -> HRESULT,
-    pub SetCustomAttributeValue: unsafe extern "system" fn(
-        this: &T,
-        pcv: mdCustomAttribute,
-        pCustomAttribute: *const c_void,
-        cbCustomAttribute: ULONG,
-    ) -> HRESULT,
+    pub SetCustomAttributeValue:
+        unsafe extern "system" fn(this: &T, pcv: mdCustomAttribute, pCustomAttribute: *const c_void, cbCustomAttribute: ULONG) -> HRESULT,
     pub DefineField: unsafe extern "system" fn(
         this: &T,
         td: mdTypeDef,
@@ -234,14 +160,8 @@ pub struct IMetaDataEmit<T> {
         cchValue: ULONG,
         ppd: *mut mdParamDef,
     ) -> HRESULT,
-    pub SetFieldProps: unsafe extern "system" fn(
-        this: &T,
-        fd: mdFieldDef,
-        dwFieldFlags: DWORD,
-        dwCPlusTypeFlag: DWORD,
-        pValue: *const c_void,
-        cchValue: ULONG,
-    ) -> HRESULT,
+    pub SetFieldProps:
+        unsafe extern "system" fn(this: &T, fd: mdFieldDef, dwFieldFlags: DWORD, dwCPlusTypeFlag: DWORD, pValue: *const c_void, cchValue: ULONG) -> HRESULT,
     pub SetPropertyProps: unsafe extern "system" fn(
         this: &T,
         pr: mdProperty,
@@ -262,13 +182,8 @@ pub struct IMetaDataEmit<T> {
         pValue: *mut c_void,
         cchValue: ULONG,
     ) -> HRESULT,
-    pub DefineSecurityAttributeSet: unsafe extern "system" fn(
-        this: &T,
-        tkObj: mdToken,
-        rSecAttrs: *const COR_SECATTR,
-        cSecAttrs: ULONG,
-        pulErrorAttr: *mut ULONG,
-    ) -> HRESULT,
+    pub DefineSecurityAttributeSet:
+        unsafe extern "system" fn(this: &T, tkObj: mdToken, rSecAttrs: *const COR_SECATTR, cSecAttrs: ULONG, pulErrorAttr: *mut ULONG) -> HRESULT,
     pub ApplyEditAndContinue: unsafe extern "system" fn(
         this: &T,
         pImport: *const Unknown, // TODO: Which actual class?
@@ -287,8 +202,7 @@ pub struct IMetaDataEmit<T> {
         cbTranslatedSigMax: ULONG,
         pcbTranslatedSig: *mut ULONG,
     ) -> HRESULT,
-    pub SetMethodImplFlags:
-        unsafe extern "system" fn(this: &T, md: mdMethodDef, dwImplFlags: DWORD) -> HRESULT,
+    pub SetMethodImplFlags: unsafe extern "system" fn(this: &T, md: mdMethodDef, dwImplFlags: DWORD) -> HRESULT,
     pub SetFieldRVA: unsafe extern "system" fn(this: &T, fd: mdFieldDef, ulRVA: ULONG) -> HRESULT,
     pub Merge: unsafe extern "system" fn(
         this: &T,

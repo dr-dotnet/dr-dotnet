@@ -1,9 +1,9 @@
-use std::cmp::min;
-use std::sync::{ Arc, Mutex };
 use itertools::Itertools;
+use std::cmp::min;
+use std::sync::{Arc, Mutex};
 
-use crate::api::*;
 use crate::api::ffi::{FunctionID, ThreadID};
+use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
@@ -17,14 +17,14 @@ const NB_THREAD_IDS_TO_PRINT: usize = 4;
 pub struct MergedCallStacksProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    merged_stack: Arc<Mutex<MergedStack>>
+    merged_stack: Arc<Mutex<MergedStack>>,
 }
 
 #[derive(Default, Debug, Eq, PartialEq, Hash, Clone)]
 enum StackFrameType {
     #[default]
     Managed,
-    Native
+    Native,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -38,46 +38,44 @@ struct StackFrame {
 struct MergedStack {
     thread_ids: Vec<ThreadID>,
     stacks: Vec<MergedStack>,
-    frame: StackFrame
+    frame: StackFrame,
 }
 
 impl StackFrame {
     fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
         match frame.kind {
             StackFrameType::Native => "unmanaged".to_string(),
-            StackFrameType::Managed =>  unsafe { clr.clone().get_full_method_name(frame.fct_id) }
+            StackFrameType::Managed => unsafe { clr.clone().get_full_method_name(frame.fct_id) },
         }
     }
 }
 
 impl MergedStack {
-    
     pub fn push_thread_id(&mut self, thread_id: ThreadID) {
         self.thread_ids.push(thread_id);
     }
-    
+
     pub fn add_stack(&mut self, clr: &ClrProfilerInfo, thread_id: ThreadID, stack_trace: Vec<StackFrame>, index: Option<usize>) {
         self.thread_ids.push(thread_id);
-        
+
         let mut index = index.unwrap_or(0);
         let first_frame = &stack_trace[index];
-        
-        let mut merged_stack = self.stacks.iter_mut()
-            .find(|s| s.frame.fct_id == first_frame.fct_id);
-        
+
+        let mut merged_stack = self.stacks.iter_mut().find(|s| s.frame.fct_id == first_frame.fct_id);
+
         if merged_stack.is_none() {
             self.stacks.push(MergedStack::new(&first_frame, clr));
             merged_stack = self.stacks.last_mut();
         }
-        
+
         let merged_stack = merged_stack.unwrap();
-        if index == stack_trace.len() -1 {
+        if index == stack_trace.len() - 1 {
             merged_stack.push_thread_id(thread_id);
         } else {
             merged_stack.add_stack(clr, thread_id, stack_trace, Some(index + 1));
         }
     }
-    
+
     pub fn new(frame: &StackFrame, clr: &ClrProfilerInfo) -> Self {
         MergedStack {
             thread_ids: Vec::new(),
@@ -85,8 +83,8 @@ impl MergedStack {
             frame: StackFrame {
                 kind: frame.kind.clone(),
                 fct_id: frame.fct_id,
-                display: Some(StackFrame::format(frame, clr))
-            }
+                display: Some(StackFrame::format(frame, clr)),
+            },
         }
     }
 
@@ -95,7 +93,6 @@ impl MergedStack {
     }
 
     fn write_html(&self, report: &mut Report, isSame: bool) {
-        
         if self.stacks.is_empty() {
             if !isSame {
                 report.write(format!("\n</details>\n"));
@@ -110,19 +107,19 @@ impl MergedStack {
         if !isSame {
             report.write(format!("\n</details>\n"));
         }
-        
-        for next_stack in self.stacks.iter()
-            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
-            
+
+        for next_stack in self.stacks.iter().sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
             let mut has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
-            
+
             if has_same_alignment {
                 // Check that the next stack  of next_stack has also the same alignment
-                let next_next_stack = next_stack.stacks.iter()
+                let next_next_stack = next_stack
+                    .stacks
+                    .iter()
                     .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len()))
                     .next();
 
-                if let Some (n) = next_next_stack{
+                if let Some(n) = next_next_stack {
                     has_same_alignment = n.thread_ids.len() == self.thread_ids.len();
                 }
             }
@@ -130,9 +127,9 @@ impl MergedStack {
             if has_same_alignment {
                 report.write(format!("\n</ul>\n"));
             }
-            
+
             next_stack.write_html(report, has_same_alignment);
-            
+
             if has_same_alignment {
                 report.write(format!("\n<ul>\n"));
             }
@@ -149,7 +146,7 @@ impl MergedStack {
     fn write_stack(&self, report: &mut Report, increment: usize) {
         let alignment = str::repeat(" ", PADDING * increment);
         let new_line = format!("\r\n{alignment}");
-        
+
         let thread_count = format!("{:>PADDING$} ", self.thread_ids.len());
         let frame = self.frame.display.as_ref().unwrap();
 
@@ -163,27 +160,32 @@ impl MergedStack {
             return;
         }
 
-        for next_stack in self.stacks.iter()
-            .sorted_by(|a, b| Ord::cmp(&b.thread_ids.len(), &a.thread_ids.len())) {
+        for next_stack in self.stacks.iter().sorted_by(|a, b| Ord::cmp(&b.thread_ids.len(), &a.thread_ids.len())) {
             let has_same_alignment = next_stack.thread_ids.len() == self.thread_ids.len();
-            next_stack.write_stack(report, if has_same_alignment {increment} else { increment + 1 });
+            next_stack.write_stack(report, if has_same_alignment { increment } else { increment + 1 });
         }
 
         report.write(new_line.as_str());
         report.write(thread_count);
         report.write(frame);
     }
-    
-    fn format_thread_ids(&self) -> String {
 
+    fn format_thread_ids(&self) -> String {
         let count = self.thread_ids.len();
         let limit = min(count, NB_THREAD_IDS_TO_PRINT);
 
         if limit < 0 {
             return self.thread_ids.iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
         }
-        
-        let mut result = self.thread_ids.get(..limit).unwrap_or_default().iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
+
+        let mut result = self
+            .thread_ids
+            .get(..limit)
+            .unwrap_or_default()
+            .iter()
+            .map(|k| format!("{k}"))
+            .collect::<Vec<String>>()
+            .join(",");
         if count > limit {
             result += "...";
         }
@@ -213,13 +215,13 @@ impl Profiler for MergedCallStacksProfiler {
             description: "Display a view of threads merged call stacks. ".to_owned(),
             is_released: true,
             ..std::default::Default::default()
-        }
+        };
     }
 }
 
 #[derive(Default)]
 pub struct MergedCallstacksStackSnapshotCallbackReceiver {
-    method_ids: Vec::<ffi::FunctionID>
+    method_ids: Vec<ffi::FunctionID>,
 }
 
 impl StackSnapshotCallbackReceiver for MergedCallstacksStackSnapshotCallbackReceiver {
@@ -231,33 +233,34 @@ impl StackSnapshotCallbackReceiver for MergedCallstacksStackSnapshotCallbackRece
 }
 
 impl MergedCallStacksProfiler {
-
-    fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>)
-    {
+    fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>) {
         info!("Starts building callstacks");
         let pinfo = profiler_info.clone();
-        
+
         for managed_thread_id in pinfo.enum_threads().unwrap() {
-            
             let mut stack_snapshot_receiver = MergedCallstacksStackSnapshotCallbackReceiver::default();
 
             stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
 
             let mut stack_trace = Vec::<StackFrame>::new();
-            
+
             for method_id in stack_snapshot_receiver.method_ids.iter().rev() {
                 let frame = StackFrame {
                     kind: if *method_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
                     fct_id: *method_id,
-                    display: None
+                    display: None,
                 };
                 //TODO: handle correctly native frame, for now we just ignore them
-                if frame.kind == StackFrameType::Native { continue } 
+                if frame.kind == StackFrameType::Native {
+                    continue;
+                }
                 stack_trace.push(frame);
             }
-            
-            if stack_trace.is_empty() { continue }
-            
+
+            if stack_trace.is_empty() {
+                continue;
+            }
+
             merged_stack.add_stack(&profiler_info, managed_thread_id, stack_trace, None);
         }
     }
@@ -268,23 +271,31 @@ impl CorProfilerCallback for MergedCallStacksProfiler {}
 impl CorProfilerCallback2 for MergedCallStacksProfiler {}
 
 impl CorProfilerCallback3 for MergedCallStacksProfiler {
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT, None, profiler_info, client_data, client_data_length)
+    fn initialize_for_attach(
+        &mut self,
+        profiler_info: ClrProfilerInfo,
+        client_data: *const std::os::raw::c_void,
+        client_data_length: u32,
+    ) -> Result<(), ffi::HRESULT> {
+        self.init(
+            ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT,
+            None,
+            profiler_info,
+            client_data,
+            client_data_length,
+        )
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
-        
         let profiler_info = self.clr().clone();
         let merged_stack = self.merged_stack.clone();
 
         let thread_handle = std::thread::spawn(move || {
-            
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
             if profiler_info.suspend_runtime().is_ok() {
-                
                 let k = merged_stack.lock().unwrap();
                 MergedCallStacksProfiler::build_callstacks(profiler_info.clone(), k);
-                
+
                 if profiler_info.resume_runtime().is_err() {
                     error!("Can't resume runtime!");
                 }
@@ -292,11 +303,11 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
                 error!("Can't suspend runtime!");
             }
         });
-        
+
         if thread_handle.join().is_err() {
             error!("Can't wait for the thread to finish!");
         }
-        
+
         self.clr().request_profiler_detach(3000)
     }
 
@@ -305,20 +316,26 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
         report.write_line(format!("# Merged Callstacks"));
 
         let mut report_html = self.session_info.create_report("collapsible_pstacks.html".to_owned());
-        
+
         let merged_stack = self.merged_stack.lock().unwrap();
-        
-        for stack in merged_stack.stacks.iter()
-            .sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
-            
+
+        for stack in merged_stack.stacks.iter().sorted_by(|a, b| Ord::cmp(&a.thread_ids.len(), &b.thread_ids.len())) {
             stack.write_to(&mut report);
             report.write(format!("\n\n{}", str::repeat("_", 50)));
-            
+
             stack.write_html(&mut report_html, false);
         }
-        report.write_line(format!("\n==> {} threads with {} roots", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
-        report_html.write_line(format!("<h3>{} threads <small class=\"text-muted\">with {} roots</small></h3>", merged_stack.thread_ids.len(), merged_stack.stacks.len()));
-        
+        report.write_line(format!(
+            "\n==> {} threads with {} roots",
+            merged_stack.thread_ids.len(),
+            merged_stack.stacks.len()
+        ));
+        report_html.write_line(format!(
+            "<h3>{} threads <small class=\"text-muted\">with {} roots</small></h3>",
+            merged_stack.thread_ids.len(),
+            merged_stack.stacks.len()
+        ));
+
         match report_html.reverse_lines() {
             Ok(_) => {}
             Err(e) => {
@@ -327,7 +344,7 @@ impl CorProfilerCallback3 for MergedCallStacksProfiler {
         };
 
         self.session_info.finish();
-        
+
         Ok(())
     }
 }

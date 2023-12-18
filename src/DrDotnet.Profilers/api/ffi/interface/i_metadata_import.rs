@@ -1,54 +1,22 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    int, mdCustomAttribute, mdEvent, mdFieldDef, mdInterfaceImpl, mdMemberRef, mdMethodDef,
-    mdModule, mdModuleRef, mdParamDef, mdPermission, mdProperty, mdSignature, mdString, mdToken,
-    mdTypeDef, mdTypeRef, mdTypeSpec, BOOL, COR_FIELD_OFFSET, DWORD, GUID, HCORENUM, HRESULT,
-    LPCWSTR, MDUTF8CSTR, PCCOR_SIGNATURE, REFIID, ULONG, UVCP_CONSTANT, WCHAR,
+    int, mdCustomAttribute, mdEvent, mdFieldDef, mdInterfaceImpl, mdMemberRef, mdMethodDef, mdModule, mdModuleRef, mdParamDef, mdPermission, mdProperty,
+    mdSignature, mdString, mdToken, mdTypeDef, mdTypeRef, mdTypeSpec, BOOL, COR_FIELD_OFFSET, DWORD, GUID, HCORENUM, HRESULT, LPCWSTR, MDUTF8CSTR,
+    PCCOR_SIGNATURE, REFIID, ULONG, UVCP_CONSTANT, WCHAR,
 };
 use std::ffi::c_void;
 
 #[repr(C)]
 pub struct IMetaDataImport<T> {
     pub CloseEnum: unsafe extern "system" fn(this: &T, hEnum: HCORENUM) -> (),
-    pub CountEnum:
-        unsafe extern "system" fn(this: &T, hEnum: HCORENUM, pulCount: *mut ULONG) -> HRESULT,
-    pub ResetEnum:
-        unsafe extern "system" fn(this: &T, hEnum: HCORENUM, ulPos: *const ULONG) -> HRESULT,
-    pub EnumTypeDefs: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rTypeDefs: *const mdTypeDef,
-        cMax: ULONG,
-        pcTypeDefs: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumInterfaceImpls: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        td: mdTypeDef,
-        rImpls: *mut mdInterfaceImpl,
-        cMax: ULONG,
-        pcImpls: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumTypeRefs: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rTypeRefs: *mut mdTypeRef,
-        cMax: ULONG,
-        pcTypeRefs: *mut ULONG,
-    ) -> HRESULT,
-    pub FindTypeDefByName: unsafe extern "system" fn(
-        this: &T,
-        szTypeDef: LPCWSTR,
-        tkEnclosingClass: mdToken,
-        ptd: *mut mdTypeDef,
-    ) -> HRESULT,
-    pub GetScopeProps: unsafe extern "system" fn(
-        this: &T,
-        szName: *mut WCHAR,
-        cchName: ULONG,
-        pchName: *mut ULONG,
-        pmvid: *mut GUID,
-    ) -> HRESULT,
+    pub CountEnum: unsafe extern "system" fn(this: &T, hEnum: HCORENUM, pulCount: *mut ULONG) -> HRESULT,
+    pub ResetEnum: unsafe extern "system" fn(this: &T, hEnum: HCORENUM, ulPos: *const ULONG) -> HRESULT,
+    pub EnumTypeDefs: unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rTypeDefs: *const mdTypeDef, cMax: ULONG, pcTypeDefs: *mut ULONG) -> HRESULT,
+    pub EnumInterfaceImpls:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, td: mdTypeDef, rImpls: *mut mdInterfaceImpl, cMax: ULONG, pcImpls: *mut ULONG) -> HRESULT,
+    pub EnumTypeRefs: unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rTypeRefs: *mut mdTypeRef, cMax: ULONG, pcTypeRefs: *mut ULONG) -> HRESULT,
+    pub FindTypeDefByName: unsafe extern "system" fn(this: &T, szTypeDef: LPCWSTR, tkEnclosingClass: mdToken, ptd: *mut mdTypeDef) -> HRESULT,
+    pub GetScopeProps: unsafe extern "system" fn(this: &T, szName: *mut WCHAR, cchName: ULONG, pchName: *mut ULONG, pmvid: *mut GUID) -> HRESULT,
     pub GetModuleFromScope: unsafe extern "system" fn(this: &T, pmd: *mut mdModule) -> HRESULT,
     pub GetTypeDefProps: unsafe extern "system" fn(
         this: &T,
@@ -59,12 +27,7 @@ pub struct IMetaDataImport<T> {
         pdwTypeDefFlags: *mut DWORD,
         ptkExtends: *mut mdToken,
     ) -> HRESULT,
-    pub GetInterfaceImplProps: unsafe extern "system" fn(
-        this: &T,
-        iiImpl: mdInterfaceImpl,
-        pClass: *mut mdTypeDef,
-        ptkIface: *mut mdToken,
-    ) -> HRESULT,
+    pub GetInterfaceImplProps: unsafe extern "system" fn(this: &T, iiImpl: mdInterfaceImpl, pClass: *mut mdTypeDef, ptkIface: *mut mdToken) -> HRESULT,
     pub GetTypeRefProps: unsafe extern "system" fn(
         this: &T,
         tr: mdTypeRef,
@@ -73,21 +36,9 @@ pub struct IMetaDataImport<T> {
         cchName: ULONG,
         pchName: *mut ULONG,
     ) -> HRESULT,
-    pub ResolveTypeRef: unsafe extern "system" fn(
-        this: &T,
-        tr: mdTypeRef,
-        riid: REFIID,
-        ppIScope: *mut *mut T,
-        ptd: *mut mdTypeDef,
-    ) -> HRESULT,
-    pub EnumMembers: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        cl: mdTypeDef,
-        rMembers: *mut mdToken,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
+    pub ResolveTypeRef: unsafe extern "system" fn(this: &T, tr: mdTypeRef, riid: REFIID, ppIScope: *mut *mut T, ptd: *mut mdTypeDef) -> HRESULT,
+    pub EnumMembers:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, cl: mdTypeDef, rMembers: *mut mdToken, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
     pub EnumMembersWithName: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,
@@ -97,14 +48,8 @@ pub struct IMetaDataImport<T> {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT,
-    pub EnumMethods: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        cl: mdTypeDef,
-        rMethods: *mut mdMethodDef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
+    pub EnumMethods:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, cl: mdTypeDef, rMethods: *mut mdMethodDef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
     pub EnumMethodsWithName: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,
@@ -114,14 +59,8 @@ pub struct IMetaDataImport<T> {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT,
-    pub EnumFields: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        cl: mdTypeDef,
-        rFields: *mut mdFieldDef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
+    pub EnumFields:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, cl: mdTypeDef, rFields: *mut mdFieldDef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
     pub EnumFieldsWithName: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,
@@ -131,14 +70,8 @@ pub struct IMetaDataImport<T> {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT,
-    pub EnumParams: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        mb: mdMethodDef,
-        rParams: *mut mdParamDef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
+    pub EnumParams:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, mb: mdMethodDef, rParams: *mut mdParamDef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
     pub EnumMemberRefs: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,
@@ -165,38 +98,14 @@ pub struct IMetaDataImport<T> {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT,
-    pub FindMember: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdToken,
-    ) -> HRESULT,
-    pub FindMethod: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdMethodDef,
-    ) -> HRESULT,
-    pub FindField: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdFieldDef,
-    ) -> HRESULT,
-    pub FindMemberRef: unsafe extern "system" fn(
-        this: &T,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdMemberRef,
-    ) -> HRESULT,
+    pub FindMember:
+        unsafe extern "system" fn(this: &T, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdToken) -> HRESULT,
+    pub FindMethod:
+        unsafe extern "system" fn(this: &T, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdMethodDef) -> HRESULT,
+    pub FindField:
+        unsafe extern "system" fn(this: &T, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdFieldDef) -> HRESULT,
+    pub FindMemberRef:
+        unsafe extern "system" fn(this: &T, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdMemberRef) -> HRESULT,
     pub GetMethodProps: unsafe extern "system" fn(
         this: &T,
         mb: mdMethodDef,
@@ -228,14 +137,8 @@ pub struct IMetaDataImport<T> {
         cMax: ULONG,
         pcProperties: *mut ULONG,
     ) -> HRESULT,
-    pub EnumEvents: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        td: mdTypeDef,
-        rEvents: *mut mdEvent,
-        cMax: ULONG,
-        pcEvents: *mut ULONG,
-    ) -> HRESULT,
+    pub EnumEvents:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, td: mdTypeDef, rEvents: *mut mdEvent, cMax: ULONG, pcEvents: *mut ULONG) -> HRESULT,
     pub GetEventProps: unsafe extern "system" fn(
         this: &T,
         ev: mdEvent,
@@ -252,20 +155,9 @@ pub struct IMetaDataImport<T> {
         cMax: ULONG,
         pcOtherMethod: *mut ULONG,
     ) -> HRESULT,
-    pub EnumMethodSemantics: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        mb: mdMethodDef,
-        rEventProp: *mut mdToken,
-        cMax: ULONG,
-        pcEventProp: *mut ULONG,
-    ) -> HRESULT,
-    pub GetMethodSemantics: unsafe extern "system" fn(
-        this: &T,
-        mb: mdMethodDef,
-        tkEventProp: mdToken,
-        pdwSemanticsFlags: *mut DWORD,
-    ) -> HRESULT,
+    pub EnumMethodSemantics:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, mb: mdMethodDef, rEventProp: *mut mdToken, cMax: ULONG, pcEventProp: *mut ULONG) -> HRESULT,
+    pub GetMethodSemantics: unsafe extern "system" fn(this: &T, mb: mdMethodDef, tkEventProp: mdToken, pdwSemanticsFlags: *mut DWORD) -> HRESULT,
     pub GetClassLayout: unsafe extern "system" fn(
         this: &T,
         td: mdTypeDef,
@@ -275,70 +167,18 @@ pub struct IMetaDataImport<T> {
         pcFieldOffset: *mut ULONG,
         pulClassSize: *mut ULONG,
     ) -> HRESULT,
-    pub GetFieldMarshal: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        ppvNativeType: *mut PCCOR_SIGNATURE,
-        pcbNativeType: *mut ULONG,
-    ) -> HRESULT,
-    pub GetRVA: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        pulCodeRVA: *mut ULONG,
-        pdwImplFlags: *mut DWORD,
-    ) -> HRESULT,
-    pub GetPermissionSetProps: unsafe extern "system" fn(
-        this: &T,
-        pm: mdPermission,
-        pdwAction: *mut DWORD,
-        ppvPermission: *mut *mut c_void,
-        pcbPermission: *mut ULONG,
-    ) -> HRESULT,
-    pub GetSigFromToken: unsafe extern "system" fn(
-        this: &T,
-        mdSig: mdSignature,
-        ppvSig: *mut PCCOR_SIGNATURE,
-        pcbSig: *mut ULONG,
-    ) -> HRESULT,
-    pub GetModuleRefProps: unsafe extern "system" fn(
-        this: &T,
-        mur: mdModuleRef,
-        szName: *mut WCHAR,
-        cchName: ULONG,
-        pchName: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumModuleRefs: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rModuleRefs: *mut mdModuleRef,
-        cmax: ULONG,
-        pcModuleRefs: *mut ULONG,
-    ) -> HRESULT,
-    pub GetTypeSpecFromToken: unsafe extern "system" fn(
-        this: &T,
-        typespec: mdTypeSpec,
-        ppvSig: *mut PCCOR_SIGNATURE,
-        pcbSig: *mut ULONG,
-    ) -> HRESULT,
-    pub GetNameFromToken: unsafe extern "system" fn(
-        this: &T,
-        tk: mdToken,
-        pszUtf8NamePtr: *mut MDUTF8CSTR,
-    ) -> HRESULT,
-    pub EnumUnresolvedMethods: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rMethods: *mut mdToken,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT,
-    pub GetUserString: unsafe extern "system" fn(
-        this: &T,
-        stk: mdString,
-        szString: *mut WCHAR,
-        cchString: ULONG,
-        pchString: *mut ULONG,
-    ) -> HRESULT,
+    pub GetFieldMarshal: unsafe extern "system" fn(this: &T, tk: mdToken, ppvNativeType: *mut PCCOR_SIGNATURE, pcbNativeType: *mut ULONG) -> HRESULT,
+    pub GetRVA: unsafe extern "system" fn(this: &T, tk: mdToken, pulCodeRVA: *mut ULONG, pdwImplFlags: *mut DWORD) -> HRESULT,
+    pub GetPermissionSetProps:
+        unsafe extern "system" fn(this: &T, pm: mdPermission, pdwAction: *mut DWORD, ppvPermission: *mut *mut c_void, pcbPermission: *mut ULONG) -> HRESULT,
+    pub GetSigFromToken: unsafe extern "system" fn(this: &T, mdSig: mdSignature, ppvSig: *mut PCCOR_SIGNATURE, pcbSig: *mut ULONG) -> HRESULT,
+    pub GetModuleRefProps: unsafe extern "system" fn(this: &T, mur: mdModuleRef, szName: *mut WCHAR, cchName: ULONG, pchName: *mut ULONG) -> HRESULT,
+    pub EnumModuleRefs:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rModuleRefs: *mut mdModuleRef, cmax: ULONG, pcModuleRefs: *mut ULONG) -> HRESULT,
+    pub GetTypeSpecFromToken: unsafe extern "system" fn(this: &T, typespec: mdTypeSpec, ppvSig: *mut PCCOR_SIGNATURE, pcbSig: *mut ULONG) -> HRESULT,
+    pub GetNameFromToken: unsafe extern "system" fn(this: &T, tk: mdToken, pszUtf8NamePtr: *mut MDUTF8CSTR) -> HRESULT,
+    pub EnumUnresolvedMethods: unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rMethods: *mut mdToken, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT,
+    pub GetUserString: unsafe extern "system" fn(this: &T, stk: mdString, szString: *mut WCHAR, cchString: ULONG, pchString: *mut ULONG) -> HRESULT,
     pub GetPinvokeMap: unsafe extern "system" fn(
         this: &T,
         tk: mdToken,
@@ -348,33 +188,11 @@ pub struct IMetaDataImport<T> {
         pchImportName: *mut ULONG,
         pmrImportDLL: *mut mdModuleRef,
     ) -> HRESULT,
-    pub EnumSignatures: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rSignatures: *mut mdSignature,
-        cMax: ULONG,
-        pcSignatures: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumTypeSpecs: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rTypeSpecs: *mut mdTypeSpec,
-        cMax: ULONG,
-        pcTypeSpecs: *mut ULONG,
-    ) -> HRESULT,
-    pub EnumUserStrings: unsafe extern "system" fn(
-        this: &T,
-        phEnum: *mut HCORENUM,
-        rStrings: *mut mdString,
-        cMax: ULONG,
-        pcStrings: *mut ULONG,
-    ) -> HRESULT,
-    pub GetParamForMethodIndex: unsafe extern "system" fn(
-        this: &T,
-        md: mdMethodDef,
-        ulParamSeq: ULONG,
-        ppd: *mut mdParamDef,
-    ) -> HRESULT,
+    pub EnumSignatures:
+        unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rSignatures: *mut mdSignature, cMax: ULONG, pcSignatures: *mut ULONG) -> HRESULT,
+    pub EnumTypeSpecs: unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rTypeSpecs: *mut mdTypeSpec, cMax: ULONG, pcTypeSpecs: *mut ULONG) -> HRESULT,
+    pub EnumUserStrings: unsafe extern "system" fn(this: &T, phEnum: *mut HCORENUM, rStrings: *mut mdString, cMax: ULONG, pcStrings: *mut ULONG) -> HRESULT,
+    pub GetParamForMethodIndex: unsafe extern "system" fn(this: &T, md: mdMethodDef, ulParamSeq: ULONG, ppd: *mut mdParamDef) -> HRESULT,
     pub EnumCustomAttributes: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,
@@ -392,12 +210,7 @@ pub struct IMetaDataImport<T> {
         ppBlob: *mut *mut c_void,
         pcbSize: *mut ULONG,
     ) -> HRESULT,
-    pub FindTypeRef: unsafe extern "system" fn(
-        this: &T,
-        tkResolutionScope: mdToken,
-        szName: LPCWSTR,
-        ptr: *mut mdTypeRef,
-    ) -> HRESULT,
+    pub FindTypeRef: unsafe extern "system" fn(this: &T, tkResolutionScope: mdToken, szName: LPCWSTR, ptr: *mut mdTypeRef) -> HRESULT,
     pub GetMemberProps: unsafe extern "system" fn(
         this: &T,
         mb: mdToken,
@@ -460,25 +273,11 @@ pub struct IMetaDataImport<T> {
         ppValue: *mut UVCP_CONSTANT,
         pcchValue: *mut ULONG,
     ) -> HRESULT,
-    pub GetCustomAttributeByName: unsafe extern "system" fn(
-        this: &T,
-        tkObj: mdToken,
-        szName: LPCWSTR,
-        ppData: *mut *mut c_void,
-        pcbData: *mut ULONG,
-    ) -> HRESULT,
+    pub GetCustomAttributeByName:
+        unsafe extern "system" fn(this: &T, tkObj: mdToken, szName: LPCWSTR, ppData: *mut *mut c_void, pcbData: *mut ULONG) -> HRESULT,
     pub IsValidToken: unsafe extern "system" fn(this: &T, tk: mdToken) -> BOOL,
-    pub GetNestedClassProps: unsafe extern "system" fn(
-        this: &T,
-        tdNestedClass: mdTypeDef,
-        ptdEnclosingClass: *mut mdTypeDef,
-    ) -> HRESULT,
-    pub GetNativeCallConvFromSig: unsafe extern "system" fn(
-        this: &T,
-        pvSig: *const c_void,
-        cbSig: ULONG,
-        pCallConv: *mut ULONG,
-    ) -> HRESULT,
+    pub GetNestedClassProps: unsafe extern "system" fn(this: &T, tdNestedClass: mdTypeDef, ptdEnclosingClass: *mut mdTypeDef) -> HRESULT,
+    pub GetNativeCallConvFromSig: unsafe extern "system" fn(this: &T, pvSig: *const c_void, cbSig: ULONG, pCallConv: *mut ULONG) -> HRESULT,
     pub IsGlobal: unsafe extern "system" fn(this: &T, pd: mdToken, pbGlobal: *mut int) -> HRESULT,
 }
 

@@ -80,16 +80,10 @@ impl MethodHeader {
         bytes
     }
     fn more_sects(method_header_flags: u8) -> bool {
-        check_flag(
-            method_header_flags,
-            MethodHeaderFlags::CorILMethod_MoreSects.bits(),
-        )
+        check_flag(method_header_flags, MethodHeaderFlags::CorILMethod_MoreSects.bits())
     }
     fn init_locals(method_header_flags: u8) -> bool {
-        check_flag(
-            method_header_flags,
-            MethodHeaderFlags::CorILMethod_InitLocals.bits(),
-        )
+        check_flag(method_header_flags, MethodHeaderFlags::CorILMethod_InitLocals.bits())
     }
     fn is_tiny(method_header_flags: u8) -> bool {
         // Check only the 2 least significant bits

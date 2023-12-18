@@ -1,8 +1,5 @@
 #![allow(non_snake_case)]
-use crate::ffi::{
-    mdGenericParam, mdGenericParamConstraint, mdMethodSpec, mdToken, DWORD, GUID, HCORENUM,
-    HRESULT, PCCOR_SIGNATURE, ULONG, WCHAR,
-};
+use crate::ffi::{mdGenericParam, mdGenericParamConstraint, mdMethodSpec, mdToken, DWORD, GUID, HCORENUM, HRESULT, PCCOR_SIGNATURE, ULONG, WCHAR};
 
 #[repr(C)]
 pub struct IMetaDataImport2<T> {
@@ -25,13 +22,8 @@ pub struct IMetaDataImport2<T> {
         cchName: ULONG,
         pchName: *mut ULONG,
     ) -> HRESULT,
-    pub GetMethodSpecProps: unsafe extern "system" fn(
-        this: &T,
-        mi: mdMethodSpec,
-        tkParent: *mut mdToken,
-        ppvSigBlob: *mut PCCOR_SIGNATURE,
-        pcbSigBlob: *mut ULONG,
-    ) -> HRESULT,
+    pub GetMethodSpecProps:
+        unsafe extern "system" fn(this: &T, mi: mdMethodSpec, tkParent: *mut mdToken, ppvSigBlob: *mut PCCOR_SIGNATURE, pcbSigBlob: *mut ULONG) -> HRESULT,
     pub EnumGenericParamConstraints: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,
@@ -40,23 +32,10 @@ pub struct IMetaDataImport2<T> {
         cMax: ULONG,
         pcGenericParamConstraints: *mut ULONG,
     ) -> HRESULT,
-    pub GetGenericParamConstraintProps: unsafe extern "system" fn(
-        this: &T,
-        gpc: mdGenericParamConstraint,
-        ptGenericParam: *mut mdGenericParam,
-        ptkConstraintType: *mut mdToken,
-    ) -> HRESULT,
-    pub GetPEKind: unsafe extern "system" fn(
-        this: &T,
-        pdwPEKind: *mut DWORD,
-        pdwMAchine: *mut DWORD,
-    ) -> HRESULT,
-    pub GetVersionString: unsafe extern "system" fn(
-        this: &T,
-        pwzBuf: *mut WCHAR,
-        ccBufSize: DWORD,
-        pccBufSize: *mut DWORD,
-    ) -> HRESULT,
+    pub GetGenericParamConstraintProps:
+        unsafe extern "system" fn(this: &T, gpc: mdGenericParamConstraint, ptGenericParam: *mut mdGenericParam, ptkConstraintType: *mut mdToken) -> HRESULT,
+    pub GetPEKind: unsafe extern "system" fn(this: &T, pdwPEKind: *mut DWORD, pdwMAchine: *mut DWORD) -> HRESULT,
+    pub GetVersionString: unsafe extern "system" fn(this: &T, pwzBuf: *mut WCHAR, ccBufSize: DWORD, pccBufSize: *mut DWORD) -> HRESULT,
     pub EnumMethodSpecs: unsafe extern "system" fn(
         this: &T,
         phEnum: *mut HCORENUM,

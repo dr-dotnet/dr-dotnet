@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef,
-    IMetaDataAssemblyImport, IUnknown, ASSEMBLYMETADATA, DWORD, HCORENUM, HRESULT, LPCWSTR, ULONG,
-    WCHAR,
+    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef, IMetaDataAssemblyImport, IUnknown, ASSEMBLYMETADATA, DWORD,
+    HCORENUM, HRESULT, LPCWSTR, ULONG, WCHAR,
 };
 use std::ffi::c_void;
 
@@ -83,16 +82,7 @@ impl MetaDataAssemblyImport {
         pcbHashValue: *mut ULONG,
         pdwFileFlags: *mut DWORD,
     ) -> HRESULT {
-        (self.i_metadata_assembly_import().GetFileProps)(
-            self,
-            mdf,
-            szName,
-            cchName,
-            pchName,
-            ppbHashValue,
-            pcbHashValue,
-            pdwFileFlags,
-        )
+        (self.i_metadata_assembly_import().GetFileProps)(self, mdf, szName, cchName, pchName, ppbHashValue, pcbHashValue, pdwFileFlags)
     }
     pub unsafe fn GetExportedTypeProps(
         &self,
@@ -104,16 +94,7 @@ impl MetaDataAssemblyImport {
         ptkTypeDef: *mut mdTypeDef,
         pdwExportedTypeFlags: *mut DWORD,
     ) -> HRESULT {
-        (self.i_metadata_assembly_import().GetExportedTypeProps)(
-            self,
-            mdct,
-            szName,
-            cchName,
-            pchName,
-            ptkImplementation,
-            ptkTypeDef,
-            pdwExportedTypeFlags,
-        )
+        (self.i_metadata_assembly_import().GetExportedTypeProps)(self, mdct, szName, cchName, pchName, ptkImplementation, ptkTypeDef, pdwExportedTypeFlags)
     }
     pub unsafe fn GetManifestResourceProps(
         &self,
@@ -125,55 +106,16 @@ impl MetaDataAssemblyImport {
         pdwOffset: *mut DWORD,
         pdwResourceFlags: *mut DWORD,
     ) -> HRESULT {
-        (self.i_metadata_assembly_import().GetManifestResourceProps)(
-            self,
-            mdmr,
-            szName,
-            cchName,
-            pchName,
-            ptkImplementation,
-            pdwOffset,
-            pdwResourceFlags,
-        )
+        (self.i_metadata_assembly_import().GetManifestResourceProps)(self, mdmr, szName, cchName, pchName, ptkImplementation, pdwOffset, pdwResourceFlags)
     }
-    pub unsafe fn EnumAssemblyRefs(
-        &self,
-        phEnum: *mut HCORENUM,
-        rAssemblyRefs: *mut mdAssemblyRef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_import().EnumAssemblyRefs)(
-            self,
-            phEnum,
-            rAssemblyRefs,
-            cMax,
-            pcTokens,
-        )
+    pub unsafe fn EnumAssemblyRefs(&self, phEnum: *mut HCORENUM, rAssemblyRefs: *mut mdAssemblyRef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
+        (self.i_metadata_assembly_import().EnumAssemblyRefs)(self, phEnum, rAssemblyRefs, cMax, pcTokens)
     }
-    pub unsafe fn EnumFiles(
-        &self,
-        phEnum: *mut HCORENUM,
-        rFiles: *mut mdFile,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumFiles(&self, phEnum: *mut HCORENUM, rFiles: *mut mdFile, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
         (self.i_metadata_assembly_import().EnumFiles)(self, phEnum, rFiles, cMax, pcTokens)
     }
-    pub unsafe fn EnumExportedTypes(
-        &self,
-        phEnum: *mut HCORENUM,
-        rExportedTypes: *mut mdExportedType,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_import().EnumExportedTypes)(
-            self,
-            phEnum,
-            rExportedTypes,
-            cMax,
-            pcTokens,
-        )
+    pub unsafe fn EnumExportedTypes(&self, phEnum: *mut HCORENUM, rExportedTypes: *mut mdExportedType, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
+        (self.i_metadata_assembly_import().EnumExportedTypes)(self, phEnum, rExportedTypes, cMax, pcTokens)
     }
     pub unsafe fn EnumManifestResources(
         &self,
@@ -182,40 +124,16 @@ impl MetaDataAssemblyImport {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_assembly_import().EnumManifestResources)(
-            self,
-            phEnum,
-            rManifestResources,
-            cMax,
-            pcTokens,
-        )
+        (self.i_metadata_assembly_import().EnumManifestResources)(self, phEnum, rManifestResources, cMax, pcTokens)
     }
     pub unsafe fn GetAssemblyFromScope(&self, ptkAssembly: *mut mdAssembly) -> HRESULT {
         (self.i_metadata_assembly_import().GetAssemblyFromScope)(self, ptkAssembly)
     }
-    pub unsafe fn FindExportedTypeByName(
-        &self,
-        szName: LPCWSTR,
-        mdtExportedType: mdToken,
-        ptkExportedType: *mut mdExportedType,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_import().FindExportedTypeByName)(
-            self,
-            szName,
-            mdtExportedType,
-            ptkExportedType,
-        )
+    pub unsafe fn FindExportedTypeByName(&self, szName: LPCWSTR, mdtExportedType: mdToken, ptkExportedType: *mut mdExportedType) -> HRESULT {
+        (self.i_metadata_assembly_import().FindExportedTypeByName)(self, szName, mdtExportedType, ptkExportedType)
     }
-    pub unsafe fn FindManifestResourceByName(
-        &self,
-        szName: LPCWSTR,
-        ptkManifestResource: *mut mdManifestResource,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_import().FindManifestResourceByName)(
-            self,
-            szName,
-            ptkManifestResource,
-        )
+    pub unsafe fn FindManifestResourceByName(&self, szName: LPCWSTR, ptkManifestResource: *mut mdManifestResource) -> HRESULT {
+        (self.i_metadata_assembly_import().FindManifestResourceByName)(self, szName, ptkManifestResource)
     }
     pub unsafe fn CloseEnum(&self, hEnum: HCORENUM) -> () {
         (self.i_metadata_assembly_import().CloseEnum)(self, hEnum)
@@ -229,14 +147,6 @@ impl MetaDataAssemblyImport {
         cMax: ULONG,
         pcAssemblies: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_assembly_import().FindAssembliesByName)(
-            self,
-            szAppBase,
-            szPrivateBin,
-            szAssemblyName,
-            ppIUnk,
-            cMax,
-            pcAssemblies,
-        )
+        (self.i_metadata_assembly_import().FindAssembliesByName)(self, szAppBase, szPrivateBin, szAssemblyName, ppIUnk, cMax, pcAssemblies)
     }
 }

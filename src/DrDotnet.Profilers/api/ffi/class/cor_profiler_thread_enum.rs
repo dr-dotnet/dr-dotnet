@@ -30,12 +30,7 @@ impl CorProfilerThreadEnum {
     pub unsafe fn GetCount(&self, pcelt: *mut ULONG) -> HRESULT {
         (self.i_cor_profiler_thread_enum().GetCount)(self, pcelt)
     }
-    pub unsafe fn Next(
-        &self,
-        celt: ULONG,
-        ids: *mut ThreadID,
-        pceltFetched: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn Next(&self, celt: ULONG, ids: *mut ThreadID, pceltFetched: *mut ULONG) -> HRESULT {
         (self.i_cor_profiler_thread_enum().Next)(self, celt, ids, pceltFetched)
     }
 }
@@ -50,8 +45,7 @@ impl Iterator for CorProfilerThreadEnum {
 
             if self.Next(1, ids.as_mut_ptr(), fetched.as_mut_ptr()) == HRESULT::S_OK {
                 Some(*ids.as_ptr())
-            }
-            else {
+            } else {
                 None
             }
         }

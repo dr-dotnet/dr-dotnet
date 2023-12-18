@@ -4,12 +4,8 @@ use std::ffi::c_void;
 
 #[repr(C)]
 pub struct ICorProfilerCallback3<T> {
-    pub InitializeForAttach: unsafe extern "system" fn(
-        this: &mut T,
-        pCorProfilerInfoUnk: *const CorProfilerInfo,
-        pvClientData: *const c_void,
-        cbClientData: UINT,
-    ) -> HRESULT,
+    pub InitializeForAttach:
+        unsafe extern "system" fn(this: &mut T, pCorProfilerInfoUnk: *const CorProfilerInfo, pvClientData: *const c_void, cbClientData: UINT) -> HRESULT,
     pub ProfilerAttachComplete: unsafe extern "system" fn(this: &mut T) -> HRESULT,
     pub ProfilerDetachSucceeded: unsafe extern "system" fn(this: &mut T) -> HRESULT,
 }

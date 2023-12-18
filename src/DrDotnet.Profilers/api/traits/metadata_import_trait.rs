@@ -1,6 +1,6 @@
 use crate::{
     ffi::{mdMethodDef, mdTypeDef, HRESULT},
-    MethodProps, TypeProps
+    MethodProps, TypeProps,
 };
 
 pub trait MetadataImportTrait {

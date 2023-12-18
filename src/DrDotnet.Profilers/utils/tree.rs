@@ -1,7 +1,7 @@
+use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 use std::ops::AddAssign;
-use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct TreeNode<K, V> {
@@ -11,7 +11,9 @@ pub struct TreeNode<K, V> {
 }
 
 impl<K, V> TreeNode<K, V>
-    where K: PartialEq + Eq + Copy + Sync + Send, V: Clone + Sync + Send
+where
+    K: PartialEq + Eq + Copy + Sync + Send,
+    V: Clone + Sync + Send,
 {
     pub fn new(key: K) -> Self {
         TreeNode {
@@ -23,7 +25,8 @@ impl<K, V> TreeNode<K, V>
 
     // Sort children recursively based on the given closure
     pub fn sort_by<F>(&mut self, compare: &F)
-        where F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
+    where
+        F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
     {
         self.children.sort_by(compare);
         for child in &mut self.children {
@@ -32,7 +35,8 @@ impl<K, V> TreeNode<K, V>
     }
 
     pub fn sort_by_iterative<F>(&mut self, compare: &F)
-        where F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
+    where
+        F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
     {
         let mut queue = VecDeque::new();
         queue.push_back(self);
@@ -45,7 +49,8 @@ impl<K, V> TreeNode<K, V>
     }
 
     pub fn sort_by_multithreaded<F>(&mut self, compare: &F)
-        where F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering + Sync,
+    where
+        F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering + Sync,
     {
         let mut stack = vec![self];
         while let Some(node) = stack.pop() {
@@ -57,7 +62,8 @@ impl<K, V> TreeNode<K, V>
     }
 
     pub fn add_sequence<I>(&mut self, sequence: I) -> &mut TreeNode<K, V>
-    where I: IntoIterator<Item = K>,
+    where
+        I: IntoIterator<Item = K>,
     {
         let mut current_node = self;
         for element in sequence {
@@ -74,7 +80,7 @@ impl<K, V> TreeNode<K, V>
 
     pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
         let mut root = TreeNode::new(root_key);
-        
+
         for (sequence, value) in sequences {
             let mut current = &mut root;
             for y in sequence {
@@ -95,7 +101,9 @@ impl<K, V> TreeNode<K, V>
 }
 
 impl<K, V> PartialEq for TreeNode<K, V>
-    where K: Eq, V: Eq
+where
+    K: Eq,
+    V: Eq,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.key != other.key || self.value != other.value || self.children.len() != other.children.len() {
@@ -111,10 +119,15 @@ impl<K, V> PartialEq for TreeNode<K, V>
 }
 
 impl<K, V> Eq for TreeNode<K, V>
-    where K: Eq, V: Eq {}
+where
+    K: Eq,
+    V: Eq,
+{
+}
 
 impl<K, V> TreeNode<K, V>
-    where V: for<'a> AddAssign<&'a V> + Default,
+where
+    V: for<'a> AddAssign<&'a V> + Default,
 {
     fn get_inclusive_value_recursive(&self, value: &mut V) {
         if let Some(self_data) = &self.value {
@@ -137,11 +150,12 @@ impl<K, V> TreeNode<K, V>
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
     use super::*;
+    use std::time::Instant;
 
     fn print<T, V, F>(tree: &TreeNode<T, V>, depth: usize, format: &F)
-        where F: Fn(&TreeNode<T, V>) -> String
+    where
+        F: Fn(&TreeNode<T, V>) -> String,
     {
         let tabs = " ".repeat(depth);
         println!("{}- {}", tabs, format(tree));
@@ -166,27 +180,86 @@ mod tests {
         ]);
 
         // Expected sequences in a tree, sorted by descending inclusive value
-        let expected =
-        TreeNode { key: 0, value: None, children: vec![
-            TreeNode { key: 1, value: None, children: vec![
-                TreeNode { key: 3, value: None, children: vec![
-                    TreeNode { key: 5, value: Some(5), children: vec![
-                        TreeNode { key: 1, value: Some(7), children: vec![] }] }] },
-                TreeNode { key: 2, value: Some(3), children: vec![
-                    TreeNode { key: 4, value: Some(4), children: vec![] },
-                    TreeNode { key: 3, value: Some(1), children: vec![] }] }] },
-            TreeNode { key: 2, value: None, children: vec![
-                TreeNode { key: 3, value: None, children: vec![
-                    TreeNode { key: 2, value: None, children: vec![
-                        TreeNode { key: 1, value: None, children: vec![
-                            TreeNode { key: 4, value: Some(6), children: vec![] }] }] }] },
-                TreeNode { key: 2, value: None, children: vec![
-                    TreeNode { key: 3, value: Some(2), children: vec![] }] }] }] };
+        let expected = TreeNode {
+            key: 0,
+            value: None,
+            children: vec![
+                TreeNode {
+                    key: 1,
+                    value: None,
+                    children: vec![
+                        TreeNode {
+                            key: 3,
+                            value: None,
+                            children: vec![TreeNode {
+                                key: 5,
+                                value: Some(5),
+                                children: vec![TreeNode {
+                                    key: 1,
+                                    value: Some(7),
+                                    children: vec![],
+                                }],
+                            }],
+                        },
+                        TreeNode {
+                            key: 2,
+                            value: Some(3),
+                            children: vec![
+                                TreeNode {
+                                    key: 4,
+                                    value: Some(4),
+                                    children: vec![],
+                                },
+                                TreeNode {
+                                    key: 3,
+                                    value: Some(1),
+                                    children: vec![],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                TreeNode {
+                    key: 2,
+                    value: None,
+                    children: vec![
+                        TreeNode {
+                            key: 3,
+                            value: None,
+                            children: vec![TreeNode {
+                                key: 2,
+                                value: None,
+                                children: vec![TreeNode {
+                                    key: 1,
+                                    value: None,
+                                    children: vec![TreeNode {
+                                        key: 4,
+                                        value: Some(6),
+                                        children: vec![],
+                                    }],
+                                }],
+                            }],
+                        },
+                        TreeNode {
+                            key: 2,
+                            value: None,
+                            children: vec![TreeNode {
+                                key: 3,
+                                value: Some(2),
+                                children: vec![],
+                            }],
+                        },
+                    ],
+                },
+            ],
+        };
 
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
 
         println!("Unsorted:");
-        print(&tree, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree, 0, &|node: &TreeNode<u32, usize>| {
+            format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value)
+        });
         assert_ne!(tree, expected);
 
         // Sorts by descending inclusive value
@@ -197,7 +270,7 @@ mod tests {
         let duration = start.elapsed();
         println!("Recursive sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, expected);
-        
+
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, expected);
         let start = Instant::now();
@@ -214,6 +287,8 @@ mod tests {
         println!("Multithreaded sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, expected);
 
-        print(&tree_clone, 0, &|node: &TreeNode<u32, usize>| format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value));
+        print(&tree_clone, 0, &|node: &TreeNode<u32, usize>| {
+            format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value)
+        });
     }
 }

@@ -1,7 +1,7 @@
-use std::{ops::AddAssign, collections::HashMap, cell::RefCell};
-use profilers::utils::*;
 use criterion::{criterion_group, criterion_main, Criterion};
+use profilers::utils::*;
 use rand::prelude::*;
+use std::{cell::RefCell, collections::HashMap, ops::AddAssign};
 
 type FunctionID = u32;
 type ThreadID = u32;
@@ -45,14 +45,13 @@ fn build_random_sequences() -> HashMap<Vec<FunctionID>, Threads> {
 }
 
 fn bench_tree_sort(c: &mut Criterion) {
-
     let sequences = build_random_sequences();
 
     c.bench_function("recursive + no caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         b.iter(|| tree.sort_by(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())))
     });
-    
+
     c.bench_function("iterative + no caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         b.iter(|| tree.sort_by_iterative(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())))
@@ -62,21 +61,17 @@ fn bench_tree_sort(c: &mut Criterion) {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         b.iter(|| tree.sort_by_multithreaded(&|a, b| b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())))
     });
-    
+
     c.bench_function("iterative + caching", |b| {
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
         let cache: RefCell<HashMap<u32, usize>> = RefCell::new(HashMap::new());
         b.iter(|| {
             tree.sort_by_iterative(&|a, b| {
                 let mut c = cache.borrow_mut();
-        
-                let value_b = *c
-                    .entry(b.key)
-                    .or_insert_with(|| b.get_inclusive_value().0.len());
 
-                let value_a = *c
-                    .entry(a.key)
-                    .or_insert_with(|| a.get_inclusive_value().0.len());
+                let value_b = *c.entry(b.key).or_insert_with(|| b.get_inclusive_value().0.len());
+
+                let value_a = *c.entry(a.key).or_insert_with(|| a.get_inclusive_value().0.len());
 
                 value_b.cmp(&value_a)
             })
@@ -85,12 +80,9 @@ fn bench_tree_sort(c: &mut Criterion) {
 }
 
 fn bench_tree_build(c: &mut Criterion) {
-
     let sequences = build_random_sequences();
 
-    c.bench_function("build tree", |b| {
-        b.iter(|| TreeNode::build_from_sequences(&sequences, 0))
-    });
+    c.bench_function("build tree", |b| b.iter(|| TreeNode::build_from_sequences(&sequences, 0)));
 }
 
 criterion_group!(benches, bench_tree_sort, bench_tree_build);

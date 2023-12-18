@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    int, mdCustomAttribute, mdEvent, mdFieldDef, mdGenericParam, mdGenericParamConstraint,
-    mdInterfaceImpl, mdMemberRef, mdMethodDef, mdMethodSpec, mdModule, mdModuleRef, mdParamDef,
-    mdPermission, mdProperty, mdSignature, mdString, mdToken, mdTypeDef, mdTypeRef, mdTypeSpec,
-    IMetaDataImport, IMetaDataImport2, IUnknown, BOOL, COR_FIELD_OFFSET, DWORD, GUID, HCORENUM,
-    HRESULT, LPCWSTR, MDUTF8CSTR, PCCOR_SIGNATURE, REFIID, ULONG, UVCP_CONSTANT, WCHAR,
+    int, mdCustomAttribute, mdEvent, mdFieldDef, mdGenericParam, mdGenericParamConstraint, mdInterfaceImpl, mdMemberRef, mdMethodDef, mdMethodSpec, mdModule,
+    mdModuleRef, mdParamDef, mdPermission, mdProperty, mdSignature, mdString, mdToken, mdTypeDef, mdTypeRef, mdTypeSpec, IMetaDataImport, IMetaDataImport2,
+    IUnknown, BOOL, COR_FIELD_OFFSET, DWORD, GUID, HCORENUM, HRESULT, LPCWSTR, MDUTF8CSTR, PCCOR_SIGNATURE, REFIID, ULONG, UVCP_CONSTANT, WCHAR,
 };
 use std::ffi::c_void;
 
@@ -36,49 +34,19 @@ impl MetaDataImport {
     pub unsafe fn ResetEnum(&self, hEnum: HCORENUM, ulPos: *const ULONG) -> HRESULT {
         (self.i_metadata_import().ResetEnum)(self, hEnum, ulPos)
     }
-    pub unsafe fn EnumTypeDefs(
-        &self,
-        phEnum: *mut HCORENUM,
-        rTypeDefs: *const mdTypeDef,
-        cMax: ULONG,
-        pcTypeDefs: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumTypeDefs(&self, phEnum: *mut HCORENUM, rTypeDefs: *const mdTypeDef, cMax: ULONG, pcTypeDefs: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumTypeDefs)(self, phEnum, rTypeDefs, cMax, pcTypeDefs)
     }
-    pub unsafe fn EnumInterfaceImpls(
-        &self,
-        phEnum: *mut HCORENUM,
-        td: mdTypeDef,
-        rImpls: *mut mdInterfaceImpl,
-        cMax: ULONG,
-        pcImpls: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumInterfaceImpls(&self, phEnum: *mut HCORENUM, td: mdTypeDef, rImpls: *mut mdInterfaceImpl, cMax: ULONG, pcImpls: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumInterfaceImpls)(self, phEnum, td, rImpls, cMax, pcImpls)
     }
-    pub unsafe fn EnumTypeRefs(
-        &self,
-        phEnum: *mut HCORENUM,
-        rTypeRefs: *mut mdTypeRef,
-        cMax: ULONG,
-        pcTypeRefs: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumTypeRefs(&self, phEnum: *mut HCORENUM, rTypeRefs: *mut mdTypeRef, cMax: ULONG, pcTypeRefs: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumTypeRefs)(self, phEnum, rTypeRefs, cMax, pcTypeRefs)
     }
-    pub unsafe fn FindTypeDefByName(
-        &self,
-        szTypeDef: LPCWSTR,
-        tkEnclosingClass: mdToken,
-        ptd: *mut mdTypeDef,
-    ) -> HRESULT {
+    pub unsafe fn FindTypeDefByName(&self, szTypeDef: LPCWSTR, tkEnclosingClass: mdToken, ptd: *mut mdTypeDef) -> HRESULT {
         (self.i_metadata_import().FindTypeDefByName)(self, szTypeDef, tkEnclosingClass, ptd)
     }
-    pub unsafe fn GetScopeProps(
-        &self,
-        szName: *mut WCHAR,
-        cchName: ULONG,
-        pchName: *mut ULONG,
-        pmvid: *mut GUID,
-    ) -> HRESULT {
+    pub unsafe fn GetScopeProps(&self, szName: *mut WCHAR, cchName: ULONG, pchName: *mut ULONG, pmvid: *mut GUID) -> HRESULT {
         (self.i_metadata_import().GetScopeProps)(self, szName, cchName, pchName, pmvid)
     }
     pub unsafe fn GetModuleFromScope(&self, pmd: *mut mdModule) -> HRESULT {
@@ -93,40 +61,13 @@ impl MetaDataImport {
         pdwTypeDefFlags: *mut DWORD,
         ptkExtends: *mut mdToken,
     ) -> HRESULT {
-        (self.i_metadata_import().GetTypeDefProps)(
-            self,
-            td,
-            szTypeDef,
-            cchTypeDef,
-            pchTypeDef,
-            pdwTypeDefFlags,
-            ptkExtends,
-        )
+        (self.i_metadata_import().GetTypeDefProps)(self, td, szTypeDef, cchTypeDef, pchTypeDef, pdwTypeDefFlags, ptkExtends)
     }
-    pub unsafe fn GetInterfaceImplProps(
-        &self,
-        iiImpl: mdInterfaceImpl,
-        pClass: *mut mdTypeDef,
-        ptkIface: *mut mdToken,
-    ) -> HRESULT {
+    pub unsafe fn GetInterfaceImplProps(&self, iiImpl: mdInterfaceImpl, pClass: *mut mdTypeDef, ptkIface: *mut mdToken) -> HRESULT {
         (self.i_metadata_import().GetInterfaceImplProps)(self, iiImpl, pClass, ptkIface)
     }
-    pub unsafe fn GetTypeRefProps(
-        &self,
-        tr: mdTypeRef,
-        ptkResolutionScope: *mut mdToken,
-        szName: *mut WCHAR,
-        cchName: ULONG,
-        pchName: *mut ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_import().GetTypeRefProps)(
-            self,
-            tr,
-            ptkResolutionScope,
-            szName,
-            cchName,
-            pchName,
-        )
+    pub unsafe fn GetTypeRefProps(&self, tr: mdTypeRef, ptkResolutionScope: *mut mdToken, szName: *mut WCHAR, cchName: ULONG, pchName: *mut ULONG) -> HRESULT {
+        (self.i_metadata_import().GetTypeRefProps)(self, tr, ptkResolutionScope, szName, cchName, pchName)
     }
     pub unsafe fn ResolveTypeRef(
         &self,
@@ -137,14 +78,7 @@ impl MetaDataImport {
     ) -> HRESULT {
         (self.i_metadata_import().ResolveTypeRef)(self, tr, riid, ppIScope, ptd)
     }
-    pub unsafe fn EnumMembers(
-        &self,
-        phEnum: *mut HCORENUM,
-        cl: mdTypeDef,
-        rMembers: *mut mdToken,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumMembers(&self, phEnum: *mut HCORENUM, cl: mdTypeDef, rMembers: *mut mdToken, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumMembers)(self, phEnum, cl, rMembers, cMax, pcTokens)
     }
     pub unsafe fn EnumMembersWithName(
@@ -156,18 +90,9 @@ impl MetaDataImport {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumMembersWithName)(
-            self, phEnum, cl, szName, rMembers, cMax, pcTokens,
-        )
+        (self.i_metadata_import().EnumMembersWithName)(self, phEnum, cl, szName, rMembers, cMax, pcTokens)
     }
-    pub unsafe fn EnumMethods(
-        &self,
-        phEnum: *mut HCORENUM,
-        cl: mdTypeDef,
-        rMethods: *mut mdMethodDef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumMethods(&self, phEnum: *mut HCORENUM, cl: mdTypeDef, rMethods: *mut mdMethodDef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumMethods)(self, phEnum, cl, rMethods, cMax, pcTokens)
     }
     pub unsafe fn EnumMethodsWithName(
@@ -179,18 +104,9 @@ impl MetaDataImport {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumMethodsWithName)(
-            self, phEnum, cl, szName, rMethods, cMax, pcTokens,
-        )
+        (self.i_metadata_import().EnumMethodsWithName)(self, phEnum, cl, szName, rMethods, cMax, pcTokens)
     }
-    pub unsafe fn EnumFields(
-        &self,
-        phEnum: *mut HCORENUM,
-        cl: mdTypeDef,
-        rFields: *mut mdFieldDef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumFields(&self, phEnum: *mut HCORENUM, cl: mdTypeDef, rFields: *mut mdFieldDef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumFields)(self, phEnum, cl, rFields, cMax, pcTokens)
     }
     pub unsafe fn EnumFieldsWithName(
@@ -202,36 +118,13 @@ impl MetaDataImport {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumFieldsWithName)(
-            self, phEnum, cl, szName, rFields, cMax, pcTokens,
-        )
+        (self.i_metadata_import().EnumFieldsWithName)(self, phEnum, cl, szName, rFields, cMax, pcTokens)
     }
-    pub unsafe fn EnumParams(
-        &self,
-        phEnum: *mut HCORENUM,
-        mb: mdMethodDef,
-        rParams: *mut mdParamDef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumParams(&self, phEnum: *mut HCORENUM, mb: mdMethodDef, rParams: *mut mdParamDef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumParams)(self, phEnum, mb, rParams, cMax, pcTokens)
     }
-    pub unsafe fn EnumMemberRefs(
-        &self,
-        phEnum: *mut HCORENUM,
-        tkParent: mdToken,
-        rMemberRefs: *mut mdMemberRef,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_import().EnumMemberRefs)(
-            self,
-            phEnum,
-            tkParent,
-            rMemberRefs,
-            cMax,
-            pcTokens,
-        )
+    pub unsafe fn EnumMemberRefs(&self, phEnum: *mut HCORENUM, tkParent: mdToken, rMemberRefs: *mut mdMemberRef, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
+        (self.i_metadata_import().EnumMemberRefs)(self, phEnum, tkParent, rMemberRefs, cMax, pcTokens)
     }
     pub unsafe fn EnumMethodImpls(
         &self,
@@ -242,15 +135,7 @@ impl MetaDataImport {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumMethodImpls)(
-            self,
-            phEnum,
-            td,
-            rMethodBody,
-            rMethodDecl,
-            cMax,
-            pcTokens,
-        )
+        (self.i_metadata_import().EnumMethodImpls)(self, phEnum, td, rMethodBody, rMethodDecl, cMax, pcTokens)
     }
     pub unsafe fn EnumPermissionSets(
         &self,
@@ -261,54 +146,18 @@ impl MetaDataImport {
         cMax: ULONG,
         pcTokens: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumPermissionSets)(
-            self,
-            phEnum,
-            tk,
-            dwActions,
-            rPermission,
-            cMax,
-            pcTokens,
-        )
+        (self.i_metadata_import().EnumPermissionSets)(self, phEnum, tk, dwActions, rPermission, cMax, pcTokens)
     }
-    pub unsafe fn FindMember(
-        &self,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdToken,
-    ) -> HRESULT {
+    pub unsafe fn FindMember(&self, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdToken) -> HRESULT {
         (self.i_metadata_import().FindMember)(self, td, szName, pvSigBlob, cbSigBlob, pmb)
     }
-    pub unsafe fn FindMethod(
-        &self,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdMethodDef,
-    ) -> HRESULT {
+    pub unsafe fn FindMethod(&self, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdMethodDef) -> HRESULT {
         (self.i_metadata_import().FindMethod)(self, td, szName, pvSigBlob, cbSigBlob, pmb)
     }
-    pub unsafe fn FindField(
-        &self,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdFieldDef,
-    ) -> HRESULT {
+    pub unsafe fn FindField(&self, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdFieldDef) -> HRESULT {
         (self.i_metadata_import().FindField)(self, td, szName, pvSigBlob, cbSigBlob, pmb)
     }
-    pub unsafe fn FindMemberRef(
-        &self,
-        td: mdTypeDef,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmb: *mut mdMemberRef,
-    ) -> HRESULT {
+    pub unsafe fn FindMemberRef(&self, td: mdTypeDef, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmb: *mut mdMemberRef) -> HRESULT {
         (self.i_metadata_import().FindMemberRef)(self, td, szName, pvSigBlob, cbSigBlob, pmb)
     }
     pub unsafe fn GetMethodProps(
@@ -348,28 +197,12 @@ impl MetaDataImport {
         ppvSigBlob: *mut PCCOR_SIGNATURE,
         pbSig: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().GetMemberRefProps)(
-            self, mr, ptk, szMember, cchMember, pchMember, ppvSigBlob, pbSig,
-        )
+        (self.i_metadata_import().GetMemberRefProps)(self, mr, ptk, szMember, cchMember, pchMember, ppvSigBlob, pbSig)
     }
-    pub unsafe fn EnumProperties(
-        &self,
-        phEnum: *mut HCORENUM,
-        td: mdTypeDef,
-        rProperties: *mut mdProperty,
-        cMax: ULONG,
-        pcProperties: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumProperties(&self, phEnum: *mut HCORENUM, td: mdTypeDef, rProperties: *mut mdProperty, cMax: ULONG, pcProperties: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumProperties)(self, phEnum, td, rProperties, cMax, pcProperties)
     }
-    pub unsafe fn EnumEvents(
-        &self,
-        phEnum: *mut HCORENUM,
-        td: mdTypeDef,
-        rEvents: *mut mdEvent,
-        cMax: ULONG,
-        pcEvents: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumEvents(&self, phEnum: *mut HCORENUM, td: mdTypeDef, rEvents: *mut mdEvent, cMax: ULONG, pcEvents: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumEvents)(self, phEnum, td, rEvents, cMax, pcEvents)
     }
     pub unsafe fn GetEventProps(
@@ -413,21 +246,9 @@ impl MetaDataImport {
         cMax: ULONG,
         pcEventProp: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumMethodSemantics)(
-            self,
-            phEnum,
-            mb,
-            rEventProp,
-            cMax,
-            pcEventProp,
-        )
+        (self.i_metadata_import().EnumMethodSemantics)(self, phEnum, mb, rEventProp, cMax, pcEventProp)
     }
-    pub unsafe fn GetMethodSemantics(
-        &self,
-        mb: mdMethodDef,
-        tkEventProp: mdToken,
-        pdwSemanticsFlags: *mut DWORD,
-    ) -> HRESULT {
+    pub unsafe fn GetMethodSemantics(&self, mb: mdMethodDef, tkEventProp: mdToken, pdwSemanticsFlags: *mut DWORD) -> HRESULT {
         (self.i_metadata_import().GetMethodSemantics)(self, mb, tkEventProp, pdwSemanticsFlags)
     }
     pub unsafe fn GetClassLayout(
@@ -439,100 +260,36 @@ impl MetaDataImport {
         pcFieldOffset: *mut ULONG,
         pulClassSize: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().GetClassLayout)(
-            self,
-            td,
-            pdwPackSize,
-            rFieldOffset,
-            cMax,
-            pcFieldOffset,
-            pulClassSize,
-        )
+        (self.i_metadata_import().GetClassLayout)(self, td, pdwPackSize, rFieldOffset, cMax, pcFieldOffset, pulClassSize)
     }
-    pub unsafe fn GetFieldMarshal(
-        &self,
-        tk: mdToken,
-        ppvNativeType: *mut PCCOR_SIGNATURE,
-        pcbNativeType: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetFieldMarshal(&self, tk: mdToken, ppvNativeType: *mut PCCOR_SIGNATURE, pcbNativeType: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetFieldMarshal)(self, tk, ppvNativeType, pcbNativeType)
     }
-    pub unsafe fn GetRVA(
-        &self,
-        tk: mdToken,
-        pulCodeRVA: *mut ULONG,
-        pdwImplFlags: *mut DWORD,
-    ) -> HRESULT {
+    pub unsafe fn GetRVA(&self, tk: mdToken, pulCodeRVA: *mut ULONG, pdwImplFlags: *mut DWORD) -> HRESULT {
         (self.i_metadata_import().GetRVA)(self, tk, pulCodeRVA, pdwImplFlags)
     }
-    pub unsafe fn GetPermissionSetProps(
-        &self,
-        pm: mdPermission,
-        pdwAction: *mut DWORD,
-        ppvPermission: *mut *mut c_void,
-        pcbPermission: *mut ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_import().GetPermissionSetProps)(
-            self,
-            pm,
-            pdwAction,
-            ppvPermission,
-            pcbPermission,
-        )
+    pub unsafe fn GetPermissionSetProps(&self, pm: mdPermission, pdwAction: *mut DWORD, ppvPermission: *mut *mut c_void, pcbPermission: *mut ULONG) -> HRESULT {
+        (self.i_metadata_import().GetPermissionSetProps)(self, pm, pdwAction, ppvPermission, pcbPermission)
     }
-    pub unsafe fn GetSigFromToken(
-        &self,
-        mdSig: mdSignature,
-        ppvSig: *mut PCCOR_SIGNATURE,
-        pcbSig: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetSigFromToken(&self, mdSig: mdSignature, ppvSig: *mut PCCOR_SIGNATURE, pcbSig: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetSigFromToken)(self, mdSig, ppvSig, pcbSig)
     }
-    pub unsafe fn GetModuleRefProps(
-        &self,
-        mur: mdModuleRef,
-        szName: *mut WCHAR,
-        cchName: ULONG,
-        pchName: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetModuleRefProps(&self, mur: mdModuleRef, szName: *mut WCHAR, cchName: ULONG, pchName: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetModuleRefProps)(self, mur, szName, cchName, pchName)
     }
-    pub unsafe fn EnumModuleRefs(
-        &self,
-        phEnum: *mut HCORENUM,
-        rModuleRefs: *mut mdModuleRef,
-        cmax: ULONG,
-        pcModuleRefs: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumModuleRefs(&self, phEnum: *mut HCORENUM, rModuleRefs: *mut mdModuleRef, cmax: ULONG, pcModuleRefs: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumModuleRefs)(self, phEnum, rModuleRefs, cmax, pcModuleRefs)
     }
-    pub unsafe fn GetTypeSpecFromToken(
-        &self,
-        typespec: mdTypeSpec,
-        ppvSig: *mut PCCOR_SIGNATURE,
-        pcbSig: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetTypeSpecFromToken(&self, typespec: mdTypeSpec, ppvSig: *mut PCCOR_SIGNATURE, pcbSig: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetTypeSpecFromToken)(self, typespec, ppvSig, pcbSig)
     }
     pub unsafe fn GetNameFromToken(&self, tk: mdToken, pszUtf8NamePtr: *mut MDUTF8CSTR) -> HRESULT {
         (self.i_metadata_import().GetNameFromToken)(self, tk, pszUtf8NamePtr)
     }
-    pub unsafe fn EnumUnresolvedMethods(
-        &self,
-        phEnum: *mut HCORENUM,
-        rMethods: *mut mdToken,
-        cMax: ULONG,
-        pcTokens: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumUnresolvedMethods(&self, phEnum: *mut HCORENUM, rMethods: *mut mdToken, cMax: ULONG, pcTokens: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumUnresolvedMethods)(self, phEnum, rMethods, cMax, pcTokens)
     }
-    pub unsafe fn GetUserString(
-        &self,
-        stk: mdString,
-        szString: *mut WCHAR,
-        cchString: ULONG,
-        pchString: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetUserString(&self, stk: mdString, szString: *mut WCHAR, cchString: ULONG, pchString: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetUserString)(self, stk, szString, cchString, pchString)
     }
     pub unsafe fn GetPinvokeMap(
@@ -544,49 +301,18 @@ impl MetaDataImport {
         pchImportName: *mut ULONG,
         pmrImportDLL: *mut mdModuleRef,
     ) -> HRESULT {
-        (self.i_metadata_import().GetPinvokeMap)(
-            self,
-            tk,
-            pdwMappingFlags,
-            szImportName,
-            cchImportName,
-            pchImportName,
-            pmrImportDLL,
-        )
+        (self.i_metadata_import().GetPinvokeMap)(self, tk, pdwMappingFlags, szImportName, cchImportName, pchImportName, pmrImportDLL)
     }
-    pub unsafe fn EnumSignatures(
-        &self,
-        phEnum: *mut HCORENUM,
-        rSignatures: *mut mdSignature,
-        cMax: ULONG,
-        pcSignatures: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumSignatures(&self, phEnum: *mut HCORENUM, rSignatures: *mut mdSignature, cMax: ULONG, pcSignatures: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumSignatures)(self, phEnum, rSignatures, cMax, pcSignatures)
     }
-    pub unsafe fn EnumTypeSpecs(
-        &self,
-        phEnum: *mut HCORENUM,
-        rTypeSpecs: *mut mdTypeSpec,
-        cMax: ULONG,
-        pcTypeSpecs: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumTypeSpecs(&self, phEnum: *mut HCORENUM, rTypeSpecs: *mut mdTypeSpec, cMax: ULONG, pcTypeSpecs: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumTypeSpecs)(self, phEnum, rTypeSpecs, cMax, pcTypeSpecs)
     }
-    pub unsafe fn EnumUserStrings(
-        &self,
-        phEnum: *mut HCORENUM,
-        rStrings: *mut mdString,
-        cMax: ULONG,
-        pcStrings: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn EnumUserStrings(&self, phEnum: *mut HCORENUM, rStrings: *mut mdString, cMax: ULONG, pcStrings: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().EnumUserStrings)(self, phEnum, rStrings, cMax, pcStrings)
     }
-    pub unsafe fn GetParamForMethodIndex(
-        &self,
-        md: mdMethodDef,
-        ulParamSeq: ULONG,
-        ppd: *mut mdParamDef,
-    ) -> HRESULT {
+    pub unsafe fn GetParamForMethodIndex(&self, md: mdMethodDef, ulParamSeq: ULONG, ppd: *mut mdParamDef) -> HRESULT {
         (self.i_metadata_import().GetParamForMethodIndex)(self, md, ulParamSeq, ppd)
     }
     pub unsafe fn EnumCustomAttributes(
@@ -598,15 +324,7 @@ impl MetaDataImport {
         cMax: ULONG,
         pcCustomAttributes: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().EnumCustomAttributes)(
-            self,
-            phEnum,
-            tk,
-            tkType,
-            rCustomAttributes,
-            cMax,
-            pcCustomAttributes,
-        )
+        (self.i_metadata_import().EnumCustomAttributes)(self, phEnum, tk, tkType, rCustomAttributes, cMax, pcCustomAttributes)
     }
     pub unsafe fn GetCustomAttributeProps(
         &self,
@@ -616,16 +334,9 @@ impl MetaDataImport {
         ppBlob: *mut *mut c_void,
         pcbSize: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import().GetCustomAttributeProps)(
-            self, cv, ptkObj, ptkType, ppBlob, pcbSize,
-        )
+        (self.i_metadata_import().GetCustomAttributeProps)(self, cv, ptkObj, ptkType, ppBlob, pcbSize)
     }
-    pub unsafe fn FindTypeRef(
-        &self,
-        tkResolutionScope: mdToken,
-        szName: LPCWSTR,
-        ptr: *mut mdTypeRef,
-    ) -> HRESULT {
+    pub unsafe fn FindTypeRef(&self, tkResolutionScope: mdToken, szName: LPCWSTR, ptr: *mut mdTypeRef) -> HRESULT {
         (self.i_metadata_import().FindTypeRef)(self, tkResolutionScope, szName, ptr)
     }
     pub unsafe fn GetMemberProps(
@@ -756,31 +467,16 @@ impl MetaDataImport {
             pcchValue,
         )
     }
-    pub unsafe fn GetCustomAttributeByName(
-        &self,
-        tkObj: mdToken,
-        szName: LPCWSTR,
-        ppData: *mut *mut c_void,
-        pcbData: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetCustomAttributeByName(&self, tkObj: mdToken, szName: LPCWSTR, ppData: *mut *mut c_void, pcbData: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetCustomAttributeByName)(self, tkObj, szName, ppData, pcbData)
     }
     pub unsafe fn IsValidToken(&self, tk: mdToken) -> BOOL {
         (self.i_metadata_import().IsValidToken)(self, tk)
     }
-    pub unsafe fn GetNestedClassProps(
-        &self,
-        tdNestedClass: mdTypeDef,
-        ptdEnclosingClass: *mut mdTypeDef,
-    ) -> HRESULT {
+    pub unsafe fn GetNestedClassProps(&self, tdNestedClass: mdTypeDef, ptdEnclosingClass: *mut mdTypeDef) -> HRESULT {
         (self.i_metadata_import().GetNestedClassProps)(self, tdNestedClass, ptdEnclosingClass)
     }
-    pub unsafe fn GetNativeCallConvFromSig(
-        &self,
-        pvSig: *const c_void,
-        cbSig: ULONG,
-        pCallConv: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetNativeCallConvFromSig(&self, pvSig: *const c_void, cbSig: ULONG, pCallConv: *mut ULONG) -> HRESULT {
         (self.i_metadata_import().GetNativeCallConvFromSig)(self, pvSig, cbSig, pCallConv)
     }
     pub unsafe fn IsGlobal(&self, pd: mdToken, pbGlobal: *mut int) -> HRESULT {
@@ -794,14 +490,7 @@ impl MetaDataImport {
         cMax: ULONG,
         pcGenericParams: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import_2().EnumGenericParams)(
-            self,
-            phEnum,
-            tk,
-            rGenericParams,
-            cMax,
-            pcGenericParams,
-        )
+        (self.i_metadata_import_2().EnumGenericParams)(self, phEnum, tk, rGenericParams, cMax, pcGenericParams)
     }
     pub unsafe fn GetGenericParamProps(
         &self,
@@ -814,25 +503,9 @@ impl MetaDataImport {
         cchName: ULONG,
         pchName: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import_2().GetGenericParamProps)(
-            self,
-            gp,
-            pulParamSeq,
-            pdwParamFlags,
-            ptOwner,
-            reserved,
-            wzname,
-            cchName,
-            pchName,
-        )
+        (self.i_metadata_import_2().GetGenericParamProps)(self, gp, pulParamSeq, pdwParamFlags, ptOwner, reserved, wzname, cchName, pchName)
     }
-    pub unsafe fn GetMethodSpecProps(
-        &self,
-        mi: mdMethodSpec,
-        tkParent: *mut mdToken,
-        ppvSigBlob: *mut PCCOR_SIGNATURE,
-        pcbSigBlob: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn GetMethodSpecProps(&self, mi: mdMethodSpec, tkParent: *mut mdToken, ppvSigBlob: *mut PCCOR_SIGNATURE, pcbSigBlob: *mut ULONG) -> HRESULT {
         (self.i_metadata_import_2().GetMethodSpecProps)(self, mi, tkParent, ppvSigBlob, pcbSigBlob)
     }
     pub unsafe fn EnumGenericParamConstraints(
@@ -843,14 +516,7 @@ impl MetaDataImport {
         cMax: ULONG,
         pcGenericParamConstraints: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import_2().EnumGenericParamConstraints)(
-            self,
-            phEnum,
-            tk,
-            rGenericParamConstraints,
-            cMax,
-            pcGenericParamConstraints,
-        )
+        (self.i_metadata_import_2().EnumGenericParamConstraints)(self, phEnum, tk, rGenericParamConstraints, cMax, pcGenericParamConstraints)
     }
     pub unsafe fn GetGenericParamConstraintProps(
         &self,
@@ -858,22 +524,12 @@ impl MetaDataImport {
         ptGenericParam: *mut mdGenericParam,
         ptkConstraintType: *mut mdToken,
     ) -> HRESULT {
-        (self.i_metadata_import_2().GetGenericParamConstraintProps)(
-            self,
-            gpc,
-            ptGenericParam,
-            ptkConstraintType,
-        )
+        (self.i_metadata_import_2().GetGenericParamConstraintProps)(self, gpc, ptGenericParam, ptkConstraintType)
     }
     pub unsafe fn GetPEKind(&self, pdwPEKind: *mut DWORD, pdwMAchine: *mut DWORD) -> HRESULT {
         (self.i_metadata_import_2().GetPEKind)(self, pdwPEKind, pdwMAchine)
     }
-    pub unsafe fn GetVersionString(
-        &self,
-        pwzBuf: *mut WCHAR,
-        ccBufSize: DWORD,
-        pccBufSize: *mut DWORD,
-    ) -> HRESULT {
+    pub unsafe fn GetVersionString(&self, pwzBuf: *mut WCHAR, ccBufSize: DWORD, pccBufSize: *mut DWORD) -> HRESULT {
         (self.i_metadata_import_2().GetVersionString)(self, pwzBuf, ccBufSize, pccBufSize)
     }
     pub unsafe fn EnumMethodSpecs(
@@ -884,13 +540,6 @@ impl MetaDataImport {
         cMax: ULONG,
         pcMethodSpecs: *mut ULONG,
     ) -> HRESULT {
-        (self.i_metadata_import_2().EnumMethodSpecs)(
-            self,
-            phEnum,
-            tk,
-            rMethodSpecs,
-            cMax,
-            pcMethodSpecs,
-        )
+        (self.i_metadata_import_2().EnumMethodSpecs)(self, phEnum, tk, rMethodSpecs, cMax, pcMethodSpecs)
     }
 }

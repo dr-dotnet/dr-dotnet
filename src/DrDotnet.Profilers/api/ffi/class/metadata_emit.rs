@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
 use super::{MetaDataAssemblyEmit, MetaDataAssemblyImport, MetaDataImport, Unknown};
 use crate::ffi::{
-    mdCustomAttribute, mdEvent, mdFieldDef, mdGenericParam, mdMemberRef, mdMethodDef, mdMethodSpec,
-    mdModuleRef, mdParamDef, mdPermission, mdProperty, mdSignature, mdString, mdToken, mdTypeDef,
-    mdTypeRef, mdTypeSpec, CorSaveSize, IMetaDataEmit, IMetaDataEmit2, IUnknown, COR_FIELD_OFFSET,
-    COR_SECATTR, DWORD, HRESULT, LPCWSTR, PCCOR_SIGNATURE, PCOR_SIGNATURE, ULONG,
+    mdCustomAttribute, mdEvent, mdFieldDef, mdGenericParam, mdMemberRef, mdMethodDef, mdMethodSpec, mdModuleRef, mdParamDef, mdPermission, mdProperty,
+    mdSignature, mdString, mdToken, mdTypeDef, mdTypeRef, mdTypeSpec, CorSaveSize, IMetaDataEmit, IMetaDataEmit2, IUnknown, COR_FIELD_OFFSET, COR_SECATTR,
+    DWORD, HRESULT, LPCWSTR, PCCOR_SIGNATURE, PCOR_SIGNATURE, ULONG,
 };
 use std::ffi::c_void;
 
@@ -51,14 +50,7 @@ impl MetaDataEmit {
         rtkImplements: *const mdToken,
         ptd: *mut mdTypeDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineTypeDef)(
-            self,
-            szTypeDef,
-            dwTypeDefFlags,
-            tkExtends,
-            rtkImplements,
-            ptd,
-        )
+        (self.i_metadata_emit().DefineTypeDef)(self, szTypeDef, dwTypeDefFlags, tkExtends, rtkImplements, ptd)
     }
     pub unsafe fn DefineNestedType(
         &self,
@@ -69,15 +61,7 @@ impl MetaDataEmit {
         tdEncloser: mdTypeDef,
         ptd: *mut mdTypeDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineNestedType)(
-            self,
-            szTypeDef,
-            dwTypeDefFlags,
-            tkExtends,
-            rtkImplements,
-            tdEncloser,
-            ptd,
-        )
+        (self.i_metadata_emit().DefineNestedType)(self, szTypeDef, dwTypeDefFlags, tkExtends, rtkImplements, tdEncloser, ptd)
     }
     pub unsafe fn SetHandler(&self, pUnk: *const Unknown) -> HRESULT {
         (self.i_metadata_emit().SetHandler)(self, pUnk)
@@ -93,32 +77,12 @@ impl MetaDataEmit {
         dwImplFlags: DWORD,
         pmd: *const mdMethodDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineMethod)(
-            self,
-            td,
-            szName,
-            dwMethodFlags,
-            pvSigBlob,
-            cbSigBlob,
-            ulCodeRVA,
-            dwImplFlags,
-            pmd,
-        )
+        (self.i_metadata_emit().DefineMethod)(self, td, szName, dwMethodFlags, pvSigBlob, cbSigBlob, ulCodeRVA, dwImplFlags, pmd)
     }
-    pub unsafe fn DefineMethodImpl(
-        &self,
-        td: mdTypeDef,
-        tkBody: mdToken,
-        tkDecl: mdToken,
-    ) -> HRESULT {
+    pub unsafe fn DefineMethodImpl(&self, td: mdTypeDef, tkBody: mdToken, tkDecl: mdToken) -> HRESULT {
         (self.i_metadata_emit().DefineMethodImpl)(self, td, tkBody, tkDecl)
     }
-    pub unsafe fn DefineTypeRefByName(
-        &self,
-        tkResolutionScope: mdToken,
-        szName: LPCWSTR,
-        ptr: *mut mdTypeRef,
-    ) -> HRESULT {
+    pub unsafe fn DefineTypeRefByName(&self, tkResolutionScope: mdToken, szName: LPCWSTR, ptr: *mut mdTypeRef) -> HRESULT {
         (self.i_metadata_emit().DefineTypeRefByName)(self, tkResolutionScope, szName, ptr)
     }
     pub unsafe fn DefineImportType(
@@ -131,25 +95,9 @@ impl MetaDataEmit {
         pAssemEmit: *const MetaDataAssemblyEmit,
         ptr: *mut mdTypeRef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineImportType)(
-            self,
-            pAssemImport,
-            pbHashValue,
-            cbHashValue,
-            pImport,
-            tdImport,
-            pAssemEmit,
-            ptr,
-        )
+        (self.i_metadata_emit().DefineImportType)(self, pAssemImport, pbHashValue, cbHashValue, pImport, tdImport, pAssemEmit, ptr)
     }
-    pub unsafe fn DefineMemberRef(
-        &self,
-        tkImport: mdToken,
-        szName: LPCWSTR,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmr: *mut mdMemberRef,
-    ) -> HRESULT {
+    pub unsafe fn DefineMemberRef(&self, tkImport: mdToken, szName: LPCWSTR, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmr: *mut mdMemberRef) -> HRESULT {
         (self.i_metadata_emit().DefineMemberRef)(self, tkImport, szName, pvSigBlob, cbSigBlob, pmr)
     }
     pub unsafe fn DefineImportMember(
@@ -162,16 +110,7 @@ impl MetaDataEmit {
         tkParent: mdToken,
         pmr: *mut mdMemberRef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineImportMember)(
-            self,
-            pbHashValue,
-            cbHashValue,
-            pImport,
-            mbMember,
-            pAssemEmit,
-            tkParent,
-            pmr,
-        )
+        (self.i_metadata_emit().DefineImportMember)(self, pbHashValue, cbHashValue, pImport, mbMember, pAssemEmit, tkParent, pmr)
     }
     pub unsafe fn DefineEvent(
         &self,
@@ -198,13 +137,7 @@ impl MetaDataEmit {
             pmdEvent,
         )
     }
-    pub unsafe fn SetClassLayout(
-        &self,
-        td: mdTypeDef,
-        dwPackSize: DWORD,
-        rFieldOffsets: *const COR_FIELD_OFFSET,
-        ulClassSize: ULONG,
-    ) -> HRESULT {
+    pub unsafe fn SetClassLayout(&self, td: mdTypeDef, dwPackSize: DWORD, rFieldOffsets: *const COR_FIELD_OFFSET, ulClassSize: ULONG) -> HRESULT {
         (self.i_metadata_emit().SetClassLayout)(self, td, dwPackSize, rFieldOffsets, ulClassSize)
     }
     pub unsafe fn DeleteClassLayout(&self, td: mdTypeDef) -> HRESULT {
@@ -221,24 +154,12 @@ impl MetaDataEmit {
         cbPermission: ULONG,
         ppm: *mut mdPermission,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefinePermissionSet)(
-            self,
-            tk,
-            dwAction,
-            pvPermission,
-            cbPermission,
-            ppm,
-        )
+        (self.i_metadata_emit().DefinePermissionSet)(self, tk, dwAction, pvPermission, cbPermission, ppm)
     }
     pub unsafe fn SetRVA(&self, md: mdMethodDef, ulRVA: ULONG) -> HRESULT {
         (self.i_metadata_emit().SetRVA)(self, md, ulRVA)
     }
-    pub unsafe fn GetTokenFromSig(
-        &self,
-        pvSig: PCCOR_SIGNATURE,
-        cbSig: ULONG,
-        pmsig: *mut mdSignature,
-    ) -> HRESULT {
+    pub unsafe fn GetTokenFromSig(&self, pvSig: PCCOR_SIGNATURE, cbSig: ULONG, pmsig: *mut mdSignature) -> HRESULT {
         (self.i_metadata_emit().GetTokenFromSig)(self, pvSig, cbSig, pmsig)
     }
     pub unsafe fn DefineModuleRef(&self, szName: LPCWSTR, pmur: *mut mdModuleRef) -> HRESULT {
@@ -247,35 +168,19 @@ impl MetaDataEmit {
     pub unsafe fn SetParent(&self, mr: mdMemberRef, tk: mdToken) -> HRESULT {
         (self.i_metadata_emit().SetParent)(self, mr, tk)
     }
-    pub unsafe fn GetTokenFromTypeSpec(
-        &self,
-        pvSig: PCCOR_SIGNATURE,
-        cbSig: ULONG,
-        ptypespec: *mut mdTypeSpec,
-    ) -> HRESULT {
+    pub unsafe fn GetTokenFromTypeSpec(&self, pvSig: PCCOR_SIGNATURE, cbSig: ULONG, ptypespec: *mut mdTypeSpec) -> HRESULT {
         (self.i_metadata_emit().GetTokenFromTypeSpec)(self, pvSig, cbSig, ptypespec)
     }
     pub unsafe fn SaveToMemory(&self, pbData: *mut c_void, cbData: ULONG) -> HRESULT {
         (self.i_metadata_emit().SaveToMemory)(self, pbData, cbData)
     }
-    pub unsafe fn DefineUserString(
-        &self,
-        szString: LPCWSTR,
-        cchString: ULONG,
-        pstk: *mut mdString,
-    ) -> HRESULT {
+    pub unsafe fn DefineUserString(&self, szString: LPCWSTR, cchString: ULONG, pstk: *mut mdString) -> HRESULT {
         (self.i_metadata_emit().DefineUserString)(self, szString, cchString, pstk)
     }
     pub unsafe fn DeleteToken(&self, tkObj: mdToken) -> HRESULT {
         (self.i_metadata_emit().DeleteToken)(self, tkObj)
     }
-    pub unsafe fn SetTypeDefProps(
-        &self,
-        td: mdTypeDef,
-        dwTypeDefFlags: DWORD,
-        tkExtends: mdToken,
-        rtkImplements: *const mdToken,
-    ) -> HRESULT {
+    pub unsafe fn SetTypeDefProps(&self, td: mdTypeDef, dwTypeDefFlags: DWORD, tkExtends: mdToken, rtkImplements: *const mdToken) -> HRESULT {
         (self.i_metadata_emit().SetTypeDefProps)(self, td, dwTypeDefFlags, tkExtends, rtkImplements)
     }
     pub unsafe fn SetEventProps(
@@ -288,16 +193,7 @@ impl MetaDataEmit {
         mdFire: mdMethodDef,
         rmdOtherMethods: *const mdMethodDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().SetEventProps)(
-            self,
-            ev,
-            dwEventFlags,
-            tkEventType,
-            mdAddOn,
-            mdRemoveOn,
-            mdFire,
-            rmdOtherMethods,
-        )
+        (self.i_metadata_emit().SetEventProps)(self, ev, dwEventFlags, tkEventType, mdAddOn, mdRemoveOn, mdFire, rmdOtherMethods)
     }
     pub unsafe fn SetPermissionSetProps(
         &self,
@@ -307,37 +203,12 @@ impl MetaDataEmit {
         cbPermission: ULONG,
         ppm: *mut mdPermission,
     ) -> HRESULT {
-        (self.i_metadata_emit().SetPermissionSetProps)(
-            self,
-            tk,
-            dwAction,
-            pvPermission,
-            cbPermission,
-            ppm,
-        )
+        (self.i_metadata_emit().SetPermissionSetProps)(self, tk, dwAction, pvPermission, cbPermission, ppm)
     }
-    pub unsafe fn DefinePinvokeMap(
-        &self,
-        tk: mdToken,
-        dwMappingFlags: DWORD,
-        szImportName: LPCWSTR,
-        mrImportDLL: mdModuleRef,
-    ) -> HRESULT {
-        (self.i_metadata_emit().DefinePinvokeMap)(
-            self,
-            tk,
-            dwMappingFlags,
-            szImportName,
-            mrImportDLL,
-        )
+    pub unsafe fn DefinePinvokeMap(&self, tk: mdToken, dwMappingFlags: DWORD, szImportName: LPCWSTR, mrImportDLL: mdModuleRef) -> HRESULT {
+        (self.i_metadata_emit().DefinePinvokeMap)(self, tk, dwMappingFlags, szImportName, mrImportDLL)
     }
-    pub unsafe fn SetPinvokeMap(
-        &self,
-        tk: mdToken,
-        dwMappingFlags: DWORD,
-        szImportName: LPCWSTR,
-        mrImportDLL: mdModuleRef,
-    ) -> HRESULT {
+    pub unsafe fn SetPinvokeMap(&self, tk: mdToken, dwMappingFlags: DWORD, szImportName: LPCWSTR, mrImportDLL: mdModuleRef) -> HRESULT {
         (self.i_metadata_emit().SetPinvokeMap)(self, tk, dwMappingFlags, szImportName, mrImportDLL)
     }
     pub unsafe fn DeletePinvokeMap(&self, tk: mdToken) -> HRESULT {
@@ -351,27 +222,10 @@ impl MetaDataEmit {
         cbCustomAttribute: ULONG,
         pcv: *mut mdCustomAttribute,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineCustomAttribute)(
-            self,
-            tkOwner,
-            tkCtor,
-            pCustomAttribute,
-            cbCustomAttribute,
-            pcv,
-        )
+        (self.i_metadata_emit().DefineCustomAttribute)(self, tkOwner, tkCtor, pCustomAttribute, cbCustomAttribute, pcv)
     }
-    pub unsafe fn SetCustomAttributeValue(
-        &self,
-        pcv: mdCustomAttribute,
-        pCustomAttribute: *const c_void,
-        cbCustomAttribute: ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_emit().SetCustomAttributeValue)(
-            self,
-            pcv,
-            pCustomAttribute,
-            cbCustomAttribute,
-        )
+    pub unsafe fn SetCustomAttributeValue(&self, pcv: mdCustomAttribute, pCustomAttribute: *const c_void, cbCustomAttribute: ULONG) -> HRESULT {
+        (self.i_metadata_emit().SetCustomAttributeValue)(self, pcv, pCustomAttribute, cbCustomAttribute)
     }
     pub unsafe fn DefineField(
         &self,
@@ -385,18 +239,7 @@ impl MetaDataEmit {
         cchValue: ULONG,
         pmd: *mut mdFieldDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineField)(
-            self,
-            td,
-            szName,
-            dwFieldFlags,
-            pvSigBlob,
-            cbSigBlob,
-            dwCPlusTypeFlag,
-            pValue,
-            cchValue,
-            pmd,
-        )
+        (self.i_metadata_emit().DefineField)(self, td, szName, dwFieldFlags, pvSigBlob, cbSigBlob, dwCPlusTypeFlag, pValue, cchValue, pmd)
     }
     pub unsafe fn DefineProperty(
         &self,
@@ -440,34 +283,10 @@ impl MetaDataEmit {
         cchValue: ULONG,
         ppd: *mut mdParamDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().DefineParam)(
-            self,
-            md,
-            ulParamSeq,
-            szName,
-            dwParamFlags,
-            dwCPlusTypeFlag,
-            pValue,
-            cchValue,
-            ppd,
-        )
+        (self.i_metadata_emit().DefineParam)(self, md, ulParamSeq, szName, dwParamFlags, dwCPlusTypeFlag, pValue, cchValue, ppd)
     }
-    pub unsafe fn SetFieldProps(
-        &self,
-        fd: mdFieldDef,
-        dwFieldFlags: DWORD,
-        dwCPlusTypeFlag: DWORD,
-        pValue: *const c_void,
-        cchValue: ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_emit().SetFieldProps)(
-            self,
-            fd,
-            dwFieldFlags,
-            dwCPlusTypeFlag,
-            pValue,
-            cchValue,
-        )
+    pub unsafe fn SetFieldProps(&self, fd: mdFieldDef, dwFieldFlags: DWORD, dwCPlusTypeFlag: DWORD, pValue: *const c_void, cchValue: ULONG) -> HRESULT {
+        (self.i_metadata_emit().SetFieldProps)(self, fd, dwFieldFlags, dwCPlusTypeFlag, pValue, cchValue)
     }
     pub unsafe fn SetPropertyProps(
         &self,
@@ -480,17 +299,7 @@ impl MetaDataEmit {
         mdGetter: mdMethodDef,
         rmdOtherMethods: *const mdMethodDef,
     ) -> HRESULT {
-        (self.i_metadata_emit().SetPropertyProps)(
-            self,
-            pr,
-            dwPropFlags,
-            dwCPlusTypeFlag,
-            pValue,
-            cchValue,
-            mdSetter,
-            mdGetter,
-            rmdOtherMethods,
-        )
+        (self.i_metadata_emit().SetPropertyProps)(self, pr, dwPropFlags, dwCPlusTypeFlag, pValue, cchValue, mdSetter, mdGetter, rmdOtherMethods)
     }
     pub unsafe fn SetParamProps(
         &self,
@@ -501,30 +310,10 @@ impl MetaDataEmit {
         pValue: *mut c_void,
         cchValue: ULONG,
     ) -> HRESULT {
-        (self.i_metadata_emit().SetParamProps)(
-            self,
-            pd,
-            szName,
-            dwParamFlags,
-            dwCPlusTypeFlag,
-            pValue,
-            cchValue,
-        )
+        (self.i_metadata_emit().SetParamProps)(self, pd, szName, dwParamFlags, dwCPlusTypeFlag, pValue, cchValue)
     }
-    pub unsafe fn DefineSecurityAttributeSet(
-        &self,
-        tkObj: mdToken,
-        rSecAttrs: *const COR_SECATTR,
-        cSecAttrs: ULONG,
-        pulErrorAttr: *mut ULONG,
-    ) -> HRESULT {
-        (self.i_metadata_emit().DefineSecurityAttributeSet)(
-            self,
-            tkObj,
-            rSecAttrs,
-            cSecAttrs,
-            pulErrorAttr,
-        )
+    pub unsafe fn DefineSecurityAttributeSet(&self, tkObj: mdToken, rSecAttrs: *const COR_SECATTR, cSecAttrs: ULONG, pulErrorAttr: *mut ULONG) -> HRESULT {
+        (self.i_metadata_emit().DefineSecurityAttributeSet)(self, tkObj, rSecAttrs, cSecAttrs, pulErrorAttr)
     }
     pub unsafe fn ApplyEditAndContinue(
         &self,
@@ -578,13 +367,7 @@ impl MetaDataEmit {
     pub unsafe fn MergeEnd(&self) -> HRESULT {
         (self.i_metadata_emit().MergeEnd)(self)
     }
-    pub unsafe fn DefineMethodSpecfn(
-        &self,
-        tkParent: mdToken,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmi: *mut mdMethodSpec,
-    ) -> HRESULT {
+    pub unsafe fn DefineMethodSpecfn(&self, tkParent: mdToken, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmi: *mut mdMethodSpec) -> HRESULT {
         (self.i_metadata_emit_2().DefineMethodSpec)(self, tkParent, pvSigBlob, cbSigBlob, pmi)
     }
     pub unsafe fn GetDeltaSaveSize(&self, fSave: CorSaveSize, pdwSaveSize: *mut DWORD) -> HRESULT {
@@ -613,16 +396,7 @@ impl MetaDataEmit {
         rtkConstraints: *const mdToken,
         pgp: *mut mdGenericParam,
     ) -> HRESULT {
-        (self.i_metadata_emit_2().DefineGenericParam)(
-            self,
-            tk,
-            ulParamSeq,
-            dwParamFlags,
-            szname,
-            reserved,
-            rtkConstraints,
-            pgp,
-        )
+        (self.i_metadata_emit_2().DefineGenericParam)(self, tk, ulParamSeq, dwParamFlags, szname, reserved, rtkConstraints, pgp)
     }
     pub unsafe fn SetGenericParamProps(
         &self,
@@ -632,14 +406,7 @@ impl MetaDataEmit {
         reserved: DWORD,
         rtkConstraints: *const mdToken,
     ) -> HRESULT {
-        (self.i_metadata_emit_2().SetGenericParamProps)(
-            self,
-            gp,
-            dwParamFlags,
-            szName,
-            reserved,
-            rtkConstraints,
-        )
+        (self.i_metadata_emit_2().SetGenericParamProps)(self, gp, dwParamFlags, szName, reserved, rtkConstraints)
     }
     pub unsafe fn ResetENCLog(&self) -> HRESULT {
         (self.i_metadata_emit_2().ResetENCLog)(self)

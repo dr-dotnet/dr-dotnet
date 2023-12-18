@@ -2,8 +2,8 @@ use dashmap::DashMap;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 use crate::api::*;
-use crate::profilers::*;
 use crate::macros::*;
+use crate::profilers::*;
 use crate::utils::CachedNameResolver;
 use crate::utils::NameResolver;
 
@@ -23,38 +23,37 @@ impl Profiler for ExceptionsProfiler {
             name: "Exceptions Profiler".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
             is_released: true,
-            parameters: vec![
-                ProfilerParameter { 
-                    name: "Duration".to_owned(),
-                    key: "duration".to_owned(),
-                    description: "The profiling duration in seconds".to_owned(),
-                    type_: ParameterType::INT.into(),
-                    value: "10".to_owned(),
-                    ..std::default::Default::default()
-                }
-            ],
+            parameters: vec![ProfilerParameter {
+                name: "Duration".to_owned(),
+                key: "duration".to_owned(),
+                description: "The profiling duration in seconds".to_owned(),
+                type_: ParameterType::INT.into(),
+                value: "10".to_owned(),
+                ..std::default::Default::default()
+            }],
             ..std::default::Default::default()
-        }
+        };
     }
 }
 
-impl CorProfilerCallback for ExceptionsProfiler
-{
-    fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT>
-    {
+impl CorProfilerCallback for ExceptionsProfiler {
+    fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT> {
         let clr = self.clr();
-        let name = 
-        match clr.get_class_from_object(thrown_object_id) {
+        let name = match clr.get_class_from_object(thrown_object_id) {
             Ok(class_id) => clr.clone().get_class_name(class_id),
-            _ => "unknown".to_owned()
+            _ => "unknown".to_owned(),
         };
 
         let key = name;
         match self.exceptions.get_mut(&key) {
-            Some(pair) => { pair.value().fetch_add(1, Ordering::Relaxed); },
-            None => { self.exceptions.insert(key, AtomicIsize::new(1)); },
+            Some(pair) => {
+                pair.value().fetch_add(1, Ordering::Relaxed);
+            }
+            None => {
+                self.exceptions.insert(key, AtomicIsize::new(1));
+            }
         }
-        
+
         Ok(())
     }
 }
@@ -62,8 +61,19 @@ impl CorProfilerCallback for ExceptionsProfiler
 impl CorProfilerCallback2 for ExceptionsProfiler {}
 
 impl CorProfilerCallback3 for ExceptionsProfiler {
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS, None, profiler_info, client_data, client_data_length)
+    fn initialize_for_attach(
+        &mut self,
+        profiler_info: ClrProfilerInfo,
+        client_data: *const std::os::raw::c_void,
+        client_data_length: u32,
+    ) -> Result<(), ffi::HRESULT> {
+        self.init(
+            ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_EXCEPTIONS,
+            None,
+            profiler_info,
+            client_data,
+            client_data_length,
+        )
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {

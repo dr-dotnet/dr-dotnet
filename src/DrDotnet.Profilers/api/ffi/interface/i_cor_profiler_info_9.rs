@@ -1,8 +1,5 @@
 #![allow(non_snake_case)]
-use crate::ffi::{
-    FunctionID, ReJITID, COR_DEBUG_IL_TO_NATIVE_MAP, COR_PRF_CODE_INFO, GUID, HRESULT, UINT_PTR,
-    ULONG32,
-};
+use crate::ffi::{FunctionID, ReJITID, COR_DEBUG_IL_TO_NATIVE_MAP, COR_PRF_CODE_INFO, GUID, HRESULT, UINT_PTR, ULONG32};
 
 #[repr(C)]
 pub struct ICorProfilerInfo9<T> {

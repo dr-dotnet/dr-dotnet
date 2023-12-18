@@ -13,8 +13,8 @@
 //      - Remove every non-flagged entry from A. We have our set of persisting references.
 //      - When garbage collection ends, for each flagged entry in A, pull the whole retention path and aggregate count by name + the total increase in retained bytes
 
-use std::collections::HashMap;
 use itertools::Itertools;
+use std::collections::HashMap;
 
 use crate::api::*;
 use crate::macros::*;
@@ -45,7 +45,7 @@ pub struct MemoryLeakProfiler {
     serialized_survivor_branches: HashMap<String, u64>,
     current_gc_info: GCInfo,
     elegible_gcs_count: u16,
-    finished: bool
+    finished: bool,
 }
 
 impl Profiler for MemoryLeakProfiler {
@@ -58,14 +58,12 @@ impl Profiler for MemoryLeakProfiler {
             description: "Finds managed memory leaks.".to_owned(),
             is_released: true,
             ..std::default::Default::default()
-        }
+        };
     }
 }
 
-impl MemoryLeakProfiler
-{
-    pub fn append_referencers(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String>
-    {
+impl MemoryLeakProfiler {
+    pub fn append_referencers(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: i32) -> Vec<String> {
         let mut branches = Vec::new();
 
         self.append_referencers_recursive(info, object_id, &mut String::new(), -max_depth, &mut branches);
@@ -74,11 +72,10 @@ impl MemoryLeakProfiler
     }
 
     // Recursively drill through referencers.
-    fn append_referencers_recursive(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>)
-    {
+    fn append_referencers_recursive(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, branch: &mut String, depth: i32, branches: &mut Vec<String>) {
         let gen = match info.get_object_generation(object_id) {
             Ok(gen) => gen.generation,
-            Err(_) => ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2 // Hack to ignore such failure, in case object does not lie in any heap
+            Err(_) => ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2, // Hack to ignore such failure, in case object does not lie in any heap
         };
 
         let refname = MemoryLeakProfiler::get_object_class_name(info, object_id);
@@ -105,37 +102,34 @@ impl MemoryLeakProfiler
                         // Same branch, we keep on this same branch
                         branch.push_str(" < ");
                         self.append_referencers_recursive(info, referencers[0], branch, depth + 1, branches);
-                    }
-                    else {
+                    } else {
                         // New branch. We clone the current branch to append next holders
                         let mut branch_copy = branch[..branch_current_len].to_string();
                         branch_copy.push_str(" < ");
                         self.append_referencers_recursive(info, referencers[i], &mut branch_copy, depth + 1, branches);
                     }
                 }
-            },
+            }
             None => {
                 add_branch();
             }
         }
     }
 
-    fn get_inner_type(info: &ClrProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize
-    {
+    fn get_inner_type(info: &ClrProfilerInfo, class_id: usize, array_dimension: &mut usize) -> usize {
         // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-isarrayclass-method
         match info.is_array_class(class_id) {
             Ok(array_class_info) => {
                 *array_dimension = *array_dimension + 1;
                 // TODO: Handle array_class_info.rank
                 MemoryLeakProfiler::get_inner_type(info, array_class_info.element_class_id.unwrap(), array_dimension)
-            },
+            }
             Err(_) => class_id,
         }
     }
 
     // Todo: Share code?
-    fn get_object_class_name(clr: &ClrProfilerInfo, object_id: ffi::ObjectID) -> String
-    {
+    fn get_object_class_name(clr: &ClrProfilerInfo, object_id: ffi::ObjectID) -> String {
         let mut array_dimension = 0;
 
         let mut name = match clr.get_class_from_object(object_id) {
@@ -146,7 +140,7 @@ impl MemoryLeakProfiler
                 // https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo2-getclassidinfo2-method
                 clr.clone().get_class_name(class_id)
             }
-            Err(error) => format!("error: {:?}", error)
+            Err(error) => format!("error: {:?}", error),
         };
 
         if array_dimension > 0 {
@@ -161,10 +155,8 @@ impl MemoryLeakProfiler
     }
 }
 
-impl CorProfilerCallback for MemoryLeakProfiler
-{
-    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT>
-    {
+impl CorProfilerCallback for MemoryLeakProfiler {
+    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), ffi::HRESULT> {
         // Only build reference tree on the final GC
         if !self.current_gc_info.is_last_gc {
             return Ok(());
@@ -182,19 +174,23 @@ impl CorProfilerCallback for MemoryLeakProfiler
         for object_ref_id in object_ref_ids {
             match self.object_to_referencers.get_mut(object_ref_id) {
                 Some(referencers) => referencers.push(object_id),
-                None => { self.object_to_referencers.insert(*object_ref_id, vec![object_id]); },
+                None => {
+                    self.object_to_referencers.insert(*object_ref_id, vec![object_id]);
+                }
             };
         }
-        
+
         Ok(())
     }
 }
 
-impl CorProfilerCallback2 for MemoryLeakProfiler
-{
-    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT>
-    {
-        info!("GC started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
+impl CorProfilerCallback2 for MemoryLeakProfiler {
+    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
+        info!(
+            "GC started on gen {} for reason {:?}",
+            ClrProfilerInfo::get_gc_gen(&generation_collected),
+            reason
+        );
 
         if self.finished {
             return Ok(());
@@ -215,7 +211,7 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 
         // Data from previous garbage collections are no longer valid, so we clear it when a new garbage collection starts.
         //self.object_to_referencers.clear();
-        //self.serialized_survivor_branches.clear();      
+        //self.serialized_survivor_branches.clear();
 
         //let pinfo = self.profiler_info();
         //pinfo.force_gc(); // Compacting or not? Which Gen?
@@ -224,12 +220,11 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         Ok(())
     }
 
-    fn garbage_collection_finished(&mut self) -> Result<(), ffi::HRESULT>
-    {
+    fn garbage_collection_finished(&mut self) -> Result<(), ffi::HRESULT> {
         info!("GC finished");
 
         if self.finished {
-            return Ok(())
+            return Ok(());
         }
 
         if self.current_gc_info.had_survivors_callback {
@@ -255,13 +250,12 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:?}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:?}", hresult),
         }
 
         // Post-process tracked persisting references
         info!("Building dependency tree... {} objects to process", self.surviving_references.len());
         for (object_id, ref_info) in self.surviving_references.iter() {
-
             // Was already there when profiling started, so not interesting for us
             if !ref_info.first_gc_survived == 1 {
                 continue;
@@ -300,7 +294,12 @@ impl CorProfilerCallback2 for MemoryLeakProfiler
 }
 
 impl CorProfilerCallback3 for MemoryLeakProfiler {
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
+    fn initialize_for_attach(
+        &mut self,
+        profiler_info: ClrProfilerInfo,
+        client_data: *const std::os::raw::c_void,
+        client_data_length: u32,
+    ) -> Result<(), ffi::HRESULT> {
         self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
@@ -316,11 +315,10 @@ impl CorProfilerCallback3 for MemoryLeakProfiler {
 
         if self.serialized_survivor_branches.len() == 0 {
             report.write_line("**Profiler was unable to get a GC surviving references callback! (120 seconds timeout)**".to_string());
-        }
-        else {
+        } else {
             report.write_line(format!("# GC Survivors Report"));
             report.write_line(format!("## Surviving References by Class"));
-    
+
             for surviving_reference in self.serialized_survivor_branches.iter().sorted_by_key(|x| -(*x.1 as i128)) {
                 report.write_line(format!("- ({}) {}", surviving_reference.1, surviving_reference.0));
             }
@@ -367,10 +365,16 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
                 // Reference was already tracked: we update the last gc info
                 Some(ref_info) => ref_info.last_gc_survived = self.elegible_gcs_count,
                 // Reference wasn't tracked: we start tracking it
-                None => { self.surviving_references.insert(id, ReferenceInfo {
-                    initial_size: object_lengths[i],
-                    first_gc_survived: self.elegible_gcs_count,
-                    last_gc_survived: self.elegible_gcs_count }); },
+                None => {
+                    self.surviving_references.insert(
+                        id,
+                        ReferenceInfo {
+                            initial_size: object_lengths[i],
+                            first_gc_survived: self.elegible_gcs_count,
+                            last_gc_survived: self.elegible_gcs_count,
+                        },
+                    );
+                }
             };
         }
 
@@ -417,12 +421,18 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
                     ref_info.last_gc_survived = self.elegible_gcs_count;
                     self.surviving_references.insert(new_id, ref_info);
                     moved_tracked_refs += 1;
-                },
+                }
                 // Reference wasn't tracked: we start tracking it
-                None => { self.surviving_references.insert(new_id, ReferenceInfo {
-                    initial_size: object_lengths[i],
-                    first_gc_survived: self.elegible_gcs_count,
-                    last_gc_survived: self.elegible_gcs_count }); },
+                None => {
+                    self.surviving_references.insert(
+                        new_id,
+                        ReferenceInfo {
+                            initial_size: object_lengths[i],
+                            first_gc_survived: self.elegible_gcs_count,
+                            last_gc_survived: self.elegible_gcs_count,
+                        },
+                    );
+                }
             };
         }
 

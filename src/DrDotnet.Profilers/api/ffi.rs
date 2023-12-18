@@ -143,52 +143,23 @@ pub type mdCPToken = mdToken;
 pub type FunctionEnter = unsafe extern "system" fn(funcID: FunctionID) -> ();
 pub type FunctionLeave = unsafe extern "system" fn(funcID: FunctionID) -> ();
 pub type FunctionTailcall = unsafe extern "system" fn(funcID: FunctionID) -> ();
-pub type FunctionIDMapper =
-    unsafe extern "system" fn(funcId: FunctionID, pbHookFunction: *mut BOOL) -> UINT_PTR;
-pub type FunctionEnter2 = unsafe extern "system" fn(
-    funcId: FunctionID,
-    clientData: UINT_PTR,
-    func: COR_PRF_FRAME_INFO,
-    argumentInfo: *const COR_PRF_FUNCTION_ARGUMENT_INFO,
-) -> ();
-pub type FunctionLeave2 = unsafe extern "system" fn(
-    funcId: FunctionID,
-    clientData: UINT_PTR,
-    func: COR_PRF_FRAME_INFO,
-    retvalRange: *const COR_PRF_FUNCTION_ARGUMENT_RANGE,
-) -> ();
-pub type FunctionTailcall2 = unsafe extern "system" fn(
-    funcId: FunctionID,
-    clientData: UINT_PTR,
-    func: COR_PRF_FRAME_INFO,
-) -> ();
-pub type FunctionIDMapper2 = unsafe extern "system" fn(
-    funcId: FunctionID,
-    clientData: *const c_void,
-    pbHookFunction: *mut BOOL,
-) -> UINT_PTR;
-pub type FunctionEnter3 =
-    unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID) -> ();
-pub type FunctionLeave3 =
-    unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID) -> ();
+pub type FunctionIDMapper = unsafe extern "system" fn(funcId: FunctionID, pbHookFunction: *mut BOOL) -> UINT_PTR;
+pub type FunctionEnter2 =
+    unsafe extern "system" fn(funcId: FunctionID, clientData: UINT_PTR, func: COR_PRF_FRAME_INFO, argumentInfo: *const COR_PRF_FUNCTION_ARGUMENT_INFO) -> ();
+pub type FunctionLeave2 =
+    unsafe extern "system" fn(funcId: FunctionID, clientData: UINT_PTR, func: COR_PRF_FRAME_INFO, retvalRange: *const COR_PRF_FUNCTION_ARGUMENT_RANGE) -> ();
+pub type FunctionTailcall2 = unsafe extern "system" fn(funcId: FunctionID, clientData: UINT_PTR, func: COR_PRF_FRAME_INFO) -> ();
+pub type FunctionIDMapper2 = unsafe extern "system" fn(funcId: FunctionID, clientData: *const c_void, pbHookFunction: *mut BOOL) -> UINT_PTR;
+pub type FunctionEnter3 = unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID) -> ();
+pub type FunctionLeave3 = unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID) -> ();
 
-pub type FunctionTailcall3 =
-    unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID) -> ();
+pub type FunctionTailcall3 = unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID) -> ();
 
-pub type FunctionEnter3WithInfo = unsafe extern "system" fn(
-    functionIDOrClientID: FunctionIDOrClientID,
-    eltInfo: COR_PRF_ELT_INFO,
-) -> ();
+pub type FunctionEnter3WithInfo = unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID, eltInfo: COR_PRF_ELT_INFO) -> ();
 
-pub type FunctionLeave3WithInfo = unsafe extern "system" fn(
-    functionIDOrClientID: FunctionIDOrClientID,
-    eltInfo: COR_PRF_ELT_INFO,
-) -> ();
+pub type FunctionLeave3WithInfo = unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID, eltInfo: COR_PRF_ELT_INFO) -> ();
 
-pub type FunctionTailcall3WithInfo = unsafe extern "system" fn(
-    functionIDOrClientID: FunctionIDOrClientID,
-    eltInfo: COR_PRF_ELT_INFO,
-) -> ();
+pub type FunctionTailcall3WithInfo = unsafe extern "system" fn(functionIDOrClientID: FunctionIDOrClientID, eltInfo: COR_PRF_ELT_INFO) -> ();
 pub type StackSnapshotCallback = unsafe extern "system" fn(
     funcId: FunctionID,
     ip: UINT_PTR,
@@ -197,11 +168,7 @@ pub type StackSnapshotCallback = unsafe extern "system" fn(
     context: *const BYTE,
     clientData: *mut c_void,
 ) -> HRESULT;
-pub type ObjectReferenceCallback = unsafe extern "system" fn(
-    root: ObjectID,
-    reference: *const ObjectID,
-    clientData: *const c_void,
-) -> BOOL;
+pub type ObjectReferenceCallback = unsafe extern "system" fn(root: ObjectID, reference: *const ObjectID, clientData: *const c_void) -> BOOL;
 
 // profiler types
 #[repr(C)]
@@ -363,14 +330,14 @@ pub enum CorElementType {
     ELEMENT_TYPE_VALUETYPE = 0x11,   // VALUETYPE <class Token>
     ELEMENT_TYPE_CLASS = 0x12,       // CLASS <class Token>
     ELEMENT_TYPE_VAR = 0x13,         // a class type variable VAR <number>
-    ELEMENT_TYPE_ARRAY = 0x14, // MDARRAY <type> <rank> <bcount> <bound1> ... <lbcount> <lb1> ...
+    ELEMENT_TYPE_ARRAY = 0x14,       // MDARRAY <type> <rank> <bcount> <bound1> ... <lbcount> <lb1> ...
     ELEMENT_TYPE_GENERICINST = 0x15, // GENERICINST <generic type> <argCnt> <arg1> ... <argn>
-    ELEMENT_TYPE_TYPEDBYREF = 0x16, // TYPEDREF  (it takes no args) a typed referece to some other type
+    ELEMENT_TYPE_TYPEDBYREF = 0x16,  // TYPEDREF  (it takes no args) a typed referece to some other type
 
     ELEMENT_TYPE_I = 0x18,       // native integer size
     ELEMENT_TYPE_U = 0x19,       // native unsigned integer size
-    ELEMENT_TYPE_FNPTR = 0x1b, // FNPTR <complete sig for the function including calling convention>
-    ELEMENT_TYPE_OBJECT = 0x1c, // Shortcut for System.Object
+    ELEMENT_TYPE_FNPTR = 0x1b,   // FNPTR <complete sig for the function including calling convention>
+    ELEMENT_TYPE_OBJECT = 0x1c,  // Shortcut for System.Object
     ELEMENT_TYPE_SZARRAY = 0x1d, // Shortcut for single dimension zero lower bound array
     // SZARRAY <type>
     ELEMENT_TYPE_MVAR = 0x1e, // a method type variable MVAR <number>
@@ -411,9 +378,9 @@ pub struct ASSEMBLYMETADATA {
     szLocale: *mut WCHAR,     // Locale.
     cbLocale: ULONG,          // [IN/OUT] Size of the buffer in wide chars/Actual size.
     rProcessor: *const DWORD, // Processor ID array.
-    ulProcessor: ULONG, // [IN/OUT] Size of the Processor ID array/Actual # of entries filled in.
-    rOS: *const OSINFO, // OSINFO array.
-    ulOS: ULONG,        // [IN/OUT]Size of the OSINFO array/Actual # of entries filled in.
+    ulProcessor: ULONG,       // [IN/OUT] Size of the Processor ID array/Actual # of entries filled in.
+    rOS: *const OSINFO,       // OSINFO array.
+    ulOS: ULONG,              // [IN/OUT]Size of the OSINFO array/Actual # of entries filled in.
 }
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -694,34 +661,34 @@ bitflags! {
                  | Self::tdNestedAssembly.bits()
                  | Self::tdNestedFamANDAssem.bits()
                  | Self::tdNestedFamORAssem.bits();
-  
+
     const tdLayoutMask            =   0x00000018;   // Gets layout information for the type.
     const tdAutoLayout            =   0x00000000;   // Specifies that the fields of this type are laid out automatically.
     const tdSequentialLayout      =   0x00000008;   // Specifies that the fields of this type are laid out sequentially.
     const tdExplicitLayout        =   0x00000010;   // Specifies that field layout is supplied explicitly.
-  
+
     const tdClassSemanticsMask    =   0x00000020;   // Gets semantic information about the type.
     const tdClass                 =   0x00000000;   // Specifies that the type is a class.
     const tdInterface             =   0x00000020;   // Specifies that the type is an interface.
-  
+
     const tdAbstract              =   0x00000080;   // Specifies that the type is abstract.
     const tdSealed                =   0x00000100;   // Specifies that the type cannot be extended.
     const tdSpecialName           =   0x00000400;   // Specifies that the class name is special. Its name describes how.
-  
+
     const tdImport                =   0x00001000;   // Specifies that the type is imported.
     const tdSerializable          =   0x00002000;   // Specifies that the type is serializable.
     const tdWindowsRuntime        =   0x00004000;   // Specifies that this type is a Windows Runtime type.
-  
+
     const tdStringFormatMask      =   0x00030000;   // Gets information about how strings are encoded and formatted.
     const tdAnsiClass             =   0x00000000;   // Specifies that this type interprets an LPTSTR as ANSI.
     const tdUnicodeClass          =   0x00010000;   // Specifies that this type interprets an LPTSTR as Unicode.
     const tdAutoClass             =   0x00020000;   // Specifies that this type interprets an LPTSTR automatically.
     const tdCustomFormatClass     =   0x00030000;   // Specifies that the type has a non-standard encoding, as specified by CustomFormatMask.
     const tdCustomFormatMask      =   0x00C00000;   // Use this mask to get non-standard encoding information for native interop. The meaning of the values of these two bits is unspecified.
-  
+
     const tdBeforeFieldInit       =   0x00100000;   // Specifies that the type must be initialized before the first attempt to access a static field.
     const tdForwarder             =   0x00200000;   // Specifies that the type is exported, and a type forwarder.
-  
+
     const tdReservedMask          =   0x00040800;   // This flag and the flags below are used internally by the common language runtime.
     const tdRTSpecialName         =   0x00000800;   // Specifies that the common language runtime should check the name encoding.
     const tdHasSecurity           =   0x00040000;   // Specifies that the type has security associated with it.

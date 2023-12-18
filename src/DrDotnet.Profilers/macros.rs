@@ -44,7 +44,7 @@ macro_rules! profiler_getset {
         fn set_clr_profiler_info(&mut self, clr_profiler_info: &ClrProfilerInfo) {
             self.clr_profiler_info = clr_profiler_info.clone();
         }
-    
+
         fn session_info(&self) -> &SessionInfo {
             &self.session_info
         }

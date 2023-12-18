@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    int, mdFieldDef, mdMethodDef, mdToken, mdTypeDef, AppDomainID, ClassID, ContextID,
-    CorProfilerObjectEnum, FunctionEnter2, FunctionID, FunctionLeave2, FunctionTailcall2, ModuleID,
-    ObjectID, StackSnapshotCallback, ThreadID, BYTE, COR_FIELD_OFFSET, COR_PRF_CODE_INFO,
-    COR_PRF_EX_CLAUSE_INFO, COR_PRF_FRAME_INFO, COR_PRF_GC_GENERATION_RANGE, COR_PRF_STATIC_TYPE,
-    GUID, HRESULT, ULONG, ULONG32,
+    int, mdFieldDef, mdMethodDef, mdToken, mdTypeDef, AppDomainID, ClassID, ContextID, CorProfilerObjectEnum, FunctionEnter2, FunctionID, FunctionLeave2,
+    FunctionTailcall2, ModuleID, ObjectID, StackSnapshotCallback, ThreadID, BYTE, COR_FIELD_OFFSET, COR_PRF_CODE_INFO, COR_PRF_EX_CLAUSE_INFO,
+    COR_PRF_FRAME_INFO, COR_PRF_GC_GENERATION_RANGE, COR_PRF_STATIC_TYPE, GUID, HRESULT, ULONG, ULONG32,
 };
 use std::ffi::c_void;
 
@@ -36,12 +34,8 @@ pub struct ICorProfilerInfo2<T> {
         pcTypeArgs: *mut ULONG32,
         typeArgs: *mut ClassID,
     ) -> HRESULT,
-    pub GetStringLayout: unsafe extern "system" fn(
-        this: &T,
-        pBufferLengthOffset: *mut ULONG,
-        pStringLengthOffset: *mut ULONG,
-        pBufferOffset: *mut ULONG,
-    ) -> HRESULT,
+    pub GetStringLayout:
+        unsafe extern "system" fn(this: &T, pBufferLengthOffset: *mut ULONG, pStringLengthOffset: *mut ULONG, pBufferOffset: *mut ULONG) -> HRESULT,
     pub GetClassLayout: unsafe extern "system" fn(
         this: &T,
         classID: ClassID,
@@ -84,11 +78,7 @@ pub struct ICorProfilerInfo2<T> {
         typeArgs: *const ClassID,
         pFunctionID: *mut FunctionID,
     ) -> HRESULT,
-    pub EnumModuleFrozenObjects: unsafe extern "system" fn(
-        this: &T,
-        moduleID: ModuleID,
-        ppEnum: *mut *mut CorProfilerObjectEnum,
-    ) -> HRESULT,
+    pub EnumModuleFrozenObjects: unsafe extern "system" fn(this: &T, moduleID: ModuleID, ppEnum: *mut *mut CorProfilerObjectEnum) -> HRESULT,
     pub GetArrayObjectInfo: unsafe extern "system" fn(
         this: &T,
         objectId: ObjectID,
@@ -97,62 +87,20 @@ pub struct ICorProfilerInfo2<T> {
         pDimensionLowerBounds: *mut int,
         ppData: *mut *mut BYTE,
     ) -> HRESULT,
-    pub GetBoxClassLayout: unsafe extern "system" fn(
-        this: &T,
-        classId: ClassID,
-        pBufferOffset: *mut ULONG32,
-    ) -> HRESULT,
-    pub GetThreadAppDomain: unsafe extern "system" fn(
-        this: &T,
-        threadId: ThreadID,
-        pAppDomainId: *mut AppDomainID,
-    ) -> HRESULT,
-    pub GetRVAStaticAddress: unsafe extern "system" fn(
-        this: &T,
-        classId: ClassID,
-        fieldToken: mdFieldDef,
-        ppAddress: *mut *mut c_void,
-    ) -> HRESULT,
-    pub GetAppDomainStaticAddress: unsafe extern "system" fn(
-        this: &T,
-        classId: ClassID,
-        fieldToken: mdFieldDef,
-        appDomainId: AppDomainID,
-        ppAddress: *mut *mut c_void,
-    ) -> HRESULT,
-    pub GetThreadStaticAddress: unsafe extern "system" fn(
-        this: &T,
-        classId: ClassID,
-        fieldToken: mdFieldDef,
-        threadId: ThreadID,
-        ppAddress: *mut *mut c_void,
-    ) -> HRESULT,
-    pub GetContextStaticAddress: unsafe extern "system" fn(
-        this: &T,
-        classId: ClassID,
-        fieldToken: mdFieldDef,
-        contextId: ContextID,
-        ppAddress: *mut *mut c_void,
-    ) -> HRESULT,
-    pub GetStaticFieldInfo: unsafe extern "system" fn(
-        this: &T,
-        classId: ClassID,
-        fieldToken: mdFieldDef,
-        pFieldInfo: *mut COR_PRF_STATIC_TYPE,
-    ) -> HRESULT,
-    pub GetGenerationBounds: unsafe extern "system" fn(
-        this: &T,
-        cObjectRanges: ULONG,
-        pcObjectRanges: *mut ULONG,
-        ranges: *mut COR_PRF_GC_GENERATION_RANGE,
-    ) -> HRESULT,
-    pub GetObjectGeneration: unsafe extern "system" fn(
-        this: &T,
-        objectId: ObjectID,
-        range: *mut COR_PRF_GC_GENERATION_RANGE,
-    ) -> HRESULT,
-    pub GetNotifiedExceptionClauseInfo:
-        unsafe extern "system" fn(this: &T, pinfo: *mut COR_PRF_EX_CLAUSE_INFO) -> HRESULT,
+    pub GetBoxClassLayout: unsafe extern "system" fn(this: &T, classId: ClassID, pBufferOffset: *mut ULONG32) -> HRESULT,
+    pub GetThreadAppDomain: unsafe extern "system" fn(this: &T, threadId: ThreadID, pAppDomainId: *mut AppDomainID) -> HRESULT,
+    pub GetRVAStaticAddress: unsafe extern "system" fn(this: &T, classId: ClassID, fieldToken: mdFieldDef, ppAddress: *mut *mut c_void) -> HRESULT,
+    pub GetAppDomainStaticAddress:
+        unsafe extern "system" fn(this: &T, classId: ClassID, fieldToken: mdFieldDef, appDomainId: AppDomainID, ppAddress: *mut *mut c_void) -> HRESULT,
+    pub GetThreadStaticAddress:
+        unsafe extern "system" fn(this: &T, classId: ClassID, fieldToken: mdFieldDef, threadId: ThreadID, ppAddress: *mut *mut c_void) -> HRESULT,
+    pub GetContextStaticAddress:
+        unsafe extern "system" fn(this: &T, classId: ClassID, fieldToken: mdFieldDef, contextId: ContextID, ppAddress: *mut *mut c_void) -> HRESULT,
+    pub GetStaticFieldInfo: unsafe extern "system" fn(this: &T, classId: ClassID, fieldToken: mdFieldDef, pFieldInfo: *mut COR_PRF_STATIC_TYPE) -> HRESULT,
+    pub GetGenerationBounds:
+        unsafe extern "system" fn(this: &T, cObjectRanges: ULONG, pcObjectRanges: *mut ULONG, ranges: *mut COR_PRF_GC_GENERATION_RANGE) -> HRESULT,
+    pub GetObjectGeneration: unsafe extern "system" fn(this: &T, objectId: ObjectID, range: *mut COR_PRF_GC_GENERATION_RANGE) -> HRESULT,
+    pub GetNotifiedExceptionClauseInfo: unsafe extern "system" fn(this: &T, pinfo: *mut COR_PRF_EX_CLAUSE_INFO) -> HRESULT,
 }
 
 impl ICorProfilerInfo2<()> {

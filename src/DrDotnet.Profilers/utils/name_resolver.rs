@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 use crate::api::*;
 use crate::ffi::*;
@@ -21,23 +21,23 @@ impl CachedNameResolver {
         CachedNameResolver {
             classes_cache: RefCell::new(HashMap::new()),
             functions_cache: RefCell::new(HashMap::new()),
-            info: info
+            info: info,
         }
     }
 }
 
 impl NameResolver for CachedNameResolver {
-
     // Returns a method name and the type where it is defined (namespaced) for a given FunctionID
     fn get_full_method_name(&self, method_id: FunctionID) -> String {
-        self.functions_cache.borrow_mut().entry(method_id).or_insert_with(|| {
-            self.info.get_full_method_name(method_id)
-        }).clone()
+        self.functions_cache
+            .borrow_mut()
+            .entry(method_id)
+            .or_insert_with(|| self.info.get_full_method_name(method_id))
+            .clone()
     }
 
     // Returns a class name (namespaced) for a given ClassID
     fn get_class_name(&self, class_id: ClassID) -> String {
-
         // Check if the key exists in the map
         {
             let map_borrowed = self.classes_cache.borrow();

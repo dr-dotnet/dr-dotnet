@@ -4,11 +4,7 @@ use crate::ffi::{ModuleID, BYTE, DWORD, GUID, HRESULT};
 #[repr(C)]
 pub struct ICorProfilerInfo7<T> {
     pub ApplyMetaData: unsafe extern "system" fn(this: &T, moduleId: ModuleID) -> HRESULT,
-    pub GetInMemorySymbolsLength: unsafe extern "system" fn(
-        this: &T,
-        moduleId: ModuleID,
-        pCountSymbolBytes: *mut DWORD,
-    ) -> HRESULT,
+    pub GetInMemorySymbolsLength: unsafe extern "system" fn(this: &T, moduleId: ModuleID, pCountSymbolBytes: *mut DWORD) -> HRESULT,
     pub ReadInMemorySymbols: unsafe extern "system" fn(
         this: &T,
         moduleId: ModuleID,

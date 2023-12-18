@@ -41,22 +41,10 @@ impl FatSectionClause {
     const LENGTH: usize = 24;
     pub fn from_bytes(il: &[u8]) -> Result<Self, Error> {
         let flags = il_u8(il, 0)?;
-        let is_exception = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits(),
-        );
-        let is_filter = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FILTER.bits(),
-        );
-        let is_finally = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits(),
-        );
-        let is_fault = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FAULT.bits(),
-        );
+        let is_exception = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits());
+        let is_filter = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FILTER.bits());
+        let is_finally = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits());
+        let is_fault = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FAULT.bits());
         let try_offset = il_u32(il, 4)?;
         let try_length = il_u32(il, 8)?;
         let handler_offset = il_u32(il, 12)?;
@@ -97,22 +85,10 @@ impl SmallSectionClause {
     const LENGTH: usize = 12;
     pub fn from_bytes(il: &[u8]) -> Result<Self, Error> {
         let flags = il_u8(il, 0)?;
-        let is_exception = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits(),
-        );
-        let is_filter = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FILTER.bits(),
-        );
-        let is_finally = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits(),
-        );
-        let is_fault = check_flag(
-            flags,
-            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FAULT.bits(),
-        );
+        let is_exception = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits());
+        let is_filter = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FILTER.bits());
+        let is_finally = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits());
+        let is_fault = check_flag(flags, ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FAULT.bits());
         let try_offset = il_u16(il, 2)?;
         let try_length = il_u8(il, 4)?;
         let handler_offset = il_u16(il, 5)?;
@@ -182,14 +158,12 @@ impl Section {
                 bytes.push(flags);
                 bytes.extend_from_slice(&header.data_size.to_le_bytes()[0..3]);
                 for clause in clauses.iter() {
-                    let mut flags =
-                        ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits();
+                    let mut flags = ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits();
                     if clause.is_filter {
                         flags |= ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FILTER.bits();
                     }
                     if clause.is_finally {
-                        flags |=
-                            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits();
+                        flags |= ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits();
                     }
                     if clause.is_fault {
                         flags |= ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FAULT.bits();
@@ -216,14 +190,12 @@ impl Section {
                 bytes.push(0u8); // Padding for DWORD alignment
                 bytes.push(0u8); // Padding for DWORD alignment
                 for clause in clauses.iter() {
-                    let mut flags =
-                        ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits();
+                    let mut flags = ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_EXCEPTION.bits();
                     if clause.is_filter {
                         flags |= ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FILTER.bits();
                     }
                     if clause.is_finally {
-                        flags |=
-                            ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits();
+                        flags |= ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FINALLY.bits();
                     }
                     if clause.is_fault {
                         flags |= ExceptionHandlingClauseFlags::COR_ILEXCEPTION_CLAUSE_FAULT.bits();
@@ -250,22 +222,13 @@ impl Section {
         !Self::is_fat(section_header_flags)
     }
     fn is_fat(section_header_flags: u8) -> bool {
-        check_flag(
-            section_header_flags,
-            SectionHeaderFlags::CorILMethod_Sect_FatFormat.bits(),
-        )
+        check_flag(section_header_flags, SectionHeaderFlags::CorILMethod_Sect_FatFormat.bits())
     }
     fn is_eh_table(section_header_flags: u8) -> bool {
-        check_flag(
-            section_header_flags,
-            SectionHeaderFlags::CorILMethod_Sect_EHTable.bits(),
-        )
+        check_flag(section_header_flags, SectionHeaderFlags::CorILMethod_Sect_EHTable.bits())
     }
     fn more_sects(section_header_flags: u8) -> bool {
-        check_flag(
-            section_header_flags,
-            SectionHeaderFlags::CorILMethod_Sect_MoreSects.bits(),
-        )
+        check_flag(section_header_flags, SectionHeaderFlags::CorILMethod_Sect_MoreSects.bits())
     }
     fn get_fat_clauses(il: &[u8]) -> Result<Vec<FatSectionClause>, Error> {
         let mut index = 0;

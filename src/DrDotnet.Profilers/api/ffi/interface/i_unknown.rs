@@ -4,11 +4,7 @@ use std::ffi::c_void;
 
 #[repr(C)]
 pub struct IUnknown<T> {
-    pub QueryInterface: unsafe extern "system" fn(
-        this: &mut T,
-        riid: REFIID,
-        ppvObject: *mut *mut c_void,
-    ) -> HRESULT,
+    pub QueryInterface: unsafe extern "system" fn(this: &mut T, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT,
     pub AddRef: unsafe extern "system" fn(this: &mut T) -> ULONG,
     pub Release: unsafe extern "system" fn(this: &mut T) -> ULONG,
 }

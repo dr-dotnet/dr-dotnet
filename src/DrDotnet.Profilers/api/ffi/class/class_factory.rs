@@ -1,13 +1,10 @@
 #![allow(non_snake_case)]
-use crate::{
-    ffi::*,
-    traits::CorProfilerCallback9,
-};
+use crate::api::ffi::class::cor_profiler_callback::CorProfilerCallback;
+use crate::profilers::Profiler;
+use crate::{ffi::*, traits::CorProfilerCallback9};
 use std::ffi::c_void;
 use std::ptr;
 use std::sync::atomic::{AtomicU32, Ordering};
-use crate::api::ffi::class::cor_profiler_callback::CorProfilerCallback;
-use crate::profilers::Profiler;
 
 #[repr(C)]
 pub struct ClassFactoryVtbl<T>
@@ -34,7 +31,7 @@ where
 {
     pub fn new<'b>(profiler: T) -> &'b mut ClassFactory<T> {
         debug!("IClassFactory::new");
-        
+
         let class_factory = ClassFactory {
             lpVtbl: &ClassFactoryVtbl {
                 IUnknown: IUnknown {
@@ -69,28 +66,28 @@ where
 
     pub unsafe extern "system" fn AddRef(&mut self) -> ULONG {
         debug!("IClassFactory::AddRef");
-        
+
         let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
         ref_count
     }
 
     pub unsafe extern "system" fn Release(&mut self) -> ULONG {
         debug!("IClassFactory::Release");
-        
+
         let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
-        
+
         if ref_count == 0 {
             debug!("IClassFactory released");
             drop(Box::from_raw(self as *mut ClassFactory<T>));
         }
-        
+
         ref_count
     }
 
     pub unsafe extern "system" fn CreateInstance(&mut self, _pUnkOuter: *mut IUnknown<()>, _riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT {
         let uuid: uuid::Uuid = GUID::into(*_riid);
         debug!("IClassFactory::CreateInstance({})", uuid);
-        
+
         *ppvObject = CorProfilerCallback::new(T::default()) as *mut CorProfilerCallback<T> as LPVOID;
         HRESULT::S_OK
     }
@@ -101,5 +98,15 @@ where
     }
 }
 
-unsafe impl<T> Sync for ClassFactory<T> where T: Sync, T: Profiler {}
-unsafe impl<T> Send for ClassFactory<T> where T: Send, T: Profiler {}
+unsafe impl<T> Sync for ClassFactory<T>
+where
+    T: Sync,
+    T: Profiler,
+{
+}
+unsafe impl<T> Send for ClassFactory<T>
+where
+    T: Send,
+    T: Profiler,
+{
+}

@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef,
-    IMetaDataAssemblyEmit, IUnknown, ASSEMBLYMETADATA, DWORD, HRESULT, LPCWSTR, ULONG,
+    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef, IMetaDataAssemblyEmit, IUnknown, ASSEMBLYMETADATA, DWORD,
+    HRESULT, LPCWSTR, ULONG,
 };
 use std::ffi::c_void;
 
@@ -30,16 +30,7 @@ impl MetaDataAssemblyEmit {
         dwAssemblyFlags: DWORD,
         pmda: *mut mdAssembly,
     ) -> HRESULT {
-        (self.i_metadata_assembly_emit().DefineAssembly)(
-            self,
-            pbPublicKey,
-            cbPublicKey,
-            ulHashAlgId,
-            szName,
-            pMetaData,
-            dwAssemblyFlags,
-            pmda,
-        )
+        (self.i_metadata_assembly_emit().DefineAssembly)(self, pbPublicKey, cbPublicKey, ulHashAlgId, szName, pMetaData, dwAssemblyFlags, pmda)
     }
     pub unsafe fn DefineAssemblyRef(
         &self,
@@ -72,14 +63,7 @@ impl MetaDataAssemblyEmit {
         dwExportedTypeFlags: DWORD,
         pmdct: *mut mdExportedType,
     ) -> HRESULT {
-        (self.i_metadata_assembly_emit().DefineExportedType)(
-            self,
-            szName,
-            tkImplementation,
-            tkTypeDef,
-            dwExportedTypeFlags,
-            pmdct,
-        )
+        (self.i_metadata_assembly_emit().DefineExportedType)(self, szName, tkImplementation, tkTypeDef, dwExportedTypeFlags, pmdct)
     }
     pub unsafe fn DefineManifestResource(
         &self,
@@ -89,14 +73,7 @@ impl MetaDataAssemblyEmit {
         dwResourceFlags: DWORD,
         pmdmr: *mut mdManifestResource,
     ) -> HRESULT {
-        (self.i_metadata_assembly_emit().DefineManifestResource)(
-            self,
-            szName,
-            tkImplementation,
-            dwOffset,
-            dwResourceFlags,
-            pmdmr,
-        )
+        (self.i_metadata_assembly_emit().DefineManifestResource)(self, szName, tkImplementation, dwOffset, dwResourceFlags, pmdmr)
     }
     pub unsafe fn SetAssemblyProps(
         &self,
@@ -108,16 +85,7 @@ impl MetaDataAssemblyEmit {
         pMetaData: *const ASSEMBLYMETADATA,
         dwAssemblyFlags: DWORD,
     ) -> HRESULT {
-        (self.i_metadata_assembly_emit().SetAssemblyProps)(
-            self,
-            pma,
-            pbPublicKey,
-            cbPublicKey,
-            ulHashAlgId,
-            szName,
-            pMetaData,
-            dwAssemblyFlags,
-        )
+        (self.i_metadata_assembly_emit().SetAssemblyProps)(self, pma, pbPublicKey, cbPublicKey, ulHashAlgId, szName, pMetaData, dwAssemblyFlags)
     }
     pub unsafe fn SetAssemblyRefProps(
         &self,
@@ -142,49 +110,13 @@ impl MetaDataAssemblyEmit {
             dwAssemblyRefFlags,
         )
     }
-    pub unsafe fn SetFileProps(
-        &self,
-        file: mdFile,
-        pbHashValue: *const c_void,
-        cbHashValue: ULONG,
-        dwFileFlags: DWORD,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_emit().SetFileProps)(
-            self,
-            file,
-            pbHashValue,
-            cbHashValue,
-            dwFileFlags,
-        )
+    pub unsafe fn SetFileProps(&self, file: mdFile, pbHashValue: *const c_void, cbHashValue: ULONG, dwFileFlags: DWORD) -> HRESULT {
+        (self.i_metadata_assembly_emit().SetFileProps)(self, file, pbHashValue, cbHashValue, dwFileFlags)
     }
-    pub unsafe fn SetExportedTypeProps(
-        &self,
-        ct: mdExportedType,
-        tkImplementation: mdToken,
-        tkTypeDef: mdTypeDef,
-        dwExportedTypeFlags: DWORD,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_emit().SetExportedTypeProps)(
-            self,
-            ct,
-            tkImplementation,
-            tkTypeDef,
-            dwExportedTypeFlags,
-        )
+    pub unsafe fn SetExportedTypeProps(&self, ct: mdExportedType, tkImplementation: mdToken, tkTypeDef: mdTypeDef, dwExportedTypeFlags: DWORD) -> HRESULT {
+        (self.i_metadata_assembly_emit().SetExportedTypeProps)(self, ct, tkImplementation, tkTypeDef, dwExportedTypeFlags)
     }
-    pub unsafe fn SetManifestResourceProps(
-        &self,
-        mr: mdManifestResource,
-        tkImplementation: mdToken,
-        dwOffset: DWORD,
-        dwResourceFlags: DWORD,
-    ) -> HRESULT {
-        (self.i_metadata_assembly_emit().SetManifestResourceProps)(
-            self,
-            mr,
-            tkImplementation,
-            dwOffset,
-            dwResourceFlags,
-        )
+    pub unsafe fn SetManifestResourceProps(&self, mr: mdManifestResource, tkImplementation: mdToken, dwOffset: DWORD, dwResourceFlags: DWORD) -> HRESULT {
+        (self.i_metadata_assembly_emit().SetManifestResourceProps)(self, mr, tkImplementation, dwOffset, dwResourceFlags)
     }
 }

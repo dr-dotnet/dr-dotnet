@@ -1,32 +1,32 @@
+use deepsize::DeepSizeOf;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
-use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
 use std::time::Instant;
-use deepsize::DeepSizeOf;
 use thousands::{digits, Separable, SeparatorPolicy};
 
-use crate::ffi::*;
 use crate::api::*;
+use crate::ffi::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::{TreeNode, CachedNameResolver, NameResolver, SimpleHasher};
+use crate::utils::{CachedNameResolver, NameResolver, SimpleHasher, TreeNode};
 
 #[derive(Default)]
 pub struct GCSurvivorsProfiler {
     name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
-    object_to_referencers: HashMap<ObjectID, Option<Vec<ObjectID>>, BuildHasherDefault::<SimpleHasher>>,
+    object_to_referencers: HashMap<ObjectID, Option<Vec<ObjectID>>, BuildHasherDefault<SimpleHasher>>,
     is_triggered_gc: AtomicBool,
-    gc_start_time: Option<Instant>
+    gc_start_time: Option<Instant>,
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct References(HashMap<ObjectID, usize, BuildHasherDefault::<SimpleHasher>>);
+pub struct References(HashMap<ObjectID, usize, BuildHasherDefault<SimpleHasher>>);
 
 // Implement AddAssign for get_inclusive_value to be usable
 impl AddAssign<&References> for References {
@@ -37,17 +37,20 @@ impl AddAssign<&References> for References {
 
 impl Display for References {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-
         let policy = SeparatorPolicy {
             separator: ",",
-            groups:    &[3],
-            digits:    digits::ASCII_DECIMAL,
+            groups: &[3],
+            digits: digits::ASCII_DECIMAL,
         };
-        
+
         let nb_objects = self.0.len();
         let total_size: usize = self.0.values().sum();
 
-        let total_size_str = if total_size > 0 { total_size.separate_by_policy(policy) } else { "???".to_string() };
+        let total_size_str = if total_size > 0 {
+            total_size.separate_by_policy(policy)
+        } else {
+            "???".to_string()
+        };
 
         write!(f, "({total_size_str} bytes) - {nb_objects}")
     }
@@ -63,7 +66,7 @@ impl Profiler for GCSurvivorsProfiler {
             description: "Todo.".to_owned(),
             is_released: true,
             parameters: vec![
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Sort by size".to_owned(),
                     key: "sort_by_size".to_owned(),
                     description: "If true, sort the results by inclusive size (bytes). Otherwise, sort by inclusive instances count.".to_owned(),
@@ -79,7 +82,7 @@ impl Profiler for GCSurvivorsProfiler {
                     value: "false".to_owned(),
                     ..std::default::Default::default()
                 },
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Maximum types to display".to_owned(),
                     key: "max_types_display".to_owned(),
                     description: "The maximum number of types to display in the report".to_owned(),
@@ -87,31 +90,28 @@ impl Profiler for GCSurvivorsProfiler {
                     value: "1000".to_owned(),
                     ..std::default::Default::default()
                 },
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Maximum depth".to_owned(),
                     key: "max_retention_depth".to_owned(),
                     description: "The maximum depth while drilling through retention paths".to_owned(),
                     type_: ParameterType::INT.into(),
                     value: "4".to_owned(),
                     ..std::default::Default::default()
-                }
+                },
             ],
             ..std::default::Default::default()
-        }
+        };
     }
 }
 
-impl GCSurvivorsProfiler
-{
-    pub fn append_references(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: usize) -> Vec<Vec<ClassID>>
-    {
+impl GCSurvivorsProfiler {
+    pub fn append_references(&self, info: &ClrProfilerInfo, object_id: ffi::ObjectID, max_depth: usize) -> Vec<Vec<ClassID>> {
         let mut branches: Vec<Vec<ClassID>> = Vec::new();
 
         let mut branch: Vec<ClassID> = vec![]; // A branch we update live and copy every time we reached the end of a path
         let mut stack: Vec<(ObjectID, usize)> = vec![(object_id, 0)]; // A stack to iterate without recursions
 
         while !stack.is_empty() {
-
             let current_id: (ObjectID, usize) = stack.pop().unwrap();
 
             // Trim branch until it has the proper depth
@@ -141,7 +141,7 @@ impl GCSurvivorsProfiler
                             deep_branch.push(0);
                             branches.push(deep_branch);
                         }
-                    },
+                    }
                     None => {
                         // We reached the end of a path, copy the branch and add it to our branches
                         branches.push(branch.clone());
@@ -176,9 +176,11 @@ impl GCSurvivorsProfiler
     }
 
     // Post-process tracked persisting references
-    fn build_sequences(&mut self) -> HashMap<Vec<usize>, References>
-    {
-        info!("Building graph of surviving references... {} objects to process", self.object_to_referencers.len());
+    fn build_sequences(&mut self) -> HashMap<Vec<usize>, References> {
+        info!(
+            "Building graph of surviving references... {} objects to process",
+            self.object_to_referencers.len()
+        );
 
         let now = std::time::Instant::now();
 
@@ -189,7 +191,6 @@ impl GCSurvivorsProfiler
         let max_retention_depth = self.session_info().get_parameter::<usize>("max_retention_depth").unwrap();
 
         for object in self.object_to_referencers.iter() {
-            
             let object_id: ObjectID = object.0.clone();
 
             if !Self::is_gen_2(info, object_id) {
@@ -199,8 +200,11 @@ impl GCSurvivorsProfiler
             let size = info.get_object_size_2(object_id).unwrap_or(0);
 
             for branch in self.append_references(info, object_id, max_retention_depth) {
-                sequences.entry(branch)
-                    .and_modify(|referencers| {referencers.0.insert(object_id.clone(), size);})
+                sequences
+                    .entry(branch)
+                    .and_modify(|referencers| {
+                        referencers.0.insert(object_id.clone(), size);
+                    })
                     .or_insert_with(|| {
                         let mut map = HashMap::default();
                         map.insert(object_id.clone(), size);
@@ -218,11 +222,11 @@ impl GCSurvivorsProfiler
     }
 
     fn is_gen_2(info: &ClrProfilerInfo, object_id: usize) -> bool {
-        info.get_object_generation(object_id).map_or(false, |gen_info| gen_info.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2)
+        info.get_object_generation(object_id)
+            .map_or(false, |gen_info| gen_info.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2)
     }
 
-    fn build_tree(&self, sequences: &mut HashMap<Vec<usize>, References>) -> TreeNode<usize, References>
-    {
+    fn build_tree(&self, sequences: &mut HashMap<Vec<usize>, References>) -> TreeNode<usize, References> {
         info!("Building tree");
 
         let now = std::time::Instant::now();
@@ -236,35 +240,37 @@ impl GCSurvivorsProfiler
         info!("Sorting tree");
 
         let now = std::time::Instant::now();
-    
+
         let sort_by_size = self.session_info().get_parameter::<bool>("sort_by_size").unwrap();
-        
-        let compare = &|a:&TreeNode<usize, References>, b:&TreeNode<usize, References>| {
+
+        let compare = &|a: &TreeNode<usize, References>, b: &TreeNode<usize, References>| {
             if sort_by_size {
                 // Sorts by descending inclusive size
-                b.get_inclusive_value().0.values().sum::<usize>().cmp(&a.get_inclusive_value().0.values().sum::<usize>())
+                b.get_inclusive_value()
+                    .0
+                    .values()
+                    .sum::<usize>()
+                    .cmp(&a.get_inclusive_value().0.values().sum::<usize>())
             } else {
                 // Sorts by descending inclusive count
                 b.get_inclusive_value().0.len().cmp(&a.get_inclusive_value().0.len())
             }
         };
-        
+
         // Then sort the whole tree (all levels of childrens)
         let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();
         if sort_multithreaded {
             tree.sort_by_multithreaded(compare);
-        }
-        else {
+        } else {
             tree.sort_by_iterative(compare);
         }
- 
+
         info!("Tree sorted in {} ms", 0.001 * now.elapsed().as_micros() as f64);
 
         return tree;
     }
 
-    fn write_report(&mut self, tree: TreeNode<usize, References>) -> Result<(), HRESULT>
-    {
+    fn write_report(&mut self, tree: TreeNode<usize, References>) -> Result<(), HRESULT> {
         info!("Building report");
 
         let now = std::time::Instant::now();
@@ -288,15 +294,14 @@ impl GCSurvivorsProfiler
         Ok(())
     }
 
-    fn print_html(&self, tree: &TreeNode<ClassID, References>, report: &mut Report)
-    {
+    fn print_html(&self, tree: &TreeNode<ClassID, References>, report: &mut Report) {
         let refs = &tree.get_inclusive_value();
 
-        if tree.key == 0 { 
+        if tree.key == 0 {
             report.write_line(format!("Path truncated because of depth limit reached"));
             return;
         }
-        
+
         let mut class_name = self.name_resolver.get_class_name(tree.key);
         let escaped_class_name = html_escape::encode_text(&mut class_name);
 
@@ -316,10 +321,8 @@ impl GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback for GCSurvivorsProfiler
-{
-    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), HRESULT>
-    {
+impl CorProfilerCallback for GCSurvivorsProfiler {
+    fn object_references(&mut self, object_id: ffi::ObjectID, class_id: ffi::ClassID, object_ref_ids: &[ffi::ObjectID]) -> Result<(), HRESULT> {
         if !self.is_triggered_gc.load(Ordering::Relaxed) {
             error!("Early return of object_references because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
@@ -335,7 +338,8 @@ impl CorProfilerCallback for GCSurvivorsProfiler
         // Create dependency tree, but from object to referencers, instead of object to its references.
         // This is usefull for being able to browse from any object back to its roots.
         for object_ref_id in object_ref_ids {
-            self.object_to_referencers.entry(*object_ref_id)
+            self.object_to_referencers
+                .entry(*object_ref_id)
                 .and_modify(|e| {
                     if let Some(vec) = e.as_mut() {
                         vec.push(object_id);
@@ -346,18 +350,21 @@ impl CorProfilerCallback for GCSurvivorsProfiler
                 .or_insert_with(|| Some(vec![object_id]));
         }
 
-        // Also add this object, with no referencers, just in case this object isn't referenced 
+        // Also add this object, with no referencers, just in case this object isn't referenced
         self.object_to_referencers.entry(object_id).or_insert(None);
 
         Ok(())
     }
 }
 
-impl CorProfilerCallback2 for GCSurvivorsProfiler
-{
+impl CorProfilerCallback2 for GCSurvivorsProfiler {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
-        info!("garbage_collection_started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
-        
+        info!(
+            "garbage_collection_started on gen {} for reason {:?}",
+            ClrProfilerInfo::get_gc_gen(&generation_collected),
+            reason
+        );
+
         if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
             self.is_triggered_gc.store(true, Ordering::Relaxed);
         }
@@ -367,22 +374,24 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         Ok(())
     }
 
-    fn garbage_collection_finished(&mut self) -> Result<(), HRESULT>
-    {
+    fn garbage_collection_finished(&mut self) -> Result<(), HRESULT> {
         info!("garbage_collection_finished");
-        
+
         if !self.is_triggered_gc.load(Ordering::Relaxed) {
             error!("Early return of garbage_collection_finished because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
 
-        info!("Garbage collection done in {} ms", 0.001 * self.gc_start_time.unwrap().elapsed().as_micros() as f64);
+        info!(
+            "Garbage collection done in {} ms",
+            0.001 * self.gc_start_time.unwrap().elapsed().as_micros() as f64
+        );
 
         // Disable profiling to free some resources
         match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
             Ok(_) => (),
-            Err(hresult) => error!("Error setting event mask: {:?}", hresult)
+            Err(hresult) => error!("Error setting event mask: {:?}", hresult),
         }
 
         info!("Deep size of object references: {} bytes", self.object_to_referencers.deep_size_of());
@@ -390,7 +399,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
         let mut sequences = self.build_sequences();
         let tree = self.build_tree(&mut sequences);
         let _ = self.write_report(tree);
-        
+
         // We're done, we can detach :)
         let profiler_info = self.clr().clone();
         profiler_info.request_profiler_detach(3000).ok();
@@ -399,29 +408,33 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback3 for GCSurvivorsProfiler
-{
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), HRESULT> {
+impl CorProfilerCallback3 for GCSurvivorsProfiler {
+    fn initialize_for_attach(
+        &mut self,
+        profiler_info: ClrProfilerInfo,
+        client_data: *const std::os::raw::c_void,
+        client_data_length: u32,
+    ) -> Result<(), HRESULT> {
         self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
     }
 
-    fn profiler_attach_complete(&mut self) -> Result<(), HRESULT>
-    {
+    fn profiler_attach_complete(&mut self) -> Result<(), HRESULT> {
         self.name_resolver = CachedNameResolver::new(self.clr().clone());
 
-        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack. 
+        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack.
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
         let clr = self.clr().clone();
 
         let _ = thread::spawn(move || {
             debug!("Force GC");
-            
+
             match clr.force_gc() {
                 Ok(_) => debug!("GC Forced!"),
-                Err(hresult) => error!("Error forcing GC: {:?}", hresult)
+                Err(hresult) => error!("Error forcing GC: {:?}", hresult),
             };
-        }).join();
-        
+        })
+        .join();
+
         // Security timeout
         detach_after_duration::<GCSurvivorsProfiler>(&self, 320);
 

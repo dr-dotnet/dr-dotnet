@@ -1,31 +1,19 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    mdMethodDef, CorProfilerFunctionEnum, CorProfilerThreadEnum, FunctionID, ModuleID, ObjectID,
-    ReJITID, COR_DEBUG_IL_TO_NATIVE_MAP, COR_PRF_CODE_INFO, GUID, HRESULT, LPCBYTE, SIZE_T, ULONG,
-    ULONG32,
+    mdMethodDef, CorProfilerFunctionEnum, CorProfilerThreadEnum, FunctionID, ModuleID, ObjectID, ReJITID, COR_DEBUG_IL_TO_NATIVE_MAP, COR_PRF_CODE_INFO, GUID,
+    HRESULT, LPCBYTE, SIZE_T, ULONG, ULONG32,
 };
 
 #[repr(C)]
 pub struct ICorProfilerInfo4<T> {
-    pub EnumThreads:
-        unsafe extern "system" fn(this: &T, ppEnum: *mut *mut CorProfilerThreadEnum) -> HRESULT,
+    pub EnumThreads: unsafe extern "system" fn(this: &T, ppEnum: *mut *mut CorProfilerThreadEnum) -> HRESULT,
 
     pub InitializeCurrentThread: unsafe extern "system" fn(this: &T) -> HRESULT,
 
-    pub RequestReJIT: unsafe extern "system" fn(
-        this: &T,
-        cFunctions: ULONG,
-        moduleIds: *const ModuleID,
-        methodIds: *const mdMethodDef,
-    ) -> HRESULT,
+    pub RequestReJIT: unsafe extern "system" fn(this: &T, cFunctions: ULONG, moduleIds: *const ModuleID, methodIds: *const mdMethodDef) -> HRESULT,
 
-    pub RequestRevert: unsafe extern "system" fn(
-        this: &T,
-        cFunctions: ULONG,
-        moduleIds: *const ModuleID,
-        methodIds: *const mdMethodDef,
-        status: *mut HRESULT,
-    ) -> HRESULT,
+    pub RequestRevert:
+        unsafe extern "system" fn(this: &T, cFunctions: ULONG, moduleIds: *const ModuleID, methodIds: *const mdMethodDef, status: *mut HRESULT) -> HRESULT,
 
     pub GetCodeInfo3: unsafe extern "system" fn(
         this: &T,
@@ -36,20 +24,9 @@ pub struct ICorProfilerInfo4<T> {
         codeInfos: *mut COR_PRF_CODE_INFO,
     ) -> HRESULT,
 
-    pub GetFunctionFromIP2: unsafe extern "system" fn(
-        this: &T,
-        ip: LPCBYTE,
-        pFunctionId: *mut FunctionID,
-        pReJitId: *mut ReJITID,
-    ) -> HRESULT,
+    pub GetFunctionFromIP2: unsafe extern "system" fn(this: &T, ip: LPCBYTE, pFunctionId: *mut FunctionID, pReJitId: *mut ReJITID) -> HRESULT,
 
-    pub GetReJITIDs: unsafe extern "system" fn(
-        this: &T,
-        functionId: FunctionID,
-        cReJitIds: ULONG,
-        pcReJitIds: *mut ULONG,
-        reJitIds: *mut ReJITID,
-    ) -> HRESULT,
+    pub GetReJITIDs: unsafe extern "system" fn(this: &T, functionId: FunctionID, cReJitIds: ULONG, pcReJitIds: *mut ULONG, reJitIds: *mut ReJITID) -> HRESULT,
 
     pub GetILToNativeMapping2: unsafe extern "system" fn(
         this: &T,
@@ -60,11 +37,9 @@ pub struct ICorProfilerInfo4<T> {
         map: *mut COR_DEBUG_IL_TO_NATIVE_MAP,
     ) -> HRESULT,
 
-    pub EnumJITedFunctions2:
-        unsafe extern "system" fn(this: &T, ppEnum: *mut *mut CorProfilerFunctionEnum) -> HRESULT,
+    pub EnumJITedFunctions2: unsafe extern "system" fn(this: &T, ppEnum: *mut *mut CorProfilerFunctionEnum) -> HRESULT,
 
-    pub GetObjectSize2:
-        unsafe extern "system" fn(this: &T, objectId: ObjectID, pcSize: *mut SIZE_T) -> HRESULT,
+    pub GetObjectSize2: unsafe extern "system" fn(this: &T, objectId: ObjectID, pcSize: *mut SIZE_T) -> HRESULT,
 }
 
 impl ICorProfilerInfo4<()> {

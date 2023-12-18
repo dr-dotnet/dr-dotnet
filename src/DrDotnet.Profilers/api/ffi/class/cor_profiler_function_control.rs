@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
-use crate::ffi::{
-    ICorProfilerFunctionControl, IUnknown, COR_IL_MAP, DWORD, HRESULT, LPCBYTE, ULONG,
-};
+use crate::ffi::{ICorProfilerFunctionControl, IUnknown, COR_IL_MAP, DWORD, HRESULT, LPCBYTE, ULONG};
 
 #[repr(C)]
 pub struct CorProfilerFunctionControlVtbl {
@@ -21,24 +19,10 @@ impl CorProfilerFunctionControl {
     pub unsafe fn SetCodegenFlags(&self, flags: DWORD) -> HRESULT {
         (self.i_cor_profiler_function_control().SetCodegenFlags)(self, flags)
     }
-    pub unsafe fn SetILFunctionBody(
-        &self,
-        cbNewILMethodHeader: ULONG,
-        pbNewILMethodHeader: LPCBYTE,
-    ) -> HRESULT {
-        (self.i_cor_profiler_function_control().SetILFunctionBody)(
-            self,
-            cbNewILMethodHeader,
-            pbNewILMethodHeader,
-        )
+    pub unsafe fn SetILFunctionBody(&self, cbNewILMethodHeader: ULONG, pbNewILMethodHeader: LPCBYTE) -> HRESULT {
+        (self.i_cor_profiler_function_control().SetILFunctionBody)(self, cbNewILMethodHeader, pbNewILMethodHeader)
     }
-    pub unsafe fn SetILInstrumentedCodeMap(
-        &self,
-        cILMapEntries: ULONG,
-        rgILMapEntries: *const COR_IL_MAP,
-    ) -> HRESULT {
-        (self
-            .i_cor_profiler_function_control()
-            .SetILInstrumentedCodeMap)(self, cILMapEntries, rgILMapEntries)
+    pub unsafe fn SetILInstrumentedCodeMap(&self, cILMapEntries: ULONG, rgILMapEntries: *const COR_IL_MAP) -> HRESULT {
+        (self.i_cor_profiler_function_control().SetILInstrumentedCodeMap)(self, cILMapEntries, rgILMapEntries)
     }
 }

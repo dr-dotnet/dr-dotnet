@@ -1,28 +1,15 @@
 #![allow(non_snake_case)]
-use crate::ffi::{
-    mdMethodDef, ModuleID, ObjectID, ObjectReferenceCallback, BOOL, DWORD, GUID, HRESULT, ULONG,
-};
+use crate::ffi::{mdMethodDef, ModuleID, ObjectID, ObjectReferenceCallback, BOOL, DWORD, GUID, HRESULT, ULONG};
 use std::ffi::c_void;
 
 #[repr(C)]
 pub struct ICorProfilerInfo10<T> {
-    pub EnumerateObjectReferences: unsafe extern "system" fn(
-        this: &T,
-        objectId: ObjectID,
-        callback: ObjectReferenceCallback,
-        clientData: *const c_void,
-    ) -> HRESULT,
-    pub IsFrozenObject:
-        unsafe extern "system" fn(this: &T, objectId: ObjectID, pbFrozen: *mut BOOL) -> HRESULT,
-    pub GetLOHObjectSizeThreshold:
-        unsafe extern "system" fn(this: &T, pThreshold: *mut DWORD) -> HRESULT,
-    pub RequestReJITWithInliners: unsafe extern "system" fn(
-        this: &T,
-        dwRejitFlags: DWORD,
-        cFunctions: ULONG,
-        moduleIds: *const ModuleID,
-        methodIds: *const mdMethodDef,
-    ) -> HRESULT,
+    pub EnumerateObjectReferences:
+        unsafe extern "system" fn(this: &T, objectId: ObjectID, callback: ObjectReferenceCallback, clientData: *const c_void) -> HRESULT,
+    pub IsFrozenObject: unsafe extern "system" fn(this: &T, objectId: ObjectID, pbFrozen: *mut BOOL) -> HRESULT,
+    pub GetLOHObjectSizeThreshold: unsafe extern "system" fn(this: &T, pThreshold: *mut DWORD) -> HRESULT,
+    pub RequestReJITWithInliners:
+        unsafe extern "system" fn(this: &T, dwRejitFlags: DWORD, cFunctions: ULONG, moduleIds: *const ModuleID, methodIds: *const mdMethodDef) -> HRESULT,
     pub SuspendRuntime: unsafe extern "system" fn(this: &T) -> HRESULT,
     pub ResumeRuntime: unsafe extern "system" fn(this: &T) -> HRESULT,
 }

@@ -7,12 +7,7 @@ pub struct ICorProfilerMethodEnum<T> {
     pub Reset: unsafe extern "system" fn(this: &T) -> HRESULT,
     pub Clone: unsafe extern "system" fn(this: &T, ppEnum: *mut *mut T) -> HRESULT,
     pub GetCount: unsafe extern "system" fn(this: &T, pcelt: *mut ULONG) -> HRESULT,
-    pub Next: unsafe extern "system" fn(
-        this: &T,
-        celt: ULONG,
-        elements: *mut COR_PRF_METHOD,
-        pceltFetched: *mut ULONG,
-    ) -> HRESULT,
+    pub Next: unsafe extern "system" fn(this: &T, celt: ULONG, elements: *mut COR_PRF_METHOD, pceltFetched: *mut ULONG) -> HRESULT,
 }
 
 impl ICorProfilerMethodEnum<()> {

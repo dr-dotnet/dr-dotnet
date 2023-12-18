@@ -1,30 +1,19 @@
 #![allow(non_snake_case)]
-use crate::ffi::{
-    mdGenericParam, mdMethodSpec, mdToken, CorSaveSize, Unknown, DWORD, GUID, HRESULT, LPCWSTR,
-    PCCOR_SIGNATURE, ULONG,
-};
+use crate::ffi::{mdGenericParam, mdMethodSpec, mdToken, CorSaveSize, Unknown, DWORD, GUID, HRESULT, LPCWSTR, PCCOR_SIGNATURE, ULONG};
 use std::ffi::c_void;
 
 #[repr(C)]
 pub struct IMetaDataEmit2<T> {
-    pub DefineMethodSpec: unsafe extern "system" fn(
-        this: &T,
-        tkParent: mdToken,
-        pvSigBlob: PCCOR_SIGNATURE,
-        cbSigBlob: ULONG,
-        pmi: *mut mdMethodSpec,
-    ) -> HRESULT,
-    pub GetDeltaSaveSize:
-        unsafe extern "system" fn(this: &T, fSave: CorSaveSize, pdwSaveSize: *mut DWORD) -> HRESULT,
-    pub SaveDelta:
-        unsafe extern "system" fn(this: &T, szFile: LPCWSTR, dwSaveFlags: DWORD) -> HRESULT,
+    pub DefineMethodSpec:
+        unsafe extern "system" fn(this: &T, tkParent: mdToken, pvSigBlob: PCCOR_SIGNATURE, cbSigBlob: ULONG, pmi: *mut mdMethodSpec) -> HRESULT,
+    pub GetDeltaSaveSize: unsafe extern "system" fn(this: &T, fSave: CorSaveSize, pdwSaveSize: *mut DWORD) -> HRESULT,
+    pub SaveDelta: unsafe extern "system" fn(this: &T, szFile: LPCWSTR, dwSaveFlags: DWORD) -> HRESULT,
     pub SaveDeltaToStream: unsafe extern "system" fn(
         this: &T,
         pIStream: *const Unknown, // TODO: Implement ISequentialStream, IStream and then Stream co-class
         dwSaveFlags: DWORD,
     ) -> HRESULT,
-    pub SaveDeltaToMemory:
-        unsafe extern "system" fn(this: &T, pbData: *mut c_void, cbData: ULONG) -> HRESULT,
+    pub SaveDeltaToMemory: unsafe extern "system" fn(this: &T, pbData: *mut c_void, cbData: ULONG) -> HRESULT,
     pub DefineGenericParam: unsafe extern "system" fn(
         this: &T,
         tk: mdToken,

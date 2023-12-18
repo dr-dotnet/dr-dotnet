@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use crate::ffi::{
-    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef,
-    ASSEMBLYMETADATA, DWORD, GUID, HRESULT, LPCWSTR, ULONG,
+    mdAssembly, mdAssemblyRef, mdExportedType, mdFile, mdManifestResource, mdToken, mdTypeDef, ASSEMBLYMETADATA, DWORD, GUID, HRESULT, LPCWSTR, ULONG,
 };
 use std::ffi::c_void;
 
@@ -65,27 +64,11 @@ pub struct IMetaDataAssemblyEmit<T> {
         cbHashValue: ULONG,
         dwAssemblyRefFlags: DWORD,
     ) -> HRESULT,
-    pub SetFileProps: unsafe extern "system" fn(
-        this: &T,
-        file: mdFile,
-        pbHashValue: *const c_void,
-        cbHashValue: ULONG,
-        dwFileFlags: DWORD,
-    ) -> HRESULT,
-    pub SetExportedTypeProps: unsafe extern "system" fn(
-        this: &T,
-        ct: mdExportedType,
-        tkImplementation: mdToken,
-        tkTypeDef: mdTypeDef,
-        dwExportedTypeFlags: DWORD,
-    ) -> HRESULT,
-    pub SetManifestResourceProps: unsafe extern "system" fn(
-        this: &T,
-        mr: mdManifestResource,
-        tkImplementation: mdToken,
-        dwOffset: DWORD,
-        dwResourceFlags: DWORD,
-    ) -> HRESULT,
+    pub SetFileProps: unsafe extern "system" fn(this: &T, file: mdFile, pbHashValue: *const c_void, cbHashValue: ULONG, dwFileFlags: DWORD) -> HRESULT,
+    pub SetExportedTypeProps:
+        unsafe extern "system" fn(this: &T, ct: mdExportedType, tkImplementation: mdToken, tkTypeDef: mdTypeDef, dwExportedTypeFlags: DWORD) -> HRESULT,
+    pub SetManifestResourceProps:
+        unsafe extern "system" fn(this: &T, mr: mdManifestResource, tkImplementation: mdToken, dwOffset: DWORD, dwResourceFlags: DWORD) -> HRESULT,
 }
 
 impl IMetaDataAssemblyEmit<()> {

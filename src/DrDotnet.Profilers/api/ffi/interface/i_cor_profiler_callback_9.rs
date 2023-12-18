@@ -3,8 +3,7 @@ use crate::ffi::{FunctionID, GUID, HRESULT};
 
 #[repr(C)]
 pub struct ICorProfilerCallback9<T> {
-    pub DynamicMethodUnloaded:
-        unsafe extern "system" fn(this: &mut T, functionId: FunctionID) -> HRESULT,
+    pub DynamicMethodUnloaded: unsafe extern "system" fn(this: &mut T, functionId: FunctionID) -> HRESULT,
 }
 
 impl ICorProfilerCallback9<()> {

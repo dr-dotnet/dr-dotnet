@@ -1,35 +1,28 @@
+use crate::*;
 use crate::{
     ffi::{
-        int, mdFieldDef, mdMethodDef, mdTypeDef, AppDomainID, AssemblyID, ClassID, ContextID,
-        CorElementType, CorOpenFlags, CorProfilerFunctionEnum,
-        CorProfilerInfo as FFICorProfilerInfo, CorProfilerModuleEnum, CorProfilerThreadEnum,
-        FunctionEnter, FunctionEnter2, FunctionEnter3, FunctionEnter3WithInfo, FunctionID,
-        FunctionIDMapper, FunctionIDMapper2, FunctionLeave, FunctionLeave2, FunctionLeave3,
-        FunctionLeave3WithInfo, FunctionTailcall, FunctionTailcall2, FunctionTailcall3,
-        FunctionTailcall3WithInfo, IMetaDataImport2, MethodMalloc, ModuleID, ObjectID,
-        ObjectReferenceCallback, ReJITID, StackSnapshotCallback, ThreadID, BOOL, BYTE,
-        COR_DEBUG_IL_TO_NATIVE_MAP, COR_FIELD_OFFSET, COR_IL_MAP, COR_PRF_CODE_INFO,
-        COR_PRF_ELT_INFO, COR_PRF_EX_CLAUSE_INFO, COR_PRF_FRAME_INFO, COR_PRF_GC_GENERATION_RANGE,
-        COR_PRF_HIGH_MONITOR, COR_PRF_MODULE_FLAGS, COR_PRF_MONITOR, COR_PRF_REJIT_FLAGS,
-        COR_PRF_SNAPSHOT_INFO, COR_PRF_STATIC_TYPE, DWORD, GUID, HANDLE, HRESULT, LPCBYTE,
+        int, mdFieldDef, mdMethodDef, mdTypeDef, AppDomainID, AssemblyID, ClassID, ContextID, CorElementType, CorOpenFlags, CorProfilerFunctionEnum,
+        CorProfilerInfo as FFICorProfilerInfo, CorProfilerModuleEnum, CorProfilerThreadEnum, FunctionEnter, FunctionEnter2, FunctionEnter3,
+        FunctionEnter3WithInfo, FunctionID, FunctionIDMapper, FunctionIDMapper2, FunctionLeave, FunctionLeave2, FunctionLeave3, FunctionLeave3WithInfo,
+        FunctionTailcall, FunctionTailcall2, FunctionTailcall3, FunctionTailcall3WithInfo, IMetaDataImport2, MethodMalloc, ModuleID, ObjectID,
+        ObjectReferenceCallback, ReJITID, StackSnapshotCallback, ThreadID, BOOL, BYTE, COR_DEBUG_IL_TO_NATIVE_MAP, COR_FIELD_OFFSET, COR_IL_MAP,
+        COR_PRF_CODE_INFO, COR_PRF_ELT_INFO, COR_PRF_EX_CLAUSE_INFO, COR_PRF_FRAME_INFO, COR_PRF_GC_GENERATION_RANGE, COR_PRF_HIGH_MONITOR,
+        COR_PRF_MODULE_FLAGS, COR_PRF_MONITOR, COR_PRF_REJIT_FLAGS, COR_PRF_SNAPSHOT_INFO, COR_PRF_STATIC_TYPE, DWORD, GUID, HANDLE, HRESULT, LPCBYTE,
         UINT_PTR, ULONG, ULONG32, WCHAR,
     },
-    AppDomainInfo, ArrayClassInfo, ArrayObjectInfo, AssemblyInfo, ClassInfo, ClassInfo2,
-    ClassLayout, CorProfilerInfo, CorProfilerInfo10, CorProfilerInfo2, CorProfilerInfo3,
-    CorProfilerInfo4, CorProfilerInfo5, CorProfilerInfo6, CorProfilerInfo7, CorProfilerInfo8,
-    CorProfilerInfo9, DynamicFunctionInfo, EnumNgenModuleMethodsInliningThisMethod, EventMask2,
-    FunctionAndRejit, FunctionEnter3Info, FunctionInfo, FunctionInfo2, FunctionLeave3Info,
-    FunctionTokenAndMetadata, IlFunctionBody, MetadataImport, ModuleInfo, ModuleInfo2, RuntimeInfo,
-    StringLayout, utils::NameResolver,
+    utils::NameResolver,
+    AppDomainInfo, ArrayClassInfo, ArrayObjectInfo, AssemblyInfo, ClassInfo, ClassInfo2, ClassLayout, CorProfilerInfo, CorProfilerInfo10, CorProfilerInfo2,
+    CorProfilerInfo3, CorProfilerInfo4, CorProfilerInfo5, CorProfilerInfo6, CorProfilerInfo7, CorProfilerInfo8, CorProfilerInfo9, DynamicFunctionInfo,
+    EnumNgenModuleMethodsInliningThisMethod, EventMask2, FunctionAndRejit, FunctionEnter3Info, FunctionInfo, FunctionInfo2, FunctionLeave3Info,
+    FunctionTokenAndMetadata, IlFunctionBody, MetadataImport, ModuleInfo, ModuleInfo2, RuntimeInfo, StringLayout,
 };
-use std::{mem::MaybeUninit, ptr};
 use itertools::Itertools;
+use std::slice;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::{mem::MaybeUninit, ptr};
 use uuid::Uuid;
 use widestring::U16CString;
-use std::slice;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use crate::*;
 
 #[derive(Clone)]
 pub struct ClrProfilerInfo {
@@ -46,7 +39,10 @@ pub enum AttachedStatus {
 
 impl Default for ClrProfilerInfo {
     fn default() -> Self {
-        Self { info: core::ptr::null(), attached_status: Arc::new(AtomicUsize::new(AttachedStatus::Detached as usize))}
+        Self {
+            info: core::ptr::null(),
+            attached_status: Arc::new(AtomicUsize::new(AttachedStatus::Detached as usize)),
+        }
     }
 }
 
@@ -54,7 +50,6 @@ unsafe impl Send for ClrProfilerInfo {}
 
 // Define some custom methods here, on top of those that are officially made available by the CLR profiling API
 impl ClrProfilerInfo {
-
     pub fn new(cor_profiler_info: *const FFICorProfilerInfo) -> Self {
         ClrProfilerInfo {
             info: cor_profiler_info,
@@ -65,7 +60,7 @@ impl ClrProfilerInfo {
     fn info(&self) -> &FFICorProfilerInfo {
         unsafe { self.info.as_ref().unwrap() }
     }
-    
+
     pub fn get_attached_status(&self) -> AttachedStatus {
         match self.attached_status.load(Ordering::SeqCst) {
             x if x == AttachedStatus::Attaching as usize => AttachedStatus::Attaching,
@@ -75,7 +70,7 @@ impl ClrProfilerInfo {
             _ => unreachable!(),
         }
     }
-    
+
     pub(in crate::api) fn set_attached_status(&self, status: AttachedStatus) {
         self.attached_status.store(status as usize, Ordering::SeqCst);
     }
@@ -91,16 +86,15 @@ impl ClrProfilerInfo {
     }
 
     pub fn get_string_value(str_layout: &StringLayout, object_id: &ObjectID) -> String {
-        
         let ptr = (*object_id + str_layout.buffer_offset as usize) as *const u16;
         let len = (*object_id + str_layout.string_length_offset as usize) as *const DWORD;
         // Could also be written as
         // let ptr = (*object_id as *const u8).offset(str_layout.buffer_offset as isize) as *const u16;
         // let len = (*object_id as *const u8).offset(str_layout.string_length_offset as isize) as *const DWORD;
-        
+
         let slice = unsafe { slice::from_raw_parts(ptr, *len as usize) };
         String::from_utf16_lossy(slice).to_owned()
-        
+
         // TODO: Benchmark widestring::U16CString::from_ptr_unchecked against String::from_utf16_lossy
         // unsafe {
         //     let str_len: u32 = *len_ptr;
@@ -110,7 +104,6 @@ impl ClrProfilerInfo {
 
     // Return the name of type (with its namespace)
     fn get_type_name(&self, module_id: ModuleID, td: mdTypeDef) -> String {
-
         impl ClrProfilerInfo {
             fn handle_nesting(&self, type_props: TypeProps, metadata: &MetadataImport, td: mdTypeDef, module_id: ModuleID) -> String {
                 if type_props.type_def_flags.is_nested() {
@@ -118,7 +111,7 @@ impl ClrProfilerInfo {
                         Ok(nested_td) => {
                             let nesting_type_name = self.get_type_name(module_id, nested_td);
                             format!("{}.{}", nesting_type_name, type_props.name)
-                        },
+                        }
                         Err(hresult) => {
                             warn!("metadata.get_nested_class_props({}) failed ({:?})", td, hresult);
                             // Fallback to just using plain type name
@@ -138,12 +131,12 @@ impl ClrProfilerInfo {
                     // If type is nested in another type, recursively get the name of the parent type to prefix it
                     let type_name = self.handle_nesting(type_props, &metadata, td, module_id);
                     type_name
-                },
+                }
                 Err(hresult) => {
                     warn!("metadata.get_type_def_props({}) failed ({:?})", td, hresult);
                     "unknown".to_owned()
                 }
-            }, 
+            },
             Err(hresult) => {
                 warn!("info.get_module_metadata({}) failed ({:?})", module_id, hresult);
                 "unknown".to_owned()
@@ -153,15 +146,16 @@ impl ClrProfilerInfo {
 }
 
 impl NameResolver for ClrProfilerInfo {
-
     // Returns a method name and the type where it is defined (namespaced) for a given FunctionID
     fn get_full_method_name(&self, method_id: FunctionID) -> String {
         match self.get_function_info(method_id) {
-            Ok(function_info) =>
-            match self.get_token_and_metadata_from_function(method_id) {
-                Ok(f) =>
-                match f.metadata_import.get_method_props(f.token) {
-                    Ok(method_props) => format!("{}.{}", self.get_type_name(function_info.module_id, method_props.class_token), method_props.name),
+            Ok(function_info) => match self.get_token_and_metadata_from_function(method_id) {
+                Ok(f) => match f.metadata_import.get_method_props(f.token) {
+                    Ok(method_props) => format!(
+                        "{}.{}",
+                        self.get_type_name(function_info.module_id, method_props.class_token),
+                        method_props.name
+                    ),
                     Err(hresult) => {
                         warn!("metadata_import.get_method_props({}) failed ({:?})", f.token, hresult);
                         "unknown".to_owned()
@@ -181,7 +175,6 @@ impl NameResolver for ClrProfilerInfo {
 
     // Returns a class name (namespaced) for a given ClassID
     fn get_class_name(&self, class_id: ClassID) -> String {
-        
         impl ClrProfilerInfo {
             // If the type is an array, recursively drill until the base object type is found
             fn get_inner_type(&self, class_id: ClassID, array_dimension: &mut usize) -> ClassID {
@@ -196,13 +189,12 @@ impl NameResolver for ClrProfilerInfo {
                             error!("No element class id for array class object");
                             class_id
                         }
-                    },
+                    }
                     Err(_) => class_id,
                 }
             }
 
             fn handle_generics(&self, type_name: String, class_info: &ClassInfo2) -> String {
-
                 let total_generic_types = class_info.type_args.len();
 
                 if total_generic_types == 0 {
@@ -231,18 +223,20 @@ impl NameResolver for ClrProfilerInfo {
 
                     match type_name[absolute_pos + 1..absolute_pos + 2].parse::<usize>() {
                         Ok(args_count) => {
-
                             // Recursively get the generic argument names
-                            let arg_names = (0..args_count).into_iter().map(|i| {
-                                let arg_class_id = class_info.type_args[current_generic_type_index];
-                                let arg_name = self.get_class_name(arg_class_id);
-                                current_generic_type_index += 1;
-                                return arg_name;
-                            }).join(", ");
+                            let arg_names = (0..args_count)
+                                .into_iter()
+                                .map(|i| {
+                                    let arg_class_id = class_info.type_args[current_generic_type_index];
+                                    let arg_name = self.get_class_name(arg_class_id);
+                                    current_generic_type_index += 1;
+                                    return arg_name;
+                                })
+                                .join(", ");
 
                             // Surrounds generic arguments with < >
                             outstring.push_str(&format!("<{}>", arg_names));
-                        },
+                        }
                         Err(_) => {
                             error!("We have an error...");
                         }
@@ -257,7 +251,7 @@ impl NameResolver for ClrProfilerInfo {
                 outstring
             }
         }
- 
+
         // If the key doesn't exist, calculate the value
         let mut array_dimension = 0;
         let class_id = self.get_inner_type(class_id, &mut array_dimension);
@@ -269,8 +263,8 @@ impl NameResolver for ClrProfilerInfo {
                 let name = self.get_type_name(class_info.module_id, class_info.token);
                 let name = self.handle_generics(name, &class_info);
                 name
-            } 
-            _ => "unknown".to_owned()
+            }
+            _ => "unknown".to_owned(),
         };
 
         // Append array symbols []
@@ -288,10 +282,7 @@ impl NameResolver for ClrProfilerInfo {
 impl CorProfilerInfo for ClrProfilerInfo {
     fn get_class_from_object(&self, object_id: ObjectID) -> Result<ClassID, HRESULT> {
         let mut class_id = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetClassFromObject(object_id, class_id.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetClassFromObject(object_id, class_id.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let class_id = unsafe { class_id.assume_init() };
@@ -324,10 +315,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
     }
     fn get_handle_from_thread(&self, thread_id: ThreadID) -> Result<HANDLE, HRESULT> {
         let mut handle = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetHandleFromThread(thread_id, handle.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetHandleFromThread(thread_id, handle.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let handle = unsafe { handle.assume_init() };
@@ -341,12 +329,8 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let mut element_class_id = MaybeUninit::uninit();
         let mut rank = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().IsArrayClass(
-                class_id,
-                element_type.as_mut_ptr(),
-                element_class_id.as_mut_ptr(),
-                rank.as_mut_ptr(),
-            )
+            self.info()
+                .IsArrayClass(class_id, element_type.as_mut_ptr(), element_class_id.as_mut_ptr(), rank.as_mut_ptr())
         };
         match hr {
             HRESULT::S_OK => {
@@ -370,10 +354,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
     }
     fn get_thread_info(&self, thread_id: ThreadID) -> Result<DWORD, HRESULT> {
         let mut win_32_thread_id = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetThreadInfo(thread_id, win_32_thread_id.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetThreadInfo(thread_id, win_32_thread_id.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let win_32_thread_id = unsafe { win_32_thread_id.assume_init() };
@@ -396,10 +377,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
     fn get_class_id_info(&self, class_id: ClassID) -> Result<ClassInfo, HRESULT> {
         let mut module_id = MaybeUninit::uninit();
         let mut token = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetClassIDInfo(class_id, module_id.as_mut_ptr(), token.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetClassIDInfo(class_id, module_id.as_mut_ptr(), token.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let module_id = unsafe { module_id.assume_init() };
@@ -414,23 +392,15 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let mut module_id = MaybeUninit::uninit();
         let mut token = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetFunctionInfo(
-                function_id,
-                class_id.as_mut_ptr(),
-                module_id.as_mut_ptr(),
-                token.as_mut_ptr(),
-            )
+            self.info()
+                .GetFunctionInfo(function_id, class_id.as_mut_ptr(), module_id.as_mut_ptr(), token.as_mut_ptr())
         };
         match hr {
             HRESULT::S_OK => {
                 let class_id = unsafe { class_id.assume_init() };
                 let module_id = unsafe { module_id.assume_init() };
                 let token = unsafe { token.assume_init() };
-                Ok(FunctionInfo {
-                    class_id,
-                    module_id,
-                    token,
-                })
+                Ok(FunctionInfo { class_id, module_id, token })
             }
             _ => Err(hr),
         }
@@ -443,19 +413,11 @@ impl CorProfilerInfo for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn set_enter_leave_function_hooks(
-        &self,
-        func_enter: FunctionEnter,
-        func_leave: FunctionLeave,
-        func_tailcall: FunctionTailcall,
-    ) -> Result<(), HRESULT> {
+    fn set_enter_leave_function_hooks(&self, func_enter: FunctionEnter, func_leave: FunctionLeave, func_tailcall: FunctionTailcall) -> Result<(), HRESULT> {
         let func_enter = func_enter as *const FunctionEnter;
         let func_leave = func_leave as *const FunctionLeave;
         let func_tailcall = func_tailcall as *const FunctionTailcall;
-        let hr = unsafe {
-            self.info()
-                .SetEnterLeaveFunctionHooks(func_enter, func_leave, func_tailcall)
-        };
+        let hr = unsafe { self.info().SetEnterLeaveFunctionHooks(func_enter, func_leave, func_tailcall) };
         match hr {
             HRESULT::S_OK => Ok(()),
             _ => Err(hr),
@@ -475,12 +437,8 @@ impl CorProfilerInfo for ClrProfilerInfo {
         let mut token = MaybeUninit::uninit();
         let riid = GUID::from(Uuid::parse_str("7DAC8207-D3AE-4C75-9B67-92801A497D44").unwrap()); // TODO: This needs to come from an IMetaDataImport implementation
         let hr = unsafe {
-            self.info().GetTokenAndMetaDataFromFunction(
-                function_id,
-                &riid,
-                metadata_import.as_mut_ptr(),
-                token.as_mut_ptr(),
-            )
+            self.info()
+                .GetTokenAndMetaDataFromFunction(function_id, &riid, metadata_import.as_mut_ptr(), token.as_mut_ptr())
         };
 
         match hr {
@@ -488,10 +446,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
                 let metadata_import = unsafe { metadata_import.assume_init() };
                 let token = unsafe { token.assume_init() };
                 let metadata_import = super::MetadataImport::new(metadata_import);
-                Ok(FunctionTokenAndMetadata {
-                    metadata_import,
-                    token,
-                })
+                Ok(FunctionTokenAndMetadata { metadata_import, token })
             }
             _ => Err(hr),
         }
@@ -500,14 +455,8 @@ impl CorProfilerInfo for ClrProfilerInfo {
     fn get_module_info(&self, module_id: ModuleID) -> Result<ModuleInfo, HRESULT> {
         let mut name_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetModuleInfo(
-                module_id,
-                ptr::null_mut(),
-                0,
-                name_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetModuleInfo(module_id, ptr::null_mut(), 0, name_buffer_length.as_mut_ptr(), ptr::null_mut(), ptr::null_mut())
         };
 
         let mut base_load_address = MaybeUninit::uninit();
@@ -529,9 +478,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         match hr {
             HRESULT::S_OK => {
                 let base_load_address = unsafe { base_load_address.assume_init() };
-                let file_name = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let file_name = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
                 let assembly_id = unsafe { assembly_id.assume_init() };
                 Ok(ModuleInfo {
                     base_load_address,
@@ -542,22 +489,11 @@ impl CorProfilerInfo for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_module_metadata(
-        &self,
-        module_id: ModuleID,
-        open_flags: CorOpenFlags,
-    ) -> Result<MetadataImport, HRESULT> {
+    fn get_module_metadata(&self, module_id: ModuleID, open_flags: CorOpenFlags) -> Result<MetadataImport, HRESULT> {
         let mut metadata_import = MaybeUninit::uninit();
         let open_flags = open_flags.bits();
         let riid = IMetaDataImport2::IID;
-        let hr = unsafe {
-            self.info().GetModuleMetaData(
-                module_id,
-                open_flags,
-                &riid,
-                metadata_import.as_mut_ptr(),
-            )
-        };
+        let hr = unsafe { self.info().GetModuleMetaData(module_id, open_flags, &riid, metadata_import.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -568,43 +504,26 @@ impl CorProfilerInfo for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_il_function_body(
-        &self,
-        module_id: ModuleID,
-        method_id: mdMethodDef,
-    ) -> Result<IlFunctionBody, HRESULT> {
+    fn get_il_function_body(&self, module_id: ModuleID, method_id: mdMethodDef) -> Result<IlFunctionBody, HRESULT> {
         let mut method_header = MaybeUninit::uninit();
         let mut method_size = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetILFunctionBody(
-                module_id,
-                method_id,
-                method_header.as_mut_ptr(),
-                method_size.as_mut_ptr(),
-            )
+            self.info()
+                .GetILFunctionBody(module_id, method_id, method_header.as_mut_ptr(), method_size.as_mut_ptr())
         };
 
         match hr {
             HRESULT::S_OK => {
                 let method_header = unsafe { method_header.assume_init() };
                 let method_size = unsafe { method_size.assume_init() };
-                Ok(IlFunctionBody {
-                    method_header,
-                    method_size,
-                })
+                Ok(IlFunctionBody { method_header, method_size })
             }
             _ => Err(hr),
         }
     }
-    fn get_il_function_body_allocator(
-        &self,
-        module_id: ModuleID,
-    ) -> Result<&mut MethodMalloc, HRESULT> {
+    fn get_il_function_body_allocator(&self, module_id: ModuleID) -> Result<&mut MethodMalloc, HRESULT> {
         let mut malloc = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetILFunctionBodyAllocator(module_id, malloc.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetILFunctionBodyAllocator(module_id, malloc.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -614,16 +533,8 @@ impl CorProfilerInfo for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn set_il_function_body(
-        &self,
-        module_id: ModuleID,
-        method_id: mdMethodDef,
-        new_il_method_header: LPCBYTE,
-    ) -> Result<(), HRESULT> {
-        let hr = unsafe {
-            self.info()
-                .SetILFunctionBody(module_id, method_id, new_il_method_header)
-        };
+    fn set_il_function_body(&self, module_id: ModuleID, method_id: mdMethodDef, new_il_method_header: LPCBYTE) -> Result<(), HRESULT> {
+        let hr = unsafe { self.info().SetILFunctionBody(module_id, method_id, new_il_method_header) };
 
         match hr {
             HRESULT::S_OK => Ok(()),
@@ -634,13 +545,8 @@ impl CorProfilerInfo for ClrProfilerInfo {
         // get app domain name length, with zero-length buffer call
         let mut name_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetAppDomainInfo(
-                app_domain_id,
-                0,
-                name_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetAppDomainInfo(app_domain_id, 0, name_buffer_length.as_mut_ptr(), ptr::null_mut(), ptr::null_mut())
         };
 
         let name_buffer_length = unsafe { name_buffer_length.assume_init() };
@@ -659,9 +565,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
         match hr {
             HRESULT::S_OK => {
-                let name = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let name = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
                 let process_id = unsafe { process_id.assume_init() };
                 Ok(AppDomainInfo { name, process_id })
             }
@@ -700,9 +604,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
         };
         match hr {
             HRESULT::S_OK => {
-                let name = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let name = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
                 let app_domain_id = unsafe { app_domain_id.assume_init() };
                 let module_id = unsafe { module_id.assume_init() };
                 Ok(AssemblyInfo {
@@ -721,20 +623,11 @@ impl CorProfilerInfo for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn set_il_instrumented_code_map(
-        &self,
-        function_id: FunctionID,
-        start_jit: bool,
-        il_map_entries: &[COR_IL_MAP],
-    ) -> Result<(), HRESULT> {
+    fn set_il_instrumented_code_map(&self, function_id: FunctionID, start_jit: bool, il_map_entries: &[COR_IL_MAP]) -> Result<(), HRESULT> {
         let start_jit: BOOL = if start_jit { 1 } else { 0 };
         let hr = unsafe {
-            self.info().SetILInstrumentedCodeMap(
-                function_id,
-                start_jit,
-                il_map_entries.len() as ULONG,
-                il_map_entries.as_ptr(),
-            )
+            self.info()
+                .SetILInstrumentedCodeMap(function_id, start_jit, il_map_entries.len() as ULONG, il_map_entries.as_ptr())
         };
         match hr {
             HRESULT::S_OK => Ok(()),
@@ -743,10 +636,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
     }
     fn get_thread_context(&self, thread_id: ThreadID) -> Result<ContextID, HRESULT> {
         let mut context_id = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetThreadContext(thread_id, context_id.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetThreadContext(thread_id, context_id.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -756,18 +646,11 @@ impl CorProfilerInfo for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_il_to_native_mapping(
-        &self,
-        function_id: FunctionID,
-    ) -> Result<Vec<COR_DEBUG_IL_TO_NATIVE_MAP>, HRESULT> {
+    fn get_il_to_native_mapping(&self, function_id: FunctionID) -> Result<Vec<COR_DEBUG_IL_TO_NATIVE_MAP>, HRESULT> {
         let mut map_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetILToNativeMapping(
-                function_id,
-                0,
-                map_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetILToNativeMapping(function_id, 0, map_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let map_buffer_length = unsafe { map_buffer_length.assume_init() };
@@ -775,12 +658,8 @@ impl CorProfilerInfo for ClrProfilerInfo {
         unsafe { map.set_len(map_buffer_length as usize) };
         let mut map_length = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetILToNativeMapping(
-                function_id,
-                map_buffer_length,
-                map_length.as_mut_ptr(),
-                map.as_mut_ptr(),
-            )
+            self.info()
+                .GetILToNativeMapping(function_id, map_buffer_length, map_length.as_mut_ptr(), map.as_mut_ptr())
         };
         match hr {
             HRESULT::S_OK => Ok(map),
@@ -801,14 +680,8 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
     ) -> Result<(), HRESULT> {
         let callback = callback as *const StackSnapshotCallback;
         let hr = unsafe {
-            self.info().DoStackSnapshot(
-                thread,
-                callback,
-                info_flags as ULONG32,
-                client_data,
-                context,
-                context_size,
-            )
+            self.info()
+                .DoStackSnapshot(thread, callback, info_flags as ULONG32, client_data, context, context_size)
         };
         match hr {
             HRESULT::S_OK => Ok(()),
@@ -825,21 +698,14 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         let func_enter = func_enter as *const FunctionEnter2;
         let func_leave = func_leave as *const FunctionLeave2;
         let func_tailcall = func_tailcall as *const FunctionTailcall2;
-        let hr = unsafe {
-            self.info()
-                .SetEnterLeaveFunctionHooks2(func_enter, func_leave, func_tailcall)
-        };
+        let hr = unsafe { self.info().SetEnterLeaveFunctionHooks2(func_enter, func_leave, func_tailcall) };
         match hr {
             HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
 
-    fn get_function_info_2(
-        &self,
-        func_id: FunctionID,
-        frame_info: COR_PRF_FRAME_INFO,
-    ) -> Result<FunctionInfo2, HRESULT> {
+    fn get_function_info_2(&self, func_id: FunctionID, frame_info: COR_PRF_FRAME_INFO) -> Result<FunctionInfo2, HRESULT> {
         // get type args length, with zero-length buffer call
         let mut type_args_buffer_length = MaybeUninit::uninit();
         unsafe {
@@ -896,18 +762,12 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         // get field offset length, with zero-length buffer call
         let mut field_offset_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetClassLayout(
-                class_id,
-                ptr::null_mut(),
-                0,
-                field_offset_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetClassLayout(class_id, ptr::null_mut(), 0, field_offset_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let field_offset_buffer_length = unsafe { field_offset_buffer_length.assume_init() };
-        let mut field_offset =
-            Vec::<COR_FIELD_OFFSET>::with_capacity(field_offset_buffer_length as usize);
+        let mut field_offset = Vec::<COR_FIELD_OFFSET>::with_capacity(field_offset_buffer_length as usize);
         unsafe { field_offset.set_len(field_offset_buffer_length as usize) };
 
         let mut field_offset_length = MaybeUninit::uninit();
@@ -984,34 +844,22 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
             _ => {
                 warn!("info.get_class_id_info_2({}) failed ({:?})", class_id, hr);
                 Err(hr)
-            },
+            }
         }
     }
 
     fn get_code_info_2(&self, function_id: FunctionID) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {
         let mut code_info_buffer_length = MaybeUninit::uninit();
-        unsafe {
-            self.info().GetCodeInfo2(
-                function_id,
-                0,
-                code_info_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
-        };
+        unsafe { self.info().GetCodeInfo2(function_id, 0, code_info_buffer_length.as_mut_ptr(), ptr::null_mut()) };
 
         let code_info_buffer_length = unsafe { code_info_buffer_length.assume_init() };
-        let mut code_info =
-            Vec::<COR_PRF_CODE_INFO>::with_capacity(code_info_buffer_length as usize);
+        let mut code_info = Vec::<COR_PRF_CODE_INFO>::with_capacity(code_info_buffer_length as usize);
         unsafe { code_info.set_len(code_info_buffer_length as usize) };
 
         let mut code_info_length = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetCodeInfo2(
-                function_id,
-                code_info_buffer_length,
-                code_info_length.as_mut_ptr(),
-                code_info.as_mut_ptr(),
-            )
+            self.info()
+                .GetCodeInfo2(function_id, code_info_buffer_length, code_info_length.as_mut_ptr(), code_info.as_mut_ptr())
         };
 
         match hr {
@@ -1020,26 +868,13 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         }
     }
 
-    fn get_class_from_token_and_type_args(
-        &self,
-        module_id: ModuleID,
-        type_def: mdTypeDef,
-        type_args: Option<&[ClassID]>,
-    ) -> Result<ClassID, HRESULT> {
+    fn get_class_from_token_and_type_args(&self, module_id: ModuleID, type_def: mdTypeDef, type_args: Option<&[ClassID]>) -> Result<ClassID, HRESULT> {
         let mut class_id = 0 as ClassID;
         // let (type_args, type_args_length) = match type_args {
         //     Some(args) => (args.as_ptr(), args.len()),
         //     None => (ptr::null(), 0),
         // };
-        let hr = unsafe {
-            self.info().GetClassFromTokenAndTypeArgs(
-                module_id,
-                type_def,
-                0,
-                ptr::null(),
-                &mut class_id,
-            )
-        };
+        let hr = unsafe { self.info().GetClassFromTokenAndTypeArgs(module_id, type_def, 0, ptr::null(), &mut class_id) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1050,7 +885,6 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
                 error!("class_id: {}, module_id: {}, type_def: {}", class_id, module_id, type_def);
                 Err(hr)
             }
-
         }
     }
 
@@ -1067,14 +901,8 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
             None => (ptr::null(), 0),
         };
         let hr = unsafe {
-            self.info().GetFunctionFromTokenAndTypeArgs(
-                module_id,
-                func_def,
-                class_id,
-                type_args_length as ULONG32,
-                type_args,
-                function_id.as_mut_ptr(),
-            )
+            self.info()
+                .GetFunctionFromTokenAndTypeArgs(module_id, func_def, class_id, type_args_length as ULONG32, type_args, function_id.as_mut_ptr())
         };
 
         match hr {
@@ -1086,11 +914,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         }
     }
 
-    fn get_array_object_info(
-        &self,
-        object_id: ObjectID,
-        dimensions: u32,
-    ) -> Result<ArrayObjectInfo, HRESULT> {
+    fn get_array_object_info(&self, object_id: ObjectID, dimensions: u32) -> Result<ArrayObjectInfo, HRESULT> {
         let mut dimension_sizes = Vec::<ULONG32>::with_capacity(dimensions as usize);
         unsafe { dimension_sizes.set_len(dimensions as usize) };
         let mut dimension_lower_bounds = Vec::<int>::with_capacity(dimensions as usize);
@@ -1122,10 +946,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
 
     fn get_box_class_layout(&self, class_id: ClassID) -> Result<u32, HRESULT> {
         let mut buffer_offset = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetBoxClassLayout(class_id, buffer_offset.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetBoxClassLayout(class_id, buffer_offset.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1138,10 +959,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
 
     fn get_thread_app_domain(&self, thread_id: ThreadID) -> Result<AppDomainID, HRESULT> {
         let mut app_domain_id = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetThreadAppDomain(thread_id, app_domain_id.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetThreadAppDomain(thread_id, app_domain_id.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1152,16 +970,9 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
         }
     }
 
-    fn get_rva_static_address(
-        &self,
-        class_id: ClassID,
-        field_token: mdFieldDef,
-    ) -> Result<*const std::ffi::c_void, HRESULT> {
+    fn get_rva_static_address(&self, class_id: ClassID, field_token: mdFieldDef) -> Result<*const std::ffi::c_void, HRESULT> {
         let mut address = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetRVAStaticAddress(class_id, field_token, address.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetRVAStaticAddress(class_id, field_token, address.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1180,83 +991,48 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
     ) -> Result<*const std::ffi::c_void, HRESULT> {
         let mut address = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetAppDomainStaticAddress(
-                class_id,
-                field_token,
-                app_domain_id,
-                address.as_mut_ptr(),
-            )
-        };
-
-        match hr {
-            HRESULT::S_OK => {
-                let address = unsafe { address.assume_init() };
-                Ok(address)
-            }
-            _ => Err(hr),
-        }
-    }
-
-    fn get_thread_static_address(
-        &self,
-        class_id: ClassID,
-        field_token: mdFieldDef,
-        thread_id: ThreadID,
-    ) -> Result<*const std::ffi::c_void, HRESULT> {
-        let mut address = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info().GetThreadStaticAddress(
-                class_id,
-                field_token,
-                thread_id,
-                address.as_mut_ptr(),
-            )
-        };
-
-        match hr {
-            HRESULT::S_OK => {
-                let address = unsafe { address.assume_init() };
-                Ok(address)
-            }
-            _ => Err(hr),
-        }
-    }
-
-    fn get_context_static_address(
-        &self,
-        class_id: ClassID,
-        field_token: mdFieldDef,
-        context_id: ContextID,
-    ) -> Result<*const std::ffi::c_void, HRESULT> {
-        let mut address = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info().GetContextStaticAddress(
-                class_id,
-                field_token,
-                context_id,
-                address.as_mut_ptr(),
-            )
-        };
-
-        match hr {
-            HRESULT::S_OK => {
-                let address = unsafe { address.assume_init() };
-                Ok(address)
-            }
-            _ => Err(hr),
-        }
-    }
-    
-    fn get_static_field_info(
-        &self,
-        class_id: ClassID,
-        field_token: mdFieldDef,
-    ) -> Result<COR_PRF_STATIC_TYPE, HRESULT> {
-        let mut field_info = MaybeUninit::uninit();
-        let hr = unsafe {
             self.info()
-                .GetStaticFieldInfo(class_id, field_token, field_info.as_mut_ptr())
+                .GetAppDomainStaticAddress(class_id, field_token, app_domain_id, address.as_mut_ptr())
         };
+
+        match hr {
+            HRESULT::S_OK => {
+                let address = unsafe { address.assume_init() };
+                Ok(address)
+            }
+            _ => Err(hr),
+        }
+    }
+
+    fn get_thread_static_address(&self, class_id: ClassID, field_token: mdFieldDef, thread_id: ThreadID) -> Result<*const std::ffi::c_void, HRESULT> {
+        let mut address = MaybeUninit::uninit();
+        let hr = unsafe { self.info().GetThreadStaticAddress(class_id, field_token, thread_id, address.as_mut_ptr()) };
+
+        match hr {
+            HRESULT::S_OK => {
+                let address = unsafe { address.assume_init() };
+                Ok(address)
+            }
+            _ => Err(hr),
+        }
+    }
+
+    fn get_context_static_address(&self, class_id: ClassID, field_token: mdFieldDef, context_id: ContextID) -> Result<*const std::ffi::c_void, HRESULT> {
+        let mut address = MaybeUninit::uninit();
+        let hr = unsafe { self.info().GetContextStaticAddress(class_id, field_token, context_id, address.as_mut_ptr()) };
+
+        match hr {
+            HRESULT::S_OK => {
+                let address = unsafe { address.assume_init() };
+                Ok(address)
+            }
+            _ => Err(hr),
+        }
+    }
+
+    fn get_static_field_info(&self, class_id: ClassID, field_token: mdFieldDef) -> Result<COR_PRF_STATIC_TYPE, HRESULT> {
+        let mut field_info = MaybeUninit::uninit();
+        let hr = unsafe { self.info().GetStaticFieldInfo(class_id, field_token, field_info.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1268,23 +1044,16 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
     }
     fn get_generation_bounds(&self) -> Result<Vec<COR_PRF_GC_GENERATION_RANGE>, HRESULT> {
         let mut ranges_buffer_length = MaybeUninit::uninit();
-        unsafe {
-            self.info()
-                .GetGenerationBounds(0, ranges_buffer_length.as_mut_ptr(), ptr::null_mut())
-        };
+        unsafe { self.info().GetGenerationBounds(0, ranges_buffer_length.as_mut_ptr(), ptr::null_mut()) };
 
         let ranges_buffer_length = unsafe { ranges_buffer_length.assume_init() };
-        let mut ranges =
-            Vec::<COR_PRF_GC_GENERATION_RANGE>::with_capacity(ranges_buffer_length as usize);
+        let mut ranges = Vec::<COR_PRF_GC_GENERATION_RANGE>::with_capacity(ranges_buffer_length as usize);
         unsafe { ranges.set_len(ranges_buffer_length as usize) };
 
         let mut ranges_length = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetGenerationBounds(
-                ranges_buffer_length,
-                ranges_length.as_mut_ptr(),
-                ranges.as_mut_ptr(),
-            )
+            self.info()
+                .GetGenerationBounds(ranges_buffer_length, ranges_length.as_mut_ptr(), ranges.as_mut_ptr())
         };
 
         match hr {
@@ -1292,15 +1061,9 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_object_generation(
-        &self,
-        object_id: ObjectID,
-    ) -> Result<COR_PRF_GC_GENERATION_RANGE, HRESULT> {
+    fn get_object_generation(&self, object_id: ObjectID) -> Result<COR_PRF_GC_GENERATION_RANGE, HRESULT> {
         let mut range = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetObjectGeneration(object_id, range.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetObjectGeneration(object_id, range.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1312,10 +1075,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
     }
     fn get_notified_exception_clause_info(&self) -> Result<COR_PRF_EX_CLAUSE_INFO, HRESULT> {
         let mut exception_clause_info = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetNotifiedExceptionClauseInfo(exception_clause_info.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetNotifiedExceptionClauseInfo(exception_clause_info.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1340,33 +1100,28 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn request_profiler_detach(
-        &self,
-        expected_completion_milliseconds: u32,
-    ) -> Result<(), HRESULT> {
-        match self.attached_status.compare_exchange(AttachedStatus::Attached as usize, AttachedStatus::Detaching as usize, Ordering::Acquire, Ordering::Relaxed) {
+    fn request_profiler_detach(&self, expected_completion_milliseconds: u32) -> Result<(), HRESULT> {
+        match self.attached_status.compare_exchange(
+            AttachedStatus::Attached as usize,
+            AttachedStatus::Detaching as usize,
+            Ordering::Acquire,
+            Ordering::Relaxed,
+        ) {
             Ok(_) => {
-                let hr = unsafe {
-                    self.info()
-                        .RequestProfilerDetach(expected_completion_milliseconds)
-                };
+                let hr = unsafe { self.info().RequestProfilerDetach(expected_completion_milliseconds) };
 
                 match hr {
                     HRESULT::S_OK => Ok(()),
                     _ => Err(hr),
                 }
-            },
+            }
             Err(current) => match current {
                 x if x == AttachedStatus::Detaching as usize => Err(HRESULT::CORPROF_E_PROFILER_DETACHING),
-                _ => Err(HRESULT::CORPROF_E_UNSUPPORTED_CALL_SEQUENCE)
-            }
+                _ => Err(HRESULT::CORPROF_E_UNSUPPORTED_CALL_SEQUENCE),
+            },
         }
     }
-    fn set_function_id_mapper_2(
-        &self,
-        func: FunctionIDMapper2,
-        client_data: *const std::ffi::c_void,
-    ) -> Result<(), HRESULT> {
+    fn set_function_id_mapper_2(&self, func: FunctionIDMapper2, client_data: *const std::ffi::c_void) -> Result<(), HRESULT> {
         let func = func as *const FunctionIDMapper2;
         let hr = unsafe { self.info().SetFunctionIDMapper2(func, client_data) };
 
@@ -1378,12 +1133,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
     fn get_string_layout_2(&self) -> Result<StringLayout, HRESULT> {
         let mut string_length_offset = MaybeUninit::uninit();
         let mut buffer_offset = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info().GetStringLayout2(
-                string_length_offset.as_mut_ptr(),
-                buffer_offset.as_mut_ptr(),
-            )
-        };
+        let hr = unsafe { self.info().GetStringLayout2(string_length_offset.as_mut_ptr(), buffer_offset.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1406,10 +1156,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         let func_enter_3 = func_enter_3 as *const FunctionEnter3;
         let func_leave_3 = func_leave_3 as *const FunctionLeave3;
         let func_tailcall_3 = func_tailcall_3 as *const FunctionTailcall3;
-        let hr = unsafe {
-            self.info()
-                .SetEnterLeaveFunctionHooks3(func_enter_3, func_leave_3, func_tailcall_3)
-        };
+        let hr = unsafe { self.info().SetEnterLeaveFunctionHooks3(func_enter_3, func_leave_3, func_tailcall_3) };
         match hr {
             HRESULT::S_OK => Ok(()),
             _ => Err(hr),
@@ -1423,25 +1170,17 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
     ) -> Result<(), HRESULT> {
         let func_enter_3_with_info = func_enter_3_with_info as *const FunctionEnter3WithInfo;
         let func_leave_3_with_info = func_leave_3_with_info as *const FunctionLeave3WithInfo;
-        let func_tailcall_3_with_info =
-            func_tailcall_3_with_info as *const FunctionTailcall3WithInfo;
+        let func_tailcall_3_with_info = func_tailcall_3_with_info as *const FunctionTailcall3WithInfo;
         let hr = unsafe {
-            self.info().SetEnterLeaveFunctionHooks3WithInfo(
-                func_enter_3_with_info,
-                func_leave_3_with_info,
-                func_tailcall_3_with_info,
-            )
+            self.info()
+                .SetEnterLeaveFunctionHooks3WithInfo(func_enter_3_with_info, func_leave_3_with_info, func_tailcall_3_with_info)
         };
         match hr {
             HRESULT::S_OK => Ok(()),
             _ => Err(hr),
         }
     }
-    fn get_function_enter_3_info(
-        &self,
-        function_id: FunctionID,
-        elt_info: COR_PRF_ELT_INFO,
-    ) -> Result<FunctionEnter3Info, HRESULT> {
+    fn get_function_enter_3_info(&self, function_id: FunctionID, elt_info: COR_PRF_ELT_INFO) -> Result<FunctionEnter3Info, HRESULT> {
         let mut frame_info = MaybeUninit::uninit();
         let mut argument_info_length = MaybeUninit::uninit();
         let mut argument_info = MaybeUninit::uninit();
@@ -1470,44 +1209,26 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_function_leave_3_info(
-        &self,
-        function_id: FunctionID,
-        elt_info: COR_PRF_ELT_INFO,
-    ) -> Result<FunctionLeave3Info, HRESULT> {
+    fn get_function_leave_3_info(&self, function_id: FunctionID, elt_info: COR_PRF_ELT_INFO) -> Result<FunctionLeave3Info, HRESULT> {
         let mut frame_info = MaybeUninit::uninit();
         let mut retval_range = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetFunctionLeave3Info(
-                function_id,
-                elt_info,
-                frame_info.as_mut_ptr(),
-                retval_range.as_mut_ptr(),
-            )
+            self.info()
+                .GetFunctionLeave3Info(function_id, elt_info, frame_info.as_mut_ptr(), retval_range.as_mut_ptr())
         };
 
         match hr {
             HRESULT::S_OK => {
                 let frame_info = unsafe { frame_info.assume_init() };
                 let retval_range = unsafe { retval_range.assume_init() };
-                Ok(FunctionLeave3Info {
-                    frame_info,
-                    retval_range,
-                })
+                Ok(FunctionLeave3Info { frame_info, retval_range })
             }
             _ => Err(hr),
         }
     }
-    fn get_function_tailcall_3_info(
-        &self,
-        function_id: FunctionID,
-        elt_info: COR_PRF_ELT_INFO,
-    ) -> Result<COR_PRF_FRAME_INFO, HRESULT> {
+    fn get_function_tailcall_3_info(&self, function_id: FunctionID, elt_info: COR_PRF_ELT_INFO) -> Result<COR_PRF_FRAME_INFO, HRESULT> {
         let mut frame_info = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetFunctionTailcall3Info(function_id, elt_info, frame_info.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetFunctionTailcall3Info(function_id, elt_info, frame_info.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1546,8 +1267,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
         };
 
         let version_string_buffer_length = unsafe { version_string_buffer_length.assume_init() };
-        let mut version_string_buffer =
-            Vec::<WCHAR>::with_capacity(version_string_buffer_length as usize);
+        let mut version_string_buffer = Vec::<WCHAR>::with_capacity(version_string_buffer_length as usize);
         unsafe { version_string_buffer.set_len(version_string_buffer_length as usize) };
 
         let mut clr_instance_id = MaybeUninit::uninit();
@@ -1579,9 +1299,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
                 let minor_version = unsafe { minor_version.assume_init() };
                 let build_number = unsafe { build_number.assume_init() };
                 let qfe_version = unsafe { qfe_version.assume_init() };
-                let version_string = U16CString::from_vec_with_nul(version_string_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let version_string = U16CString::from_vec_with_nul(version_string_buffer).unwrap().to_string_lossy();
                 Ok(RuntimeInfo {
                     clr_instance_id,
                     runtime_type,
@@ -1604,13 +1322,8 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
     ) -> Result<*const std::ffi::c_void, HRESULT> {
         let mut address = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetThreadStaticAddress2(
-                class_id,
-                field_token,
-                app_domain_id,
-                thread_id,
-                address.as_mut_ptr(),
-            )
+            self.info()
+                .GetThreadStaticAddress2(class_id, field_token, app_domain_id, thread_id, address.as_mut_ptr())
         };
 
         match hr {
@@ -1621,23 +1334,15 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_app_domains_containing_module(
-        &self,
-        module_id: ModuleID,
-    ) -> Result<Vec<AppDomainID>, HRESULT> {
+    fn get_app_domains_containing_module(&self, module_id: ModuleID) -> Result<Vec<AppDomainID>, HRESULT> {
         let mut app_domains_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetAppDomainsContainingModule(
-                module_id,
-                0,
-                app_domains_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetAppDomainsContainingModule(module_id, 0, app_domains_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let app_domains_buffer_length = unsafe { app_domains_buffer_length.assume_init() };
-        let mut app_domains_buffer =
-            Vec::<AppDomainID>::with_capacity(app_domains_buffer_length as usize);
+        let mut app_domains_buffer = Vec::<AppDomainID>::with_capacity(app_domains_buffer_length as usize);
         unsafe { app_domains_buffer.set_len(app_domains_buffer_length as usize) };
 
         let mut app_domains_length = MaybeUninit::uninit();
@@ -1695,9 +1400,7 @@ impl CorProfilerInfo3 for ClrProfilerInfo {
                 let assembly_id = unsafe { assembly_id.assume_init() };
                 let module_flags = unsafe { module_flags.assume_init() };
                 let module_flags = COR_PRF_MODULE_FLAGS::from_bits(module_flags).unwrap();
-                let file_name = U16CString::from_vec_with_nul(file_name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let file_name = U16CString::from_vec_with_nul(file_name_buffer).unwrap().to_string_lossy();
                 Ok(ModuleInfo2 {
                     base_load_address,
                     file_name,
@@ -1738,10 +1441,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         let methods_length = module_ids.len() as u32;
         let module_ids = module_ids.as_ptr();
         let method_ids = method_ids.as_ptr();
-        let hr = unsafe {
-            self.info()
-                .RequestReJIT(methods_length, module_ids, method_ids)
-        };
+        let hr = unsafe { self.info().RequestReJIT(methods_length, module_ids, method_ids) };
 
         match hr {
             HRESULT::S_OK => Ok(()),
@@ -1758,39 +1458,22 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         let method_ids = method_ids.as_ptr();
         let mut statuses_buffer = Vec::<HRESULT>::with_capacity(methods_length as usize);
         unsafe { statuses_buffer.set_len(methods_length as usize) };
-        let hr = unsafe {
-            self.info().RequestRevert(
-                methods_length,
-                module_ids,
-                method_ids,
-                statuses_buffer.as_mut_ptr(),
-            )
-        };
+        let hr = unsafe { self.info().RequestRevert(methods_length, module_ids, method_ids, statuses_buffer.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => Ok(statuses_buffer),
             _ => Err(hr),
         }
     }
-    fn get_code_info_3(
-        &self,
-        function_id: FunctionID,
-        rejit_id: ReJITID,
-    ) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {
+    fn get_code_info_3(&self, function_id: FunctionID, rejit_id: ReJITID) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {
         let mut code_info_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetCodeInfo3(
-                function_id,
-                rejit_id,
-                0,
-                code_info_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetCodeInfo3(function_id, rejit_id, 0, code_info_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let code_info_buffer_length = unsafe { code_info_buffer_length.assume_init() };
-        let mut code_info =
-            Vec::<COR_PRF_CODE_INFO>::with_capacity(code_info_buffer_length as usize);
+        let mut code_info = Vec::<COR_PRF_CODE_INFO>::with_capacity(code_info_buffer_length as usize);
         unsafe { code_info.set_len(code_info_buffer_length as usize) };
 
         let mut code_info_length = MaybeUninit::uninit();
@@ -1812,32 +1495,19 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
     fn get_function_from_ip_2(&self, ip: LPCBYTE) -> Result<FunctionAndRejit, HRESULT> {
         let mut function_id = MaybeUninit::uninit();
         let mut rejit_id = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetFunctionFromIP2(ip, function_id.as_mut_ptr(), rejit_id.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetFunctionFromIP2(ip, function_id.as_mut_ptr(), rejit_id.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let function_id = unsafe { function_id.assume_init() };
                 let rejit_id = unsafe { rejit_id.assume_init() };
-                Ok(FunctionAndRejit {
-                    function_id,
-                    rejit_id,
-                })
+                Ok(FunctionAndRejit { function_id, rejit_id })
             }
             _ => Err(hr),
         }
     }
     fn get_rejit_ids(&self, function_id: FunctionID) -> Result<Vec<ReJITID>, HRESULT> {
         let mut rejit_ids_buffer_length = MaybeUninit::uninit();
-        unsafe {
-            self.info().GetReJITIDs(
-                function_id,
-                0,
-                rejit_ids_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
-        };
+        unsafe { self.info().GetReJITIDs(function_id, 0, rejit_ids_buffer_length.as_mut_ptr(), ptr::null_mut()) };
 
         let rejit_ids_buffer_length = unsafe { rejit_ids_buffer_length.assume_init() };
         let mut rejit_ids = Vec::<ReJITID>::with_capacity(rejit_ids_buffer_length as usize);
@@ -1845,12 +1515,8 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
 
         let mut rejit_ids_length = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetReJITIDs(
-                function_id,
-                rejit_ids_buffer_length,
-                rejit_ids_length.as_mut_ptr(),
-                rejit_ids.as_mut_ptr(),
-            )
+            self.info()
+                .GetReJITIDs(function_id, rejit_ids_buffer_length, rejit_ids_length.as_mut_ptr(), rejit_ids.as_mut_ptr())
         };
 
         match hr {
@@ -1858,20 +1524,11 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_il_to_native_mapping_2(
-        &self,
-        function_id: FunctionID,
-        rejit_id: ReJITID,
-    ) -> Result<Vec<COR_DEBUG_IL_TO_NATIVE_MAP>, HRESULT> {
+    fn get_il_to_native_mapping_2(&self, function_id: FunctionID, rejit_id: ReJITID) -> Result<Vec<COR_DEBUG_IL_TO_NATIVE_MAP>, HRESULT> {
         let mut map_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetILToNativeMapping2(
-                function_id,
-                rejit_id,
-                0,
-                map_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetILToNativeMapping2(function_id, rejit_id, 0, map_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let map_buffer_length = unsafe { map_buffer_length.assume_init() };
@@ -1879,13 +1536,8 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
         unsafe { map.set_len(map_buffer_length as usize) };
         let mut map_length = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetILToNativeMapping2(
-                function_id,
-                rejit_id,
-                map_buffer_length,
-                map_length.as_mut_ptr(),
-                map.as_mut_ptr(),
-            )
+            self.info()
+                .GetILToNativeMapping2(function_id, rejit_id, map_buffer_length, map_length.as_mut_ptr(), map.as_mut_ptr())
         };
         match hr {
             HRESULT::S_OK => Ok(map),
@@ -1906,10 +1558,7 @@ impl CorProfilerInfo4 for ClrProfilerInfo {
     }
     fn get_object_size_2(&self, object_id: ObjectID) -> Result<usize, HRESULT> {
         let mut object_size = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetObjectSize2(object_id, object_size.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetObjectSize2(object_id, object_size.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -1924,10 +1573,7 @@ impl CorProfilerInfo5 for ClrProfilerInfo {
     fn get_event_mask_2(&self) -> Result<EventMask2, HRESULT> {
         let mut events_low = MaybeUninit::uninit();
         let mut events_high = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetEventMask2(events_low.as_mut_ptr(), events_high.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetEventMask2(events_low.as_mut_ptr(), events_high.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let events_low = unsafe { events_low.assume_init() };
@@ -1940,11 +1586,7 @@ impl CorProfilerInfo5 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn set_event_mask_2(
-        &self,
-        events_low: COR_PRF_MONITOR,
-        events_high: COR_PRF_HIGH_MONITOR,
-    ) -> Result<(), HRESULT> {
+    fn set_event_mask_2(&self, events_low: COR_PRF_MONITOR, events_high: COR_PRF_HIGH_MONITOR) -> Result<(), HRESULT> {
         let events_low = events_low.bits();
         let events_high = events_high.bits();
         let hr = unsafe { self.info().SetEventMask2(events_low, events_high) };
@@ -1977,10 +1619,7 @@ impl CorProfilerInfo6 for ClrProfilerInfo {
                 let incomplete_data = unsafe { incomplete_data.assume_init() };
                 let incomplete_data = incomplete_data > 0;
                 let method_enum = unsafe { method_enum.assume_init().as_mut().unwrap() };
-                Ok(EnumNgenModuleMethodsInliningThisMethod {
-                    incomplete_data,
-                    method_enum,
-                })
+                Ok(EnumNgenModuleMethodsInliningThisMethod { incomplete_data, method_enum })
             }
             _ => Err(hr),
         }
@@ -1996,10 +1635,7 @@ impl CorProfilerInfo7 for ClrProfilerInfo {
     }
     fn get_in_memory_symbols_length(&self, module_id: ModuleID) -> Result<u32, HRESULT> {
         let mut symbol_bytes = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetInMemorySymbolsLength(module_id, symbol_bytes.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetInMemorySymbolsLength(module_id, symbol_bytes.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let symbol_bytes = unsafe { symbol_bytes.assume_init() };
@@ -2008,12 +1644,7 @@ impl CorProfilerInfo7 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn read_in_memory_symbols(
-        &self,
-        module_id: ModuleID,
-        symbols_read_offset: u32,
-        count_symbol_bytes: u32,
-    ) -> Result<Vec<BYTE>, HRESULT> {
+    fn read_in_memory_symbols(&self, module_id: ModuleID, symbols_read_offset: u32, count_symbol_bytes: u32) -> Result<Vec<BYTE>, HRESULT> {
         let mut buffer = Vec::<BYTE>::with_capacity((count_symbol_bytes + 1024) as usize);
         let mut symbol_bytes_read = MaybeUninit::uninit();
         let hr = unsafe {
@@ -2038,10 +1669,7 @@ impl CorProfilerInfo7 for ClrProfilerInfo {
 impl CorProfilerInfo8 for ClrProfilerInfo {
     fn is_function_dynamic(&self, function_id: FunctionID) -> Result<bool, HRESULT> {
         let mut is_dynamic = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .IsFunctionDynamic(function_id, is_dynamic.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().IsFunctionDynamic(function_id, is_dynamic.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let is_dynamic = unsafe { is_dynamic.assume_init() };
@@ -2054,26 +1682,17 @@ impl CorProfilerInfo8 for ClrProfilerInfo {
     fn get_function_from_ip_3(&self, ip: LPCBYTE) -> Result<FunctionAndRejit, HRESULT> {
         let mut function_id = MaybeUninit::uninit();
         let mut rejit_id = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetFunctionFromIP3(ip, function_id.as_mut_ptr(), rejit_id.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetFunctionFromIP3(ip, function_id.as_mut_ptr(), rejit_id.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let function_id = unsafe { function_id.assume_init() };
                 let rejit_id = unsafe { rejit_id.assume_init() };
-                Ok(FunctionAndRejit {
-                    function_id,
-                    rejit_id,
-                })
+                Ok(FunctionAndRejit { function_id, rejit_id })
             }
             _ => Err(hr),
         }
     }
-    fn get_dynamic_function_info(
-        &self,
-        function_id: FunctionID,
-    ) -> Result<DynamicFunctionInfo, HRESULT> {
+    fn get_dynamic_function_info(&self, function_id: FunctionID) -> Result<DynamicFunctionInfo, HRESULT> {
         let mut name_buffer_length = MaybeUninit::uninit();
         unsafe {
             self.info().GetDynamicFunctionInfo(
@@ -2111,9 +1730,7 @@ impl CorProfilerInfo8 for ClrProfilerInfo {
                 let module_id = unsafe { module_id.assume_init() };
                 let sig = unsafe { sig.assume_init() };
                 let sig_length = unsafe { sig_length.assume_init() };
-                let name = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let name = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
                 Ok(DynamicFunctionInfo {
                     module_id,
                     sig,
@@ -2126,20 +1743,11 @@ impl CorProfilerInfo8 for ClrProfilerInfo {
     }
 }
 impl CorProfilerInfo9 for ClrProfilerInfo {
-    fn get_native_code_start_addresses(
-        &self,
-        function_id: FunctionID,
-        rejit_id: ReJITID,
-    ) -> Result<Vec<UINT_PTR>, HRESULT> {
+    fn get_native_code_start_addresses(&self, function_id: FunctionID, rejit_id: ReJITID) -> Result<Vec<UINT_PTR>, HRESULT> {
         let mut addresses_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetNativeCodeStartAddresses(
-                function_id,
-                rejit_id,
-                0,
-                addresses_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetNativeCodeStartAddresses(function_id, rejit_id, 0, addresses_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let addresses_buffer_length = unsafe { addresses_buffer_length.assume_init() };
@@ -2161,18 +1769,11 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
             _ => Err(hr),
         }
     }
-    fn get_il_to_native_mapping_3(
-        &self,
-        native_code_start_address: UINT_PTR,
-    ) -> Result<Vec<COR_DEBUG_IL_TO_NATIVE_MAP>, HRESULT> {
+    fn get_il_to_native_mapping_3(&self, native_code_start_address: UINT_PTR) -> Result<Vec<COR_DEBUG_IL_TO_NATIVE_MAP>, HRESULT> {
         let mut map_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetILToNativeMapping3(
-                native_code_start_address,
-                0,
-                map_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetILToNativeMapping3(native_code_start_address, 0, map_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let map_buffer_length = unsafe { map_buffer_length.assume_init() };
@@ -2180,35 +1781,23 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
         unsafe { map.set_len(map_buffer_length as usize) };
         let mut map_length = MaybeUninit::uninit();
         let hr = unsafe {
-            self.info().GetILToNativeMapping3(
-                native_code_start_address,
-                map_buffer_length,
-                map_length.as_mut_ptr(),
-                map.as_mut_ptr(),
-            )
+            self.info()
+                .GetILToNativeMapping3(native_code_start_address, map_buffer_length, map_length.as_mut_ptr(), map.as_mut_ptr())
         };
         match hr {
             HRESULT::S_OK => Ok(map),
             _ => Err(hr),
         }
     }
-    fn get_code_info_4(
-        &self,
-        native_code_start_address: UINT_PTR,
-    ) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {
+    fn get_code_info_4(&self, native_code_start_address: UINT_PTR) -> Result<Vec<COR_PRF_CODE_INFO>, HRESULT> {
         let mut code_info_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.info().GetCodeInfo4(
-                native_code_start_address,
-                0,
-                code_info_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-            )
+            self.info()
+                .GetCodeInfo4(native_code_start_address, 0, code_info_buffer_length.as_mut_ptr(), ptr::null_mut())
         };
 
         let code_info_buffer_length = unsafe { code_info_buffer_length.assume_init() };
-        let mut code_info =
-            Vec::<COR_PRF_CODE_INFO>::with_capacity(code_info_buffer_length as usize);
+        let mut code_info = Vec::<COR_PRF_CODE_INFO>::with_capacity(code_info_buffer_length as usize);
         unsafe { code_info.set_len(code_info_buffer_length as usize) };
 
         let mut code_info_length = MaybeUninit::uninit();
@@ -2228,16 +1817,8 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
     }
 }
 impl CorProfilerInfo10 for ClrProfilerInfo {
-    fn enumerate_object_references(
-        &self,
-        object_id: ObjectID,
-        callback: ObjectReferenceCallback,
-        client_data: *const std::ffi::c_void,
-    ) -> Result<(), HRESULT> {
-        let hr = unsafe {
-            self.info()
-                .EnumerateObjectReferences(object_id, callback, client_data)
-        };
+    fn enumerate_object_references(&self, object_id: ObjectID, callback: ObjectReferenceCallback, client_data: *const std::ffi::c_void) -> Result<(), HRESULT> {
+        let hr = unsafe { self.info().EnumerateObjectReferences(object_id, callback, client_data) };
 
         match hr {
             HRESULT::S_OK => Ok(()),
@@ -2246,10 +1827,7 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
     }
     fn is_frozen_object(&self, object_id: ObjectID) -> Result<bool, HRESULT> {
         let mut is_frozen = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .IsFrozenObject(object_id, is_frozen.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().IsFrozenObject(object_id, is_frozen.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let is_frozen = unsafe { is_frozen.assume_init() };
@@ -2261,10 +1839,7 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
     }
     fn get_loh_object_size_threshold(&self) -> Result<u32, HRESULT> {
         let mut threshold = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.info()
-                .GetLOHObjectSizeThreshold(threshold.as_mut_ptr())
-        };
+        let hr = unsafe { self.info().GetLOHObjectSizeThreshold(threshold.as_mut_ptr()) };
         match hr {
             HRESULT::S_OK => {
                 let threshold = unsafe { threshold.assume_init() };
@@ -2283,14 +1858,7 @@ impl CorProfilerInfo10 for ClrProfilerInfo {
         let methods_length = module_ids.len() as u32;
         let module_ids = module_ids.as_ptr();
         let method_ids = method_ids.as_ptr();
-        let hr = unsafe {
-            self.info().RequestReJITWithInliners(
-                dw_rejit_flags,
-                methods_length,
-                module_ids,
-                method_ids,
-            )
-        };
+        let hr = unsafe { self.info().RequestReJITWithInliners(dw_rejit_flags, methods_length, module_ids, method_ids) };
         match hr {
             HRESULT::S_OK => Ok(()),
             _ => Err(hr),

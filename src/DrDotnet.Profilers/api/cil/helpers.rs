@@ -40,9 +40,7 @@ pub fn il_i64(il: &[u8], index: usize) -> Result<i64, Error> {
     let byte_6 = il_u8(il, index + 5)?;
     let byte_7 = il_u8(il, index + 6)?;
     let byte_8 = il_u8(il, index + 7)?;
-    Ok(i64::from_le_bytes([
-        byte_1, byte_2, byte_3, byte_4, byte_5, byte_6, byte_7, byte_8,
-    ]))
+    Ok(i64::from_le_bytes([byte_1, byte_2, byte_3, byte_4, byte_5, byte_6, byte_7, byte_8]))
 }
 pub fn il_f32(il: &[u8], index: usize) -> Result<f32, Error> {
     let byte_1 = il_u8(il, index)?;
@@ -60,9 +58,7 @@ pub fn il_f64(il: &[u8], index: usize) -> Result<f64, Error> {
     let byte_6 = il_u8(il, index + 5)?;
     let byte_7 = il_u8(il, index + 6)?;
     let byte_8 = il_u8(il, index + 7)?;
-    Ok(f64::from_le_bytes([
-        byte_1, byte_2, byte_3, byte_4, byte_5, byte_6, byte_7, byte_8,
-    ]))
+    Ok(f64::from_le_bytes([byte_1, byte_2, byte_3, byte_4, byte_5, byte_6, byte_7, byte_8]))
 }
 pub fn check_flag(flags: u8, flag: u8) -> bool {
     (flags & flag) == flag

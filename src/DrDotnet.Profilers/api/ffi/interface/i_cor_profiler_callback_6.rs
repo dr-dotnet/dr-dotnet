@@ -3,11 +3,8 @@ use crate::ffi::{CorProfilerAssemblyReferenceProvider, GUID, HRESULT, WCHAR};
 
 #[repr(C)]
 pub struct ICorProfilerCallback6<T> {
-    pub GetAssemblyReferences: unsafe extern "system" fn(
-        this: &mut T,
-        wszAssemblyPath: *const WCHAR,
-        pAsmRefProvider: *const CorProfilerAssemblyReferenceProvider,
-    ) -> HRESULT,
+    pub GetAssemblyReferences:
+        unsafe extern "system" fn(this: &mut T, wszAssemblyPath: *const WCHAR, pAsmRefProvider: *const CorProfilerAssemblyReferenceProvider) -> HRESULT,
 }
 
 impl ICorProfilerCallback6<()> {

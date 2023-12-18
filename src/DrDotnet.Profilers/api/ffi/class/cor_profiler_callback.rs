@@ -1,14 +1,14 @@
 #![allow(non_snake_case)]
 use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, CorProfilerInfo};
-use crate::{ffi::*, traits::CorProfilerCallback9, ClrProfilerInfo, profilers};
+use crate::api::AttachedStatus;
+use crate::profilers::Profiler;
+use crate::{ffi::*, profilers, traits::CorProfilerCallback9, ClrProfilerInfo};
 use std::{
     ffi::c_void,
     ptr, slice,
     sync::atomic::{AtomicU32, Ordering},
 };
 use widestring::{U16CString, U16String};
-use crate::api::AttachedStatus;
-use crate::profilers::Profiler;
 
 #[repr(C)]
 pub struct CorProfilerCallbackVtbl<T: Profiler> {
@@ -136,8 +136,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
                     SurvivingReferences2: Self::SurvivingReferences2,
                 },
                 ICorProfilerCallback5: ICorProfilerCallback5 {
-                    ConditionalWeakTableElementReferences:
-                        Self::ConditionalWeakTableElementReferences,
+                    ConditionalWeakTableElementReferences: Self::ConditionalWeakTableElementReferences,
                 },
                 ICorProfilerCallback6: ICorProfilerCallback6 {
                     GetAssemblyReferences: Self::GetAssemblyReferences,
@@ -167,15 +166,15 @@ impl<T: Profiler> CorProfilerCallback<T> {
         debug!("CorProfilerCallback<T>::QueryInterface({})", uuid);
 
         if *riid == IUnknown::IID
-        || *riid == ICorProfilerCallback::IID
-        || *riid == ICorProfilerCallback2::IID
-        || *riid == ICorProfilerCallback3::IID
-        || *riid == ICorProfilerCallback4::IID
-        || *riid == ICorProfilerCallback5::IID
-        || *riid == ICorProfilerCallback6::IID
-        || *riid == ICorProfilerCallback7::IID
-        || *riid == ICorProfilerCallback8::IID
-        || *riid == ICorProfilerCallback9::IID
+            || *riid == ICorProfilerCallback::IID
+            || *riid == ICorProfilerCallback2::IID
+            || *riid == ICorProfilerCallback3::IID
+            || *riid == ICorProfilerCallback4::IID
+            || *riid == ICorProfilerCallback5::IID
+            || *riid == ICorProfilerCallback6::IID
+            || *riid == ICorProfilerCallback7::IID
+            || *riid == ICorProfilerCallback8::IID
+            || *riid == ICorProfilerCallback9::IID
         {
             *ppvObject = self as *mut CorProfilerCallback<T> as LPVOID;
             self.add_ref();
@@ -188,31 +187,28 @@ impl<T: Profiler> CorProfilerCallback<T> {
 
     pub unsafe extern "system" fn add_ref(&mut self) -> ULONG {
         debug!("CorProfilerCallback<T>::AddRef");
-        
+
         let ref_count = self.ref_count.fetch_add(1, Ordering::Relaxed) + 1;
         ref_count
     }
 
     pub unsafe extern "system" fn release(&mut self) -> ULONG {
         debug!("CorProfilerCallback<T>::Release");
-        
+
         let ref_count = self.ref_count.fetch_sub(1, Ordering::Relaxed) - 1;
 
         if ref_count == 0 {
             debug!("CorProfilerCallback released");
             drop(Box::from_raw(self as *mut CorProfilerCallback<T>));
         }
-        
+
         ref_count
     }
 }
 
 // ICorProfilerCallback
 impl<T: Profiler> CorProfilerCallback<T> {
-    pub unsafe extern "system" fn Initialize(
-        &mut self,
-        pICorProfilerInfoUnk: *const CorProfilerInfo,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn Initialize(&mut self, pICorProfilerInfoUnk: *const CorProfilerInfo) -> HRESULT {
         if pICorProfilerInfoUnk.is_null() {
             // TODO: Add logging to indicate we got a null ptr for cor_profiler_info
             return HRESULT::E_FAIL;
@@ -232,88 +228,56 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AppDomainCreationStarted(
-        &mut self,
-        appDomainId: AppDomainID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn AppDomainCreationStarted(&mut self, appDomainId: AppDomainID) -> HRESULT {
         let result = self.profiler.app_domain_creation_started(appDomainId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AppDomainCreationFinished(
-        &mut self,
-        appDomainId: AppDomainID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .app_domain_creation_finished(appDomainId, hrStatus);
+    pub unsafe extern "system" fn AppDomainCreationFinished(&mut self, appDomainId: AppDomainID, hrStatus: HRESULT) -> HRESULT {
+        let result = self.profiler.app_domain_creation_finished(appDomainId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AppDomainShutdownStarted(
-        &mut self,
-        appDomainId: AppDomainID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn AppDomainShutdownStarted(&mut self, appDomainId: AppDomainID) -> HRESULT {
         let result = self.profiler.app_domain_shutdown_started(appDomainId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AppDomainShutdownFinished(
-        &mut self,
-        appDomainId: AppDomainID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .app_domain_shutdown_finished(appDomainId, hrStatus);
+    pub unsafe extern "system" fn AppDomainShutdownFinished(&mut self, appDomainId: AppDomainID, hrStatus: HRESULT) -> HRESULT {
+        let result = self.profiler.app_domain_shutdown_finished(appDomainId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AssemblyLoadStarted(
-        &mut self,
-        assemblyId: AssemblyID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn AssemblyLoadStarted(&mut self, assemblyId: AssemblyID) -> HRESULT {
         let result = self.profiler.assembly_load_started(assemblyId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AssemblyLoadFinished(
-        &mut self,
-        assemblyId: AssemblyID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn AssemblyLoadFinished(&mut self, assemblyId: AssemblyID, hrStatus: HRESULT) -> HRESULT {
         let result = self.profiler.assembly_load_finished(assemblyId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AssemblyUnloadStarted(
-        &mut self,
-        assemblyId: AssemblyID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn AssemblyUnloadStarted(&mut self, assemblyId: AssemblyID) -> HRESULT {
         let result = self.profiler.assembly_unload_started(assemblyId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn AssemblyUnloadFinished(
-        &mut self,
-        assemblyId: AssemblyID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn AssemblyUnloadFinished(&mut self, assemblyId: AssemblyID, hrStatus: HRESULT) -> HRESULT {
         let result = self.profiler.assembly_unload_finished(assemblyId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -327,11 +291,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ModuleLoadFinished(
-        &mut self,
-        moduleId: ModuleID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ModuleLoadFinished(&mut self, moduleId: ModuleID, hrStatus: HRESULT) -> HRESULT {
         let result = self.profiler.module_load_finished(moduleId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -345,25 +305,15 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ModuleUnloadFinished(
-        &mut self,
-        moduleId: ModuleID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ModuleUnloadFinished(&mut self, moduleId: ModuleID, hrStatus: HRESULT) -> HRESULT {
         let result = self.profiler.module_unload_finished(moduleId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ModuleAttachedToAssembly(
-        &mut self,
-        moduleId: ModuleID,
-        AssemblyId: AssemblyID,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .module_attached_to_assembly(moduleId, AssemblyId);
+    pub unsafe extern "system" fn ModuleAttachedToAssembly(&mut self, moduleId: ModuleID, AssemblyId: AssemblyID) -> HRESULT {
+        let result = self.profiler.module_attached_to_assembly(moduleId, AssemblyId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -376,11 +326,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ClassLoadFinished(
-        &mut self,
-        classId: ClassID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ClassLoadFinished(&mut self, classId: ClassID, hrStatus: HRESULT) -> HRESULT {
         let result = self.profiler.class_load_finished(classId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -394,61 +340,35 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ClassUnloadFinished(
-        &mut self,
-        classId: ClassID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ClassUnloadFinished(&mut self, classId: ClassID, hrStatus: HRESULT) -> HRESULT {
         let result = self.profiler.class_unload_finished(classId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn FunctionUnloadStarted(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn FunctionUnloadStarted(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.function_unload_started(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn JITCompilationStarted(
-        &mut self,
-        functionId: FunctionID,
-        fIsSafeToBlock: BOOL,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .jit_compilation_started(functionId, fIsSafeToBlock.is_positive());
+    pub unsafe extern "system" fn JITCompilationStarted(&mut self, functionId: FunctionID, fIsSafeToBlock: BOOL) -> HRESULT {
+        let result = self.profiler.jit_compilation_started(functionId, fIsSafeToBlock.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn JITCompilationFinished(
-        &mut self,
-        functionId: FunctionID,
-        hrStatus: HRESULT,
-        fIsSafeToBlock: BOOL,
-    ) -> HRESULT {
-        let result = self.profiler.jit_compilation_finished(
-            functionId,
-            hrStatus,
-            fIsSafeToBlock.is_positive(),
-        );
+    pub unsafe extern "system" fn JITCompilationFinished(&mut self, functionId: FunctionID, hrStatus: HRESULT, fIsSafeToBlock: BOOL) -> HRESULT {
+        let result = self.profiler.jit_compilation_finished(functionId, hrStatus, fIsSafeToBlock.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn JITCachedFunctionSearchStarted(
-        &mut self,
-        functionId: FunctionID,
-        pbUseCachedFunction: *mut BOOL,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn JITCachedFunctionSearchStarted(&mut self, functionId: FunctionID, pbUseCachedFunction: *mut BOOL) -> HRESULT {
         let result = self
             .profiler
             .jit_cached_function_search_started(functionId, (*pbUseCachedFunction).is_positive());
@@ -457,14 +377,8 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn JITCachedFunctionSearchFinished(
-        &mut self,
-        functionId: FunctionID,
-        result: COR_PRF_JIT_CACHE,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .jit_cached_function_search_finished(functionId, result);
+    pub unsafe extern "system" fn JITCachedFunctionSearchFinished(&mut self, functionId: FunctionID, result: COR_PRF_JIT_CACHE) -> HRESULT {
+        let result = self.profiler.jit_cached_function_search_finished(functionId, result);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -477,15 +391,8 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn JITInlining(
-        &mut self,
-        callerId: FunctionID,
-        calleeId: FunctionID,
-        pfShouldInline: *mut BOOL,
-    ) -> HRESULT {
-        let result =
-            self.profiler
-                .jit_inlining(callerId, calleeId, (*pfShouldInline).is_positive());
+    pub unsafe extern "system" fn JITInlining(&mut self, callerId: FunctionID, calleeId: FunctionID, pfShouldInline: *mut BOOL) -> HRESULT {
+        let result = self.profiler.jit_inlining(callerId, calleeId, (*pfShouldInline).is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -505,14 +412,8 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ThreadAssignedToOSThread(
-        &mut self,
-        managedThreadId: ThreadID,
-        osThreadId: DWORD,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .thread_assigned_to_os_thread(managedThreadId, osThreadId);
+    pub unsafe extern "system" fn ThreadAssignedToOSThread(&mut self, managedThreadId: ThreadID, osThreadId: DWORD) -> HRESULT {
+        let result = self.profiler.thread_assigned_to_os_thread(managedThreadId, osThreadId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -525,27 +426,15 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn RemotingClientSendingMessage(
-        &mut self,
-        pCookie: *const GUID,
-        fIsAsync: BOOL,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .remoting_client_sending_message(*pCookie, fIsAsync.is_positive());
+    pub unsafe extern "system" fn RemotingClientSendingMessage(&mut self, pCookie: *const GUID, fIsAsync: BOOL) -> HRESULT {
+        let result = self.profiler.remoting_client_sending_message(*pCookie, fIsAsync.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn RemotingClientReceivingReply(
-        &mut self,
-        pCookie: *const GUID,
-        fIsAsync: BOOL,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .remoting_client_receiving_reply(*pCookie, fIsAsync.is_positive());
+    pub unsafe extern "system" fn RemotingClientReceivingReply(&mut self, pCookie: *const GUID, fIsAsync: BOOL) -> HRESULT {
+        let result = self.profiler.remoting_client_receiving_reply(*pCookie, fIsAsync.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -558,14 +447,8 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn RemotingServerReceivingMessage(
-        &mut self,
-        pCookie: *const GUID,
-        fIsAsync: BOOL,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .remoting_server_receiving_message(*pCookie, fIsAsync.is_positive());
+    pub unsafe extern "system" fn RemotingServerReceivingMessage(&mut self, pCookie: *const GUID, fIsAsync: BOOL) -> HRESULT {
+        let result = self.profiler.remoting_server_receiving_message(*pCookie, fIsAsync.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -585,49 +468,28 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn RemotingServerSendingReply(
-        &mut self,
-        pCookie: *const GUID,
-        fIsAsync: BOOL,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .remoting_server_sending_reply(*pCookie, fIsAsync.is_positive());
+    pub unsafe extern "system" fn RemotingServerSendingReply(&mut self, pCookie: *const GUID, fIsAsync: BOOL) -> HRESULT {
+        let result = self.profiler.remoting_server_sending_reply(*pCookie, fIsAsync.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn UnmanagedToManagedTransition(
-        &mut self,
-        functionId: FunctionID,
-        reason: COR_PRF_TRANSITION_REASON,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .unmanaged_to_managed_transition(functionId, reason);
+    pub unsafe extern "system" fn UnmanagedToManagedTransition(&mut self, functionId: FunctionID, reason: COR_PRF_TRANSITION_REASON) -> HRESULT {
+        let result = self.profiler.unmanaged_to_managed_transition(functionId, reason);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ManagedToUnmanagedTransition(
-        &mut self,
-        functionId: FunctionID,
-        reason: COR_PRF_TRANSITION_REASON,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .managed_to_unmanaged_transition(functionId, reason);
+    pub unsafe extern "system" fn ManagedToUnmanagedTransition(&mut self, functionId: FunctionID, reason: COR_PRF_TRANSITION_REASON) -> HRESULT {
+        let result = self.profiler.managed_to_unmanaged_transition(functionId, reason);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn RuntimeSuspendStarted(
-        &mut self,
-        suspendReason: COR_PRF_SUSPEND_REASON,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn RuntimeSuspendStarted(&mut self, suspendReason: COR_PRF_SUSPEND_REASON) -> HRESULT {
         let result = self.profiler.runtime_suspend_started(suspendReason);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -683,39 +545,25 @@ impl<T: Profiler> CorProfilerCallback<T> {
         newObjectIDRangeStart: *const ObjectID,
         cObjectIDRangeLength: *const ULONG,
     ) -> HRESULT {
-        let oldObjectIDRangeStart: &[ObjectID] =
-            slice::from_raw_parts(oldObjectIDRangeStart, cMovedObjectIDRanges as usize);
-        let newObjectIDRangeStart: &[ObjectID] =
-            slice::from_raw_parts(newObjectIDRangeStart, cMovedObjectIDRanges as usize);
-        let cObjectIDRangeLength: &[ULONG] =
-            slice::from_raw_parts(cObjectIDRangeLength, cMovedObjectIDRanges as usize);
-        let result = self.profiler.moved_references(
-            oldObjectIDRangeStart,
-            newObjectIDRangeStart,
-            cObjectIDRangeLength,
-        );
+        let oldObjectIDRangeStart: &[ObjectID] = slice::from_raw_parts(oldObjectIDRangeStart, cMovedObjectIDRanges as usize);
+        let newObjectIDRangeStart: &[ObjectID] = slice::from_raw_parts(newObjectIDRangeStart, cMovedObjectIDRanges as usize);
+        let cObjectIDRangeLength: &[ULONG] = slice::from_raw_parts(cObjectIDRangeLength, cMovedObjectIDRanges as usize);
+        let result = self
+            .profiler
+            .moved_references(oldObjectIDRangeStart, newObjectIDRangeStart, cObjectIDRangeLength);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ObjectAllocated(
-        &mut self,
-        objectId: ObjectID,
-        classId: ClassID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ObjectAllocated(&mut self, objectId: ObjectID, classId: ClassID) -> HRESULT {
         let result = self.profiler.object_allocated(objectId, classId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ObjectsAllocatedByClass(
-        &mut self,
-        cClassCount: ULONG,
-        classIds: *const ClassID,
-        cObjects: *const ULONG,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ObjectsAllocatedByClass(&mut self, cClassCount: ULONG, classIds: *const ClassID, cObjects: *const ULONG) -> HRESULT {
         let classIds: &[ClassID] = slice::from_raw_parts(classIds, cClassCount as usize);
         let cObjects: &[ULONG] = slice::from_raw_parts(cObjects, cClassCount as usize);
         let result = self.profiler.objects_allocated_by_class(classIds, cObjects);
@@ -732,19 +580,13 @@ impl<T: Profiler> CorProfilerCallback<T> {
         objectRefIds: *const ObjectID,
     ) -> HRESULT {
         let objectRefIds: &[ObjectID] = slice::from_raw_parts(objectRefIds, cObjectRefs as usize);
-        let result = self
-            .profiler
-            .object_references(objectId, classId, objectRefIds);
+        let result = self.profiler.object_references(objectId, classId, objectRefIds);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn RootReferences(
-        &mut self,
-        cRootRefs: ULONG,
-        rootRefIds: *const ObjectID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn RootReferences(&mut self, cRootRefs: ULONG, rootRefIds: *const ObjectID) -> HRESULT {
         let rootRefIds: &[ObjectID] = slice::from_raw_parts(rootRefIds, cRootRefs as usize);
         let result = self.profiler.root_references(rootRefIds);
         match result {
@@ -759,10 +601,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionSearchFunctionEnter(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionSearchFunctionEnter(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.exception_search_function_enter(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -776,10 +615,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionSearchFilterEnter(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionSearchFilterEnter(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.exception_search_filter_enter(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -793,40 +629,28 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionSearchCatcherFound(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionSearchCatcherFound(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.exception_search_catcher_found(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionOSHandlerEnter(
-        &mut self,
-        __unused: UINT_PTR,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionOSHandlerEnter(&mut self, __unused: UINT_PTR) -> HRESULT {
         let result = self.profiler.exception_os_handler_enter(__unused);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionOSHandlerLeave(
-        &mut self,
-        __unused: UINT_PTR,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionOSHandlerLeave(&mut self, __unused: UINT_PTR) -> HRESULT {
         let result = self.profiler.exception_os_handler_leave(__unused);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionUnwindFunctionEnter(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionUnwindFunctionEnter(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.exception_unwind_function_enter(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -840,10 +664,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionUnwindFinallyEnter(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionUnwindFinallyEnter(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.exception_unwind_finally_enter(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -857,11 +678,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ExceptionCatcherEnter(
-        &mut self,
-        functionId: FunctionID,
-        objectId: ObjectID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ExceptionCatcherEnter(&mut self, functionId: FunctionID, objectId: ObjectID) -> HRESULT {
         let result = self.profiler.exception_catcher_enter(functionId, objectId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -882,26 +699,14 @@ impl<T: Profiler> CorProfilerCallback<T> {
         pVTable: *const c_void,
         cSlots: ULONG,
     ) -> HRESULT {
-        let result = self.profiler.com_classic_vtable_created(
-            wrappedClassId,
-            implementedIID,
-            pVTable,
-            cSlots,
-        );
+        let result = self.profiler.com_classic_vtable_created(wrappedClassId, implementedIID, pVTable, cSlots);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn COMClassicVTableDestroyed(
-        &mut self,
-        wrappedClassId: ClassID,
-        implementedIID: REFGUID,
-        pVTable: *const c_void,
-    ) -> HRESULT {
-        let result =
-            self.profiler
-                .com_classic_vtable_destroyed(wrappedClassId, implementedIID, pVTable);
+    pub unsafe extern "system" fn COMClassicVTableDestroyed(&mut self, wrappedClassId: ClassID, implementedIID: REFGUID, pVTable: *const c_void) -> HRESULT {
+        let result = self.profiler.com_classic_vtable_destroyed(wrappedClassId, implementedIID, pVTable);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -925,12 +730,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
 
 // ICorProfilerCallback2
 impl<T: Profiler> CorProfilerCallback<T> {
-    pub unsafe extern "system" fn ThreadNameChanged(
-        &mut self,
-        threadId: ThreadID,
-        cchName: ULONG,
-        name: *const WCHAR,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ThreadNameChanged(&mut self, threadId: ThreadID, cchName: ULONG, name: *const WCHAR) -> HRESULT {
         let name = U16String::from_ptr(name, cchName as usize).to_string_lossy();
         let result = self.profiler.thread_name_changed(threadId, &name);
         match result {
@@ -944,11 +744,8 @@ impl<T: Profiler> CorProfilerCallback<T> {
         generationCollected: *const BOOL,
         reason: COR_PRF_GC_REASON,
     ) -> HRESULT {
-        let generationCollected: &[BOOL] =
-            slice::from_raw_parts(generationCollected, cGenerations as usize);
-        let result = self
-            .profiler
-            .garbage_collection_started(generationCollected, reason);
+        let generationCollected: &[BOOL] = slice::from_raw_parts(generationCollected, cGenerations as usize);
+        let result = self.profiler.garbage_collection_started(generationCollected, reason);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -960,13 +757,9 @@ impl<T: Profiler> CorProfilerCallback<T> {
         objectIDRangeStart: *const ObjectID,
         cObjectIDRangeLength: *const ULONG,
     ) -> HRESULT {
-        let objectIDRangeStart: &[ObjectID] =
-            slice::from_raw_parts(objectIDRangeStart, cSurvivingObjectIDRanges as usize);
-        let cObjectIDRangeLength: &[ULONG] =
-            slice::from_raw_parts(cObjectIDRangeLength, cSurvivingObjectIDRanges as usize);
-        let result = self
-            .profiler
-            .surviving_references(objectIDRangeStart, cObjectIDRangeLength);
+        let objectIDRangeStart: &[ObjectID] = slice::from_raw_parts(objectIDRangeStart, cSurvivingObjectIDRanges as usize);
+        let cObjectIDRangeLength: &[ULONG] = slice::from_raw_parts(cObjectIDRangeLength, cSurvivingObjectIDRanges as usize);
+        let result = self.profiler.surviving_references(objectIDRangeStart, cObjectIDRangeLength);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -979,15 +772,10 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn FinalizeableObjectQueued(
-        &mut self,
-        finalizerFlags: DWORD,
-        objectID: ObjectID,
-    ) -> HRESULT {
-        let result = self.profiler.finalizeable_object_queued(
-            COR_PRF_FINALIZER_FLAGS::from_bits(finalizerFlags).unwrap(),
-            objectID,
-        );
+    pub unsafe extern "system" fn FinalizeableObjectQueued(&mut self, finalizerFlags: DWORD, objectID: ObjectID) -> HRESULT {
+        let result = self
+            .profiler
+            .finalizeable_object_queued(COR_PRF_FINALIZER_FLAGS::from_bits(finalizerFlags).unwrap(), objectID);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -1002,24 +790,16 @@ impl<T: Profiler> CorProfilerCallback<T> {
         rootIds: *const UINT_PTR,
     ) -> HRESULT {
         let rootRefIds: &[ObjectID] = slice::from_raw_parts(rootRefIds, cRootRefs as usize);
-        let rootKinds: &[COR_PRF_GC_ROOT_KIND] =
-            slice::from_raw_parts(rootKinds, cRootRefs as usize);
-        let rootFlags: &[COR_PRF_GC_ROOT_FLAGS] =
-            slice::from_raw_parts(rootFlags, cRootRefs as usize);
+        let rootKinds: &[COR_PRF_GC_ROOT_KIND] = slice::from_raw_parts(rootKinds, cRootRefs as usize);
+        let rootFlags: &[COR_PRF_GC_ROOT_FLAGS] = slice::from_raw_parts(rootFlags, cRootRefs as usize);
         let rootIds: &[UINT_PTR] = slice::from_raw_parts(rootIds, cRootRefs as usize);
-        let result = self
-            .profiler
-            .root_references_2(rootRefIds, rootKinds, rootFlags, rootIds);
+        let result = self.profiler.root_references_2(rootRefIds, rootKinds, rootFlags, rootIds);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn HandleCreated(
-        &mut self,
-        handleId: GCHandleID,
-        initialObjectId: ObjectID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn HandleCreated(&mut self, handleId: GCHandleID, initialObjectId: ObjectID) -> HRESULT {
         let result = self.profiler.handle_created(handleId, initialObjectId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -1045,18 +825,16 @@ impl<T: Profiler> CorProfilerCallback<T> {
         }
         let profiler_info = ClrProfilerInfo::new(pCorProfilerInfoUnk);
         profiler_info.set_attached_status(AttachedStatus::Attaching);
-        let result = self
-            .profiler
-            .initialize_for_attach(profiler_info, pvClientData, cbClientData);
+        let result = self.profiler.initialize_for_attach(profiler_info, pvClientData, cbClientData);
         match result {
             Ok(_) => {
                 info!("Profiler successfully initialized");
                 HRESULT::S_OK
-            },
+            }
             Err(error) => {
                 info!("Profiler failed initializing {:?}", error);
                 error
-            },
+            }
         }
     }
     pub unsafe extern "system" fn ProfilerAttachComplete(&mut self) -> HRESULT {
@@ -1066,11 +844,11 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Ok(_) => {
                 info!("Profiler successfully attached");
                 HRESULT::S_OK
-            },
+            }
             Err(error) => {
                 info!("Profiler failed attaching {:?}", error);
                 error
-            },
+            }
         }
     }
     pub unsafe extern "system" fn ProfilerDetachSucceeded(&mut self) -> HRESULT {
@@ -1080,24 +858,15 @@ impl<T: Profiler> CorProfilerCallback<T> {
             Ok(_) => {
                 info!("Profiler successfully detached");
                 HRESULT::S_OK
-            },
+            }
             Err(error) => {
                 info!("Profiler failed detaching {:?}", error);
                 error
-            },
+            }
         }
     }
-    pub unsafe extern "system" fn ReJITCompilationStarted(
-        &mut self,
-        functionId: FunctionID,
-        rejitId: ReJITID,
-        fIsSafeToBlock: BOOL,
-    ) -> HRESULT {
-        let result = self.profiler.rejit_compilation_started(
-            functionId,
-            rejitId,
-            fIsSafeToBlock.is_positive(),
-        );
+    pub unsafe extern "system" fn ReJITCompilationStarted(&mut self, functionId: FunctionID, rejitId: ReJITID, fIsSafeToBlock: BOOL) -> HRESULT {
+        let result = self.profiler.rejit_compilation_started(functionId, rejitId, fIsSafeToBlock.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -1111,9 +880,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
     ) -> HRESULT {
         let pFunctionControl = pFunctionControl.as_ref();
         if let Some(pFunctionControl) = pFunctionControl {
-            let result = self
-                .profiler
-                .get_rejit_parameters(moduleId, methodId, pFunctionControl);
+            let result = self.profiler.get_rejit_parameters(moduleId, methodId, pFunctionControl);
             match result {
                 Ok(_) => HRESULT::S_OK,
                 Err(error) => error,
@@ -1129,27 +896,16 @@ impl<T: Profiler> CorProfilerCallback<T> {
         hrStatus: HRESULT,
         fIsSafeToBlock: BOOL,
     ) -> HRESULT {
-        let result = self.profiler.rejit_compilation_finished(
-            functionId,
-            rejitId,
-            hrStatus,
-            fIsSafeToBlock.is_positive(),
-        );
+        let result = self
+            .profiler
+            .rejit_compilation_finished(functionId, rejitId, hrStatus, fIsSafeToBlock.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn ReJITError(
-        &mut self,
-        moduleId: ModuleID,
-        methodId: mdMethodDef,
-        functionId: FunctionID,
-        hrStatus: HRESULT,
-    ) -> HRESULT {
-        let result = self
-            .profiler
-            .rejit_error(moduleId, methodId, functionId, hrStatus);
+    pub unsafe extern "system" fn ReJITError(&mut self, moduleId: ModuleID, methodId: mdMethodDef, functionId: FunctionID, hrStatus: HRESULT) -> HRESULT {
+        let result = self.profiler.rejit_error(moduleId, methodId, functionId, hrStatus);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -1162,17 +918,12 @@ impl<T: Profiler> CorProfilerCallback<T> {
         newObjectIDRangeStart: *const ObjectID,
         cObjectIDRangeLength: *const SIZE_T,
     ) -> HRESULT {
-        let oldObjectIDRangeStart: &[ObjectID] =
-            slice::from_raw_parts(oldObjectIDRangeStart, cMovedObjectIDRanges as usize);
-        let newObjectIDRangeStart: &[ObjectID] =
-            slice::from_raw_parts(newObjectIDRangeStart, cMovedObjectIDRanges as usize);
-        let cObjectIDRangeLength: &[SIZE_T] =
-            slice::from_raw_parts(cObjectIDRangeLength, cMovedObjectIDRanges as usize);
-        let result = self.profiler.moved_references_2(
-            oldObjectIDRangeStart,
-            newObjectIDRangeStart,
-            cObjectIDRangeLength,
-        );
+        let oldObjectIDRangeStart: &[ObjectID] = slice::from_raw_parts(oldObjectIDRangeStart, cMovedObjectIDRanges as usize);
+        let newObjectIDRangeStart: &[ObjectID] = slice::from_raw_parts(newObjectIDRangeStart, cMovedObjectIDRanges as usize);
+        let cObjectIDRangeLength: &[SIZE_T] = slice::from_raw_parts(cObjectIDRangeLength, cMovedObjectIDRanges as usize);
+        let result = self
+            .profiler
+            .moved_references_2(oldObjectIDRangeStart, newObjectIDRangeStart, cObjectIDRangeLength);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -1184,13 +935,9 @@ impl<T: Profiler> CorProfilerCallback<T> {
         objectIDRangeStart: *const ObjectID,
         cObjectIDRangeLength: *const SIZE_T,
     ) -> HRESULT {
-        let objectIDRangeStart: &[ObjectID] =
-            slice::from_raw_parts(objectIDRangeStart, cSurvivingObjectIDRanges as usize);
-        let cObjectIDRangeLength: &[ObjectID] =
-            slice::from_raw_parts(cObjectIDRangeLength, cSurvivingObjectIDRanges as usize);
-        let result = self
-            .profiler
-            .surviving_references_2(objectIDRangeStart, cObjectIDRangeLength);
+        let objectIDRangeStart: &[ObjectID] = slice::from_raw_parts(objectIDRangeStart, cSurvivingObjectIDRanges as usize);
+        let cObjectIDRangeLength: &[ObjectID] = slice::from_raw_parts(cObjectIDRangeLength, cSurvivingObjectIDRanges as usize);
+        let result = self.profiler.surviving_references_2(objectIDRangeStart, cObjectIDRangeLength);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -1206,11 +953,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
         let keyRefIds: &[ObjectID] = slice::from_raw_parts(keyRefIds, cRootRefs as usize);
         let valueRefIds: &[ObjectID] = slice::from_raw_parts(valueRefIds, cRootRefs as usize);
         let rootIds: &[GCHandleID] = slice::from_raw_parts(rootIds, cRootRefs as usize);
-        let result = self.profiler.conditional_weak_table_element_references(
-            keyRefIds,
-            valueRefIds,
-            rootIds,
-        );
+        let result = self.profiler.conditional_weak_table_element_references(keyRefIds, valueRefIds, rootIds);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
@@ -1224,9 +967,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
         let wszAssemblyPath = U16CString::from_ptr_str(wszAssemblyPath).to_string_lossy();
         let pAsmRefProvider = pAsmRefProvider.as_ref();
         if let Some(pAsmRefProvider) = pAsmRefProvider {
-            let result = self
-                .profiler
-                .get_assembly_references(&wszAssemblyPath, pAsmRefProvider);
+            let result = self.profiler.get_assembly_references(&wszAssemblyPath, pAsmRefProvider);
             match result {
                 Ok(_) => HRESULT::S_OK,
                 Err(error) => error,
@@ -1235,10 +976,7 @@ impl<T: Profiler> CorProfilerCallback<T> {
             HRESULT::E_FAIL
         }
     }
-    pub unsafe extern "system" fn ModuleInMemorySymbolsUpdated(
-        &mut self,
-        moduleId: ModuleID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn ModuleInMemorySymbolsUpdated(&mut self, moduleId: ModuleID) -> HRESULT {
         let result = self.profiler.module_in_memory_symbols_updated(moduleId);
         match result {
             Ok(_) => HRESULT::S_OK,
@@ -1252,37 +990,24 @@ impl<T: Profiler> CorProfilerCallback<T> {
         pILHeader: LPCBYTE,
         cbILHeader: ULONG,
     ) -> HRESULT {
-        let result = self.profiler.dynamic_method_jit_compilation_started(
-            functionId,
-            fIsSafeToBlock.is_positive(),
-            pILHeader,
-            cbILHeader,
-        );
+        let result = self
+            .profiler
+            .dynamic_method_jit_compilation_started(functionId, fIsSafeToBlock.is_positive(), pILHeader, cbILHeader);
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn DynamicMethodJITCompilationFinished(
-        &mut self,
-        functionId: FunctionID,
-        hrStatus: HRESULT,
-        fIsSafeToBlock: BOOL,
-    ) -> HRESULT {
-        let result = self.profiler.dynamic_method_jit_compilation_finished(
-            functionId,
-            hrStatus,
-            fIsSafeToBlock.is_positive(),
-        );
+    pub unsafe extern "system" fn DynamicMethodJITCompilationFinished(&mut self, functionId: FunctionID, hrStatus: HRESULT, fIsSafeToBlock: BOOL) -> HRESULT {
+        let result = self
+            .profiler
+            .dynamic_method_jit_compilation_finished(functionId, hrStatus, fIsSafeToBlock.is_positive());
         match result {
             Ok(_) => HRESULT::S_OK,
             Err(error) => error,
         }
     }
-    pub unsafe extern "system" fn DynamicMethodUnloaded(
-        &mut self,
-        functionId: FunctionID,
-    ) -> HRESULT {
+    pub unsafe extern "system" fn DynamicMethodUnloaded(&mut self, functionId: FunctionID) -> HRESULT {
         let result = self.profiler.dynamic_method_unloaded(functionId);
         match result {
             Ok(_) => HRESULT::S_OK,

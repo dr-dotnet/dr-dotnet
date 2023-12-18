@@ -1,9 +1,9 @@
-pub mod profilers;
-pub mod session;
+pub mod api;
 pub mod interop;
 pub mod macros;
+pub mod profilers;
+pub mod session;
 pub mod utils;
-pub mod api;
 
 #[macro_use]
 extern crate bitflags;
@@ -29,8 +29,7 @@ register!(
 
 // Actual COM entry point
 #[no_mangle]
-unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::REFIID, ppv: *mut ffi::LPVOID) -> ffi::HRESULT
-{
+unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::REFIID, ppv: *mut ffi::LPVOID) -> ffi::HRESULT {
     profilers::init_logging();
 
     debug!("DllGetClassObject(rclsid: {:?}, riid: {:?})", rclsid, riid);
@@ -38,6 +37,6 @@ unsafe extern "system" fn DllGetClassObject(rclsid: ffi::REFCLSID, riid: ffi::RE
     if ppv.is_null() {
         return ffi::HRESULT::E_FAIL;
     }
-    
+
     return attach(rclsid, riid, ppv);
 }

@@ -3,10 +3,7 @@ use crate::ffi::{COR_PRF_ASSEMBLY_REFERENCE_INFO, GUID, HRESULT};
 
 #[repr(C)]
 pub struct ICorProfilerAssemblyReferenceProvider<T> {
-    pub AddAssemblyReference: unsafe extern "system" fn(
-        this: &T,
-        pAssemblyRefInfo: *const COR_PRF_ASSEMBLY_REFERENCE_INFO,
-    ) -> HRESULT,
+    pub AddAssemblyReference: unsafe extern "system" fn(this: &T, pAssemblyRefInfo: *const COR_PRF_ASSEMBLY_REFERENCE_INFO) -> HRESULT,
 }
 
 impl ICorProfilerAssemblyReferenceProvider<()> {

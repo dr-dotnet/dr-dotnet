@@ -1,14 +1,12 @@
 use crate::{
-    ffi::{
-        mdMethodDef, CorMethodAttr, CorMethodImpl, MetaDataImport as FFIMetaDataImport, HRESULT,
-        HRESULT::S_OK, WCHAR, CorTypeAttr,
-    },
-    MetadataImportTrait, MethodProps, TypeProps, api::ffi::HCORENUM,
+    api::ffi::HCORENUM,
+    ffi::{mdMethodDef, CorMethodAttr, CorMethodImpl, CorTypeAttr, MetaDataImport as FFIMetaDataImport, HRESULT, HRESULT::S_OK, WCHAR},
+    MetadataImportTrait, MethodProps, TypeProps,
 };
 use std::{mem::MaybeUninit, ptr};
 use widestring::U16CString;
 
-use super::ffi::{mdTypeDef, mdGenericParam};
+use super::ffi::{mdGenericParam, mdTypeDef};
 
 #[derive(Clone)]
 pub struct MetadataImport {
@@ -17,9 +15,7 @@ pub struct MetadataImport {
 
 impl MetadataImport {
     pub fn new(metadata_import: *const FFIMetaDataImport) -> Self {
-        MetadataImport {
-            import: metadata_import,
-        }
+        MetadataImport { import: metadata_import }
     }
     fn import(&self) -> &FFIMetaDataImport {
         unsafe { self.import.as_ref().unwrap() }
@@ -71,9 +67,7 @@ impl MetadataImportTrait for MetadataImport {
         match hr {
             HRESULT::S_OK => {
                 let class_token = unsafe { class_token.assume_init() };
-                let name = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let name = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
                 let attr_flags = unsafe { attr_flags.assume_init() };
                 let attr_flags = CorMethodAttr::from_bits(attr_flags).unwrap();
                 let sig = unsafe { sig.assume_init() };
@@ -98,14 +92,8 @@ impl MetadataImportTrait for MetadataImport {
     fn get_type_def_props(&self, td: crate::ffi::mdTypeDef) -> Result<crate::TypeProps, HRESULT> {
         let mut name_buffer_length = MaybeUninit::uninit();
         unsafe {
-            self.import().GetTypeDefProps(
-                td,
-                ptr::null_mut(),
-                0,
-                name_buffer_length.as_mut_ptr(),
-                ptr::null_mut(),
-                ptr::null_mut()
-            )
+            self.import()
+                .GetTypeDefProps(td, ptr::null_mut(), 0, name_buffer_length.as_mut_ptr(), ptr::null_mut(), ptr::null_mut())
         };
 
         let name_buffer_length = unsafe { name_buffer_length.assume_init() };
@@ -121,15 +109,13 @@ impl MetadataImportTrait for MetadataImport {
                 name_buffer_length,
                 pch_type_def.as_mut_ptr(),
                 type_def_flags.as_mut_ptr(),
-                base_type.as_mut_ptr()
+                base_type.as_mut_ptr(),
             )
         };
 
         match hr {
             HRESULT::S_OK => {
-                let name = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let name = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
                 let type_def_flags = unsafe { type_def_flags.assume_init() };
                 let type_def_flags = CorTypeAttr::from_bits(type_def_flags).unwrap();
                 let base_type = unsafe { base_type.assume_init() };
@@ -137,7 +123,7 @@ impl MetadataImportTrait for MetadataImport {
                 Ok(TypeProps {
                     name,
                     type_def_flags,
-                    base_type
+                    base_type,
                 })
             }
             _ => Err(hr),
@@ -146,12 +132,7 @@ impl MetadataImportTrait for MetadataImport {
 
     fn get_nested_class_props(&self, td: crate::ffi::mdTypeDef) -> Result<crate::ffi::mdTypeDef, HRESULT> {
         let mut enclosing_type_def = MaybeUninit::uninit();
-        let hr = unsafe {
-            self.import().GetNestedClassProps(
-                td,
-                enclosing_type_def.as_mut_ptr()
-            )
-        };
+        let hr = unsafe { self.import().GetNestedClassProps(td, enclosing_type_def.as_mut_ptr()) };
 
         match hr {
             HRESULT::S_OK => {
@@ -174,7 +155,7 @@ impl MetadataImportTrait for MetadataImport {
                 td,
                 generic_param_buffer.as_mut_ptr(),
                 10,
-                params_fetched.as_mut_ptr() // Not correct but seems to respect cMax
+                params_fetched.as_mut_ptr(), // Not correct but seems to respect cMax
             )
         };
 
@@ -221,7 +202,7 @@ impl MetadataImportTrait for MetadataImport {
                 reserved.as_mut_ptr(),
                 wz_name.as_mut_ptr(),
                 cch_name, // For now we don't care about the generic parameter name
-                pch_name.as_mut_ptr()
+                pch_name.as_mut_ptr(),
             )
         };
 
@@ -236,30 +217,16 @@ impl MetadataImportTrait for MetadataImport {
 
     fn get_version_string(&self) -> Result<String, HRESULT> {
         let mut buffer_length = MaybeUninit::uninit();
-        unsafe {
-            self.import().GetVersionString(
-                ptr::null_mut(),
-                0,
-                buffer_length.as_mut_ptr()
-            )
-        };
+        unsafe { self.import().GetVersionString(ptr::null_mut(), 0, buffer_length.as_mut_ptr()) };
 
         let buffer_length = unsafe { buffer_length.assume_init() };
         let mut name_buffer = Vec::<WCHAR>::with_capacity(buffer_length as usize);
         unsafe { name_buffer.set_len(buffer_length as usize) };
-        let hr = unsafe {
-            self.import().GetVersionString(
-                name_buffer.as_mut_ptr(),
-                buffer_length,
-                ptr::null_mut()
-            )
-        };
+        let hr = unsafe { self.import().GetVersionString(name_buffer.as_mut_ptr(), buffer_length, ptr::null_mut()) };
 
         match hr {
             HRESULT::S_OK => {
-                let version = U16CString::from_vec_with_nul(name_buffer)
-                    .unwrap()
-                    .to_string_lossy();
+                let version = U16CString::from_vec_with_nul(name_buffer).unwrap().to_string_lossy();
 
                 Ok(version)
             }

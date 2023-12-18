@@ -2,13 +2,13 @@ use dashmap::DashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 
+use crate::api::ffi::{FunctionID, ThreadID, HRESULT};
 use crate::api::*;
-use crate::api::ffi::{ FunctionID, HRESULT, ThreadID };
 use crate::macros::*;
 use crate::profilers::*;
+use crate::rust_protobuf_protos::interop::*;
 use crate::session::Report;
 use crate::utils::{NameResolver, StackSnapshotCallbackReceiver, TreeNode};
-use crate::rust_protobuf_protos::interop::*;
 
 #[derive(Default)]
 pub struct CpuHotpathProfiler {
@@ -26,7 +26,7 @@ impl Profiler for CpuHotpathProfiler {
             description: "Lists CPU hotpaths.".to_owned(),
             is_released: true,
             parameters: vec![
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Duration".to_owned(),
                     key: "duration_seconds".to_owned(),
                     description: "The profiling duration in seconds".to_owned(),
@@ -34,7 +34,7 @@ impl Profiler for CpuHotpathProfiler {
                     value: "10".to_owned(),
                     ..std::default::Default::default()
                 },
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Time Interval".to_owned(),
                     key: "time_interval_ms".to_owned(),
                     description: "Time interval between two samples in milliseconds".to_owned(),
@@ -42,7 +42,7 @@ impl Profiler for CpuHotpathProfiler {
                     value: "40".to_owned(),
                     ..std::default::Default::default()
                 },
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Filter Suspended Threads".to_owned(),
                     key: "filter_suspended_threads".to_owned(),
                     description: "If set, the profiler will attempt to detect suspended thread and filter them out from the analysis to only focus on working threads, hereby improving accuracy on actual CPU hotpaths".to_owned(),
@@ -50,7 +50,7 @@ impl Profiler for CpuHotpathProfiler {
                     value: "true".to_owned(),
                     ..std::default::Default::default()
                 },
-                ProfilerParameter { 
+                ProfilerParameter {
                     name: "Caller To Callee".to_owned(),
                     key: "caller_to_callee".to_owned(),
                     description: "If set, the output will display callers first and callees as children in the tree representation".to_owned(),
@@ -60,14 +60,14 @@ impl Profiler for CpuHotpathProfiler {
                 }
             ],
             ..std::default::Default::default()
-        }
+        };
     }
 }
 
 #[derive(Default)]
 pub struct CpuHotpathStackSnapshotCallbackReceiver {
-    method_ids: Vec::<FunctionID>,
-    hasher: DefaultHasher
+    method_ids: Vec<FunctionID>,
+    hasher: DefaultHasher,
 }
 
 impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
@@ -88,19 +88,17 @@ impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
 }
 
 impl CpuHotpathProfiler {
-
     fn build_callstacks(
         profiler_info: ClrProfilerInfo,
         threads: &mut DashMap<ThreadID, u64>,
-        tree: &mut TreeNode::<FunctionID, usize>,
+        tree: &mut TreeNode<FunctionID, usize>,
         filter_suspended_threads: bool,
-        caller_to_callee: bool)
-    {
+        caller_to_callee: bool,
+    ) {
         info!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
-
             let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::default();
 
             stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
@@ -109,14 +107,15 @@ impl CpuHotpathProfiler {
                 let hash = stack_snapshot_receiver.hasher.finish();
 
                 let mut ignore_thread = true;
-                threads.entry(managed_thread_id)
+                threads
+                    .entry(managed_thread_id)
                     .and_modify(|existing_value| {
                         // Ignore the thread if the stack context hash is unchanged
                         ignore_thread = *existing_value == hash;
                         *existing_value = hash;
                     })
                     .or_insert(hash);
-    
+
                 if ignore_thread {
                     continue;
                 }
@@ -137,8 +136,7 @@ impl CpuHotpathProfiler {
         }
     }
 
-    fn profile(session_info: SessionInfo, clr: ClrProfilerInfo)
-    {
+    fn profile(session_info: SessionInfo, clr: ClrProfilerInfo) {
         let time_interval_ms = session_info.get_parameter::<u64>("time_interval_ms").unwrap();
         let duration_seconds = session_info.get_parameter::<u64>("duration_seconds").unwrap();
         let filter_suspended_threads = session_info.get_parameter::<bool>("filter_suspended_threads").unwrap();
@@ -165,12 +163,15 @@ impl CpuHotpathProfiler {
 
         let total_samples: usize = tree.get_inclusive_value();
 
-        // Sort by descending inclusive count (hotpaths first) 
+        // Sort by descending inclusive count (hotpaths first)
         tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
 
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
-        report.write_line(format!("<h3>Hotpaths <small class=\"text-muted\">{}</small></h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
+        report.write_line(format!(
+            "<h3>Hotpaths <small class=\"text-muted\">{}</small></h3>",
+            if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }
+        ));
         report.write_line(format!("<li>{} samples</li>", total_samples));
         report.write_line(format!("<li>{} roots</li>", tree.children.len()));
         tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
@@ -180,8 +181,7 @@ impl CpuHotpathProfiler {
         }
     }
 
-    fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize)
-    {
+    fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize) {
         let percentage = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
 
         let mut method_name: String = clr.get_full_method_name(node.key);
@@ -190,7 +190,9 @@ impl CpuHotpathProfiler {
         let has_children = node.children.len() > 0;
 
         if has_children {
-            report.write_line(format!("<details><summary><span>{percentage:.2} %</span><code>{escaped_class_name}</code></summary>"));
+            report.write_line(format!(
+                "<details><summary><span>{percentage:.2} %</span><code>{escaped_class_name}</code></summary>"
+            ));
             report.write_line(format!("<ul>"));
             for child in &node.children {
                 Self::print_html(clr, child, report, total_samples);
@@ -207,14 +209,23 @@ impl CorProfilerCallback for CpuHotpathProfiler {}
 
 impl CorProfilerCallback2 for CpuHotpathProfiler {}
 
-impl CorProfilerCallback3 for CpuHotpathProfiler
-{
-    fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), ffi::HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT, None, profiler_info, client_data, client_data_length)
+impl CorProfilerCallback3 for CpuHotpathProfiler {
+    fn initialize_for_attach(
+        &mut self,
+        profiler_info: ClrProfilerInfo,
+        client_data: *const std::os::raw::c_void,
+        client_data_length: u32,
+    ) -> Result<(), ffi::HRESULT> {
+        self.init(
+            ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT,
+            None,
+            profiler_info,
+            client_data,
+            client_data_length,
+        )
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), ffi::HRESULT> {
-
         let clr: ClrProfilerInfo = self.clr().clone();
         let session_info: SessionInfo = self.session_info().clone();
 

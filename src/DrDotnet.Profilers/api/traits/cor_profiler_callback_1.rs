@@ -1,15 +1,14 @@
 #![allow(unused_variables)]
 use crate::{
     ffi::{
-        AppDomainID, AssemblyID, ClassID, FunctionID, ModuleID, ObjectID, ThreadID,
-        COR_PRF_JIT_CACHE, COR_PRF_SUSPEND_REASON, COR_PRF_TRANSITION_REASON, DWORD, GUID, HRESULT,
-        REFGUID, UINT_PTR,
+        AppDomainID, AssemblyID, ClassID, FunctionID, ModuleID, ObjectID, ThreadID, COR_PRF_JIT_CACHE, COR_PRF_SUSPEND_REASON, COR_PRF_TRANSITION_REASON,
+        DWORD, GUID, HRESULT, REFGUID, UINT_PTR,
     },
     ClrProfilerInfo,
 };
 use std::ffi::c_void;
 
-pub trait CorProfilerCallback : Default {
+pub trait CorProfilerCallback: Default {
     fn initialize(&mut self, profiler_info: ClrProfilerInfo) -> Result<(), HRESULT> {
         Ok(())
     }
@@ -46,11 +45,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn assembly_load_finished(
-        &mut self,
-        assembly_id: AssemblyID,
-        hr_status: HRESULT,
-    ) -> Result<(), HRESULT> {
+    fn assembly_load_finished(&mut self, assembly_id: AssemblyID, hr_status: HRESULT) -> Result<(), HRESULT> {
         // TODO: Create enum that actual encodes possible statuses instead of hresult param
         Ok(())
     }
@@ -59,11 +54,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn assembly_unload_finished(
-        &mut self,
-        assembly_id: AssemblyID,
-        hr_status: HRESULT,
-    ) -> Result<(), HRESULT> {
+    fn assembly_unload_finished(&mut self, assembly_id: AssemblyID, hr_status: HRESULT) -> Result<(), HRESULT> {
         // TODO: Create enum that actual encodes possible statuses instead of hresult param
         Ok(())
     }
@@ -72,11 +63,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn module_load_finished(
-        &mut self,
-        module_id: ModuleID,
-        hr_status: HRESULT,
-    ) -> Result<(), HRESULT> {
+    fn module_load_finished(&mut self, module_id: ModuleID, hr_status: HRESULT) -> Result<(), HRESULT> {
         // TODO: Create enum that actual encodes possible statuses instead of hresult param
         Ok(())
     }
@@ -85,20 +72,12 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn module_unload_finished(
-        &mut self,
-        module_id: ModuleID,
-        hr_status: HRESULT,
-    ) -> Result<(), HRESULT> {
+    fn module_unload_finished(&mut self, module_id: ModuleID, hr_status: HRESULT) -> Result<(), HRESULT> {
         // TODO: Create enum that actual encodes possible statuses instead of hresult param
         Ok(())
     }
 
-    fn module_attached_to_assembly(
-        &mut self,
-        module_id: ModuleID,
-        assembly_id: AssemblyID,
-    ) -> Result<(), HRESULT> {
+    fn module_attached_to_assembly(&mut self, module_id: ModuleID, assembly_id: AssemblyID) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -106,11 +85,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn class_load_finished(
-        &mut self,
-        class_id: ClassID,
-        hr_status: HRESULT,
-    ) -> Result<(), HRESULT> {
+    fn class_load_finished(&mut self, class_id: ClassID, hr_status: HRESULT) -> Result<(), HRESULT> {
         // TODO: Create enum that actual encodes possible statuses instead of hresult param
         Ok(())
     }
@@ -119,11 +94,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn class_unload_finished(
-        &mut self,
-        class_id: ClassID,
-        hr_status: HRESULT,
-    ) -> Result<(), HRESULT> {
+    fn class_unload_finished(&mut self, class_id: ClassID, hr_status: HRESULT) -> Result<(), HRESULT> {
         // TODO: Create enum that actual encodes possible statuses instead of hresult param
         Ok(())
     }
@@ -132,11 +103,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn jit_compilation_started(
-        &mut self,
-        function_id: FunctionID,
-        is_safe_to_block: bool,
-    ) -> Result<(), HRESULT> {
+    fn jit_compilation_started(&mut self, function_id: FunctionID, is_safe_to_block: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -149,19 +116,11 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn jit_cached_function_search_started(
-        &mut self,
-        function_id: FunctionID,
-        use_cached_function: bool,
-    ) -> Result<(), HRESULT> {
+    fn jit_cached_function_search_started(&mut self, function_id: FunctionID, use_cached_function: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn jit_cached_function_search_finished(
-        &mut self,
-        function_id: FunctionID,
-        result: COR_PRF_JIT_CACHE,
-    ) -> Result<(), HRESULT> {
+    fn jit_cached_function_search_finished(&mut self, function_id: FunctionID, result: COR_PRF_JIT_CACHE) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -169,12 +128,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn jit_inlining(
-        &mut self,
-        caller_id: FunctionID,
-        callee_id: FunctionID,
-        should_inline: bool,
-    ) -> Result<(), HRESULT> {
+    fn jit_inlining(&mut self, caller_id: FunctionID, callee_id: FunctionID, should_inline: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -186,11 +140,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn thread_assigned_to_os_thread(
-        &mut self,
-        managed_thread_id: ThreadID,
-        os_thread_id: DWORD,
-    ) -> Result<(), HRESULT> {
+    fn thread_assigned_to_os_thread(&mut self, managed_thread_id: ThreadID, os_thread_id: DWORD) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -198,19 +148,11 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn remoting_client_sending_message(
-        &mut self,
-        cookie: GUID,
-        is_async: bool,
-    ) -> Result<(), HRESULT> {
+    fn remoting_client_sending_message(&mut self, cookie: GUID, is_async: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn remoting_client_receiving_reply(
-        &mut self,
-        cookie: GUID,
-        is_async: bool,
-    ) -> Result<(), HRESULT> {
+    fn remoting_client_receiving_reply(&mut self, cookie: GUID, is_async: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -218,11 +160,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn remoting_server_receiving_message(
-        &mut self,
-        cookie: GUID,
-        is_async: bool,
-    ) -> Result<(), HRESULT> {
+    fn remoting_server_receiving_message(&mut self, cookie: GUID, is_async: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -234,34 +172,19 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn remoting_server_sending_reply(
-        &mut self,
-        cookie: GUID,
-        is_async: bool,
-    ) -> Result<(), HRESULT> {
+    fn remoting_server_sending_reply(&mut self, cookie: GUID, is_async: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn unmanaged_to_managed_transition(
-        &mut self,
-        function_id: FunctionID,
-        reason: COR_PRF_TRANSITION_REASON,
-    ) -> Result<(), HRESULT> {
+    fn unmanaged_to_managed_transition(&mut self, function_id: FunctionID, reason: COR_PRF_TRANSITION_REASON) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn managed_to_unmanaged_transition(
-        &mut self,
-        function_id: FunctionID,
-        reason: COR_PRF_TRANSITION_REASON,
-    ) -> Result<(), HRESULT> {
+    fn managed_to_unmanaged_transition(&mut self, function_id: FunctionID, reason: COR_PRF_TRANSITION_REASON) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn runtime_suspend_started(
-        &mut self,
-        suspend_reason: COR_PRF_SUSPEND_REASON,
-    ) -> Result<(), HRESULT> {
+    fn runtime_suspend_started(&mut self, suspend_reason: COR_PRF_SUSPEND_REASON) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -302,20 +225,11 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn objects_allocated_by_class(
-        &mut self,
-        class_ids: &[ClassID],
-        num_objects: &[u32],
-    ) -> Result<(), HRESULT> {
+    fn objects_allocated_by_class(&mut self, class_ids: &[ClassID], num_objects: &[u32]) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn object_references(
-        &mut self,
-        object_id: ObjectID,
-        class_id: ClassID,
-        object_ref_ids: &[ObjectID],
-    ) -> Result<(), HRESULT> {
+    fn object_references(&mut self, object_id: ObjectID, class_id: ClassID, object_ref_ids: &[ObjectID]) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -371,11 +285,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn exception_catcher_enter(
-        &mut self,
-        function_id: FunctionID,
-        object_id: ObjectID,
-    ) -> Result<(), HRESULT> {
+    fn exception_catcher_enter(&mut self, function_id: FunctionID, object_id: ObjectID) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -393,12 +303,7 @@ pub trait CorProfilerCallback : Default {
         Ok(())
     }
 
-    fn com_classic_vtable_destroyed(
-        &mut self,
-        wrapped_class_id: ClassID,
-        implemented_iid: REFGUID,
-        p_vtable: *const c_void,
-    ) -> Result<(), HRESULT> {
+    fn com_classic_vtable_destroyed(&mut self, wrapped_class_id: ClassID, implemented_iid: REFGUID, p_vtable: *const c_void) -> Result<(), HRESULT> {
         Ok(())
     }
 

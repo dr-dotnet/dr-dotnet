@@ -7,12 +7,7 @@ pub struct ICorProfilerModuleEnum<T> {
     pub Reset: unsafe extern "system" fn(this: &T) -> HRESULT,
     pub Clone: unsafe extern "system" fn(this: &T, ppEnum: *mut *mut T) -> HRESULT,
     pub GetCount: unsafe extern "system" fn(this: &T, pcelt: *mut ULONG) -> HRESULT,
-    pub Next: unsafe extern "system" fn(
-        this: &T,
-        celt: ULONG,
-        objects: *mut ModuleID,
-        pceltFetched: *mut ULONG,
-    ) -> HRESULT,
+    pub Next: unsafe extern "system" fn(this: &T, celt: ULONG, objects: *mut ModuleID, pceltFetched: *mut ULONG) -> HRESULT,
 }
 
 impl ICorProfilerModuleEnum<()> {

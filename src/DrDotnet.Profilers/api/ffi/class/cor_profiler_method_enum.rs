@@ -28,12 +28,7 @@ impl CorProfilerMethodEnum {
     pub unsafe fn GetCount(&self, pcelt: *mut ULONG) -> HRESULT {
         (self.i_cor_profiler_method_enum().GetCount)(self, pcelt)
     }
-    pub unsafe fn Next(
-        &self,
-        celt: ULONG,
-        elements: *mut COR_PRF_METHOD,
-        pceltFetched: *mut ULONG,
-    ) -> HRESULT {
+    pub unsafe fn Next(&self, celt: ULONG, elements: *mut COR_PRF_METHOD, pceltFetched: *mut ULONG) -> HRESULT {
         (self.i_cor_profiler_method_enum().Next)(self, celt, elements, pceltFetched)
     }
 }

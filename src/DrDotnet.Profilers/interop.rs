@@ -4,11 +4,11 @@
 #![allow(unused_must_use)]
 
 extern crate libc;
-use std::ffi::CStr; 
+use std::ffi::CStr;
 
 use std::alloc::GlobalAlloc;
-use std::alloc::System;
 use std::alloc::Layout;
+use std::alloc::System;
 
 use crate::get_profiler_infos;
 use crate::rust_protobuf_protos::interop::*;
@@ -20,8 +20,7 @@ pub struct Buffer {
 }
 
 #[no_mangle]
-pub extern "C" fn GetAvailableProfilers() -> Buffer
-{
+pub extern "C" fn GetAvailableProfilers() -> Buffer {
     let mut profilers_info: ProfilersInfo = ProfilersInfo::new();
     profilers_info.profilers = get_profiler_infos().to_vec();
 

@@ -3,13 +3,8 @@ use crate::ffi::{DWORD, GUID, HRESULT};
 
 #[repr(C)]
 pub struct ICorProfilerInfo5<T> {
-    pub GetEventMask2: unsafe extern "system" fn(
-        this: &T,
-        pdwEventsLow: *mut DWORD,
-        pdwEventsHigh: *mut DWORD,
-    ) -> HRESULT,
-    pub SetEventMask2:
-        unsafe extern "system" fn(this: &T, dwEventsLow: DWORD, dwEventsHigh: DWORD) -> HRESULT,
+    pub GetEventMask2: unsafe extern "system" fn(this: &T, pdwEventsLow: *mut DWORD, pdwEventsHigh: *mut DWORD) -> HRESULT,
+    pub SetEventMask2: unsafe extern "system" fn(this: &T, dwEventsLow: DWORD, dwEventsHigh: DWORD) -> HRESULT,
 }
 
 impl ICorProfilerInfo5<()> {

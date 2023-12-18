@@ -1,27 +1,15 @@
 #![allow(unused_variables)]
 use crate::{
-    ffi::{
-        mdMethodDef, CorProfilerFunctionControl, FunctionID, ModuleID, ObjectID, ReJITID, HRESULT,
-    },
+    ffi::{mdMethodDef, CorProfilerFunctionControl, FunctionID, ModuleID, ObjectID, ReJITID, HRESULT},
     CorProfilerCallback3,
 };
 
 pub trait CorProfilerCallback4: CorProfilerCallback3 {
-    fn rejit_compilation_started(
-        &mut self,
-        function_id: FunctionID,
-        rejit_id: ReJITID,
-        is_safe_to_block: bool,
-    ) -> Result<(), HRESULT> {
+    fn rejit_compilation_started(&mut self, function_id: FunctionID, rejit_id: ReJITID, is_safe_to_block: bool) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn get_rejit_parameters(
-        &mut self,
-        module_id: ModuleID,
-        method_id: mdMethodDef,
-        function_control: &CorProfilerFunctionControl,
-    ) -> Result<(), HRESULT> {
+    fn get_rejit_parameters(&mut self, module_id: ModuleID, method_id: mdMethodDef, function_control: &CorProfilerFunctionControl) -> Result<(), HRESULT> {
         Ok(())
     }
 
@@ -45,20 +33,11 @@ pub trait CorProfilerCallback4: CorProfilerCallback3 {
         Ok(())
     }
 
-    fn moved_references_2(
-        &mut self,
-        old_object_ids: &[ObjectID],
-        new_object_ids: &[ObjectID],
-        object_lengths: &[usize],
-    ) -> Result<(), HRESULT> {
+    fn moved_references_2(&mut self, old_object_ids: &[ObjectID], new_object_ids: &[ObjectID], object_lengths: &[usize]) -> Result<(), HRESULT> {
         Ok(())
     }
 
-    fn surviving_references_2(
-        &mut self,
-        object_ids: &[ObjectID],
-        object_lengths: &[usize],
-    ) -> Result<(), HRESULT> {
+    fn surviving_references_2(&mut self, object_ids: &[ObjectID], object_lengths: &[usize]) -> Result<(), HRESULT> {
         Ok(())
     }
 }
