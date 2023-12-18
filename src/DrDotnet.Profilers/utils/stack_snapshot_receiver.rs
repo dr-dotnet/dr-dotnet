@@ -6,11 +6,11 @@ pub trait StackSnapshotCallbackReceiver {
 
     fn callback(&mut self, method_id: usize, ip: usize, frame_info: usize, context: &[u8]);
 
-    fn do_stack_snapshot(&mut self, pinfo: ClrProfilerInfo, thread_id: usize) {
+    fn do_stack_snapshot(&mut self, pinfo: ClrProfilerInfo, thread_id: usize, use_context: bool) {
         let _ = pinfo.do_stack_snapshot(
             thread_id,
             Self::stack_snapshot_callback,
-            COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_REGISTER_CONTEXT,
+            if use_context { COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_REGISTER_CONTEXT } else { COR_PRF_SNAPSHOT_INFO::COR_PRF_SNAPSHOT_DEFAULT },
             self as *mut Self as *mut std::ffi::c_void,
             std::ptr::null(), 0);
     }

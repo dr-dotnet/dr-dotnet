@@ -241,7 +241,7 @@ impl MergedCallStacksProfiler {
             
             let mut stack_snapshot_receiver = MergedCallstacksStackSnapshotCallbackReceiver::default();
 
-            stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id);
+            stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
 
             let mut stack_trace = Vec::<StackFrame>::new();
             

@@ -1,5 +1,5 @@
 use dashmap::DashMap;
-use gxhash::GxHasher;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 
 use crate::api::*;
@@ -67,13 +67,13 @@ impl Profiler for CpuHotpathProfiler {
 #[derive(Default)]
 pub struct CpuHotpathStackSnapshotCallbackReceiver {
     method_ids: Vec::<FunctionID>,
-    hasher: GxHasher
+    hasher: DefaultHasher
 }
 
 impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
     type AssociatedType = Self;
 
-    fn callback(&mut self, method_id: FunctionID, _instruction_pointer: usize, _frame_info: usize, context: &[u8]) {
+    fn callback(&mut self, method_id: FunctionID, instruction_pointer: usize, _frame_info: usize, _context: &[u8]) {
         // Filter out unmanaged stack frames
         if method_id == 0 {
             return;
@@ -82,8 +82,8 @@ impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
         // Detect suspended threads appart from actual working threads
         // Inspired from: https://www.usenix.org/legacy/publications/library/proceedings/coots99/full_papers/liang/liang_html/node10.html
         // Not sure which is the best approach between utilizing the instruction pointer or the context
-        //self.hasher.write_usize(instruction_pointer);
-        self.hasher.write(context);
+        self.hasher.write_usize(instruction_pointer);
+        //self.hasher.write(context);
     }
 }
 
@@ -103,7 +103,7 @@ impl CpuHotpathProfiler {
 
             let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::default();
 
-            stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id);
+            stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
 
             if filter_suspended_threads {
                 let hash = stack_snapshot_receiver.hasher.finish();
