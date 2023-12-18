@@ -49,6 +49,14 @@ impl Profiler for CpuHotpathProfiler {
                     type_: ParameterType::BOOLEAN.into(),
                     value: "true".to_owned(),
                     ..std::default::Default::default()
+                },
+                ProfilerParameter { 
+                    name: "Caller To Callee".to_owned(),
+                    key: "caller_to_callee".to_owned(),
+                    description: "If set, the output will display callers first and callees as children in the tree representation".to_owned(),
+                    type_: ParameterType::BOOLEAN.into(),
+                    value: "false".to_owned(),
+                    ..std::default::Default::default()
                 }
             ],
             ..std::default::Default::default()
@@ -65,7 +73,7 @@ pub struct CpuHotpathStackSnapshotCallbackReceiver {
 impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
     type AssociatedType = Self;
 
-    fn callback(&mut self, method_id: FunctionID, instruction_pointer: usize, _frame_info: usize, _context: &[u8]) {
+    fn callback(&mut self, method_id: FunctionID, _instruction_pointer: usize, _frame_info: usize, context: &[u8]) {
         // Filter out unmanaged stack frames
         if method_id == 0 {
             return;
@@ -74,8 +82,8 @@ impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
         // Detect suspended threads appart from actual working threads
         // Inspired from: https://www.usenix.org/legacy/publications/library/proceedings/coots99/full_papers/liang/liang_html/node10.html
         // Not sure which is the best approach between utilizing the instruction pointer or the context
-        self.hasher.write_usize(instruction_pointer);
-        //self.hasher.write(context);
+        //self.hasher.write_usize(instruction_pointer);
+        self.hasher.write(context);
     }
 }
 
@@ -84,8 +92,9 @@ impl CpuHotpathProfiler {
     fn build_callstacks(
         profiler_info: ClrProfilerInfo,
         threads: &mut DashMap<ThreadID, u64>,
+        tree: &mut TreeNode::<FunctionID, usize>,
         filter_suspended_threads: bool,
-        tree: &mut TreeNode::<FunctionID, usize>)
+        caller_to_callee: bool)
     {
         info!("Starts building callstacks");
         let pinfo = profiler_info.clone();
@@ -114,7 +123,11 @@ impl CpuHotpathProfiler {
             }
 
             // Add (reversed) callstack into tree
-            let node = tree.add_sequence(stack_snapshot_receiver.method_ids.into_iter().rev());
+            let node = if caller_to_callee {
+                tree.add_sequence(stack_snapshot_receiver.method_ids.into_iter().rev())
+            } else {
+                tree.add_sequence(stack_snapshot_receiver.method_ids.into_iter())
+            };
 
             // Increment count for callstack occurrence
             node.value = match node.value {
@@ -129,6 +142,7 @@ impl CpuHotpathProfiler {
         let time_interval_ms = session_info.get_parameter::<u64>("time_interval_ms").unwrap();
         let duration_seconds = session_info.get_parameter::<u64>("duration_seconds").unwrap();
         let filter_suspended_threads = session_info.get_parameter::<bool>("filter_suspended_threads").unwrap();
+        let caller_to_callee = session_info.get_parameter::<bool>("caller_to_callee").unwrap();
 
         let mut threads_by_context_hash = DashMap::<ThreadID, u64>::new();
         let mut tree = TreeNode::<FunctionID, usize>::new(0);
@@ -139,7 +153,7 @@ impl CpuHotpathProfiler {
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
             if clr.suspend_runtime().is_ok() {
                 info!("Suspend runtime");
-                Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, filter_suspended_threads, &mut tree);
+                Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee);
 
                 if clr.resume_runtime().is_err() {
                     error!("Can't resume runtime!");
