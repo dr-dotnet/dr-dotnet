@@ -1,6 +1,6 @@
 <img src="https://github.com/dr-dotnet/dr-dotnet/blob/master/res/logo.png" align="right" width="128" height="128">
 
-# Dr. Dotnet
+# Dr-Dotnet
 
 ![](https://img.shields.io/badge/build-passing-success)
 ![](https://img.shields.io/badge/tests-passing-success)    
@@ -8,7 +8,13 @@
 ![](https://img.shields.io/badge/macos-supported-success)
 ![](https://img.shields.io/badge/linux-supported-success)
 
-Dr. Dotnet is a profiling tool for .NET applications, created with a specific vision in mind. It aims to offer an alternative approach to conventional profiling methods, focusing on specific problem areas and providing flexibility for both local and remote profiling.
+Dr-Dotnet is a modern profiler for .NET
+### Features
+- Problem-focused
+- Cross-platform
+- Works both locally and remotely (well suited for both desktop and server applications)
+- Low overhead
+- Outputs lightweight, shareable and human-readable reports
 
 While traditional profilers often generate substantial amounts of data, making the process of identifying issues a complex task, Dr-Dotnet takes a different route. It is designed to help pinpoint root causes for problems such as memory leaks, deadlocks, CPU hotpaths, zombie threads, or stuck tasks. This approach aims to simplify the process of troubleshooting common issues and provides analysis results that are often compact enough to be summarized in a few lines or a table.
 
@@ -80,15 +86,15 @@ Here are the REST endpoints for consuming DrDotnet Web REST API:
 In development, you can launch the Web app and navigate to http://localhost:92/swagger to find the Swagger UI with accurate and complete documentation of the API.
 
 ### Configuration
-The REST API is enabled by default, but it can be disabled through an environment variable or a CLI argument. The UI can also be disabled, for instance if you want to use DrDotnet exclusively for its REST API.
+The REST API is enabled by default, but it can be disabled through an environment variable or a CLI argument. The UI can also be disabled, for instance, if you want to use DrDotnet exclusively for its REST API.
 - `WEB_UI_ENABLED=false` or `--no-web-ui` arg will disable web UI (only REST API)
 - `REST_API_ENABLED=false` or `--no-rest-api` arg will disable REST API (only web UI)
 
 # Profiling guidelines
 
-Dr. Dotnet's approach to profiling is an analogy to visiting the doctor: you usually expose your symptoms (headache, cough, ...) to a doctor, and he makes his short and human-readable diagnosis.
+Dr-Dotnet's approach to profiling is an analogy to visiting the doctor: you usually expose your symptoms (headache, cough, ...) to a doctor, and he makes his short and human-readable diagnosis.
 
-In the context of a dotnet application, the symptoms are unwanted things you can observe from simple metrics (high CPU usage, memory leak, ...). From that observation, by using the right profiler(s), Dr. Dotnet will output a short and problem-focused diagnosis.
+In the context of a dotnet application, the symptoms are unwanted things you can observe from simple metrics (high CPU usage, memory leak, ...). From that observation, by using the right profiler(s), Dr-Dotnet will output a short and problem-focused diagnosis.
 
 ## What profiler to use?
 
@@ -96,43 +102,33 @@ Here are some non-exhaustive recommendations on what to do depending on observat
 | Observations | Profiler to use | Additional recommendations |
 |---|---|---|
 | Gen 2 memory increases over time, and hardly only goes down with a restart. This is a sign of a **memory leak**. | GC Survivors | GC Survivors profiler will list objects in Gen 2 along with their most prominent retention paths. With this, any substantial memory leak should be visible: a high number of leaked objects will show up, and a very large object leaking as well (a lot of bytes will be retained) |
-| CPU usage is (abnormally) high | CPU Hotpaths | Identify CPU hotpaths with this rather classic sampled CPU usage profiling method. |
+| CPU usage is (abnormally) high | CPU Hotpaths | This profiler will walk through every thread stackframe at a fixed time interval. This "sampled" approach provides a relatively accurate view of where the CPU time is spent the most. Unlike many profilers using this method, it will also attempt to unlist suspended threads to display actual hotpaths with more accuracy. |
 | Thread starvation</br>High number of pending work item</br>Suspected deadlock | Merged Call Stacks | A merged call stacks view will show where each thread is at, merged by common call stacks. With this you should be able to see if a large number of threads are stuck on a given operation |
 | High 95p / 99p latency on a web API but low average latency | Runtime Pauses | It is likely that your application is spending a lot of time in GC. Pauses for GC may be rare, very long pauses can destroy your 95p / 99p SLOs. Runtime Pauses will show you the GC pauses and their duration. This won't help you find the root cause, but it might help you confirm this hypothesis. If you do observe long pauses, then you may want to check the "High allocation rate" case |
 | High memory usage for an app that deals with a lot of strings | Duplicated Strings | It is common for a dotnet app to have duplicated strings in memory (two or more strings with the same value, thus occupying more space than a single one would require). Use this profiler to see how much memory is wasted from such strings. The profiler will display their value, hopefully, it will help you find where these strings belong to begin your optimization work. A common solution is [string interning](https://learn.microsoft.com/en-us/dotnet/api/system.string.intern?view=net-7.0). |
-| High memory usage | GC Survivors | The GC survivors profiler will display major retention paths for gen 2 objects, along with retained bytes. This should help you identify which parts of your application uses the most memory without needing to dump the whole memory. |
-| Time spent in GC (abnormally) high</br>High allocation rate (via ETW) | Allocations by class (WIP) |  |
+| High memory usage | GC Survivors | The GC survivors profiler will display major retention paths for gen 2 objects, along with retained bytes. This should help you identify which parts of your application use the most memory without needing to dump the whole memory. |
 
 ## Need to go deeper?
 
 DrDotnet will make it easy to pinpoint common issues, but sometimes, you need to go deeper. In that case, you can use the following tools/resources:
 - [mem-doc by Maoni Stephens](https://github.com/Maoni0/mem-doc/blob/master/doc/.NETMemoryPerformanceAnalysis.md) for in-depth memory performance analysis
-- [dotnet-trace](https://docs.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-trace) for in-depth cpu time analysis
+- [dotnet-trace](https://docs.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-trace) for in-depth CPU time analysis
 - [dotnet-dump](https://docs.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-dump) for in-depth memory analysis
 - [JetBrains dotMemory (commercial)](https://www.jetbrains.com/dotmemory/?source=google&medium=cpc&campaign=12509621702&term=dotmemory&content=504866862913&gad=1&gclid=CjwKCAjwp6CkBhB_EiwAlQVyxSKUJ6qk5EIm18hjQzuar_1wT-todzOGCkCQwu3Z6jZWvF_Bxg0d1hoCm0UQAvD_BwE)
-
-# Profilers
-## CPU Hotpaths
-## Duplicated Strings
-## GC Survivors
-## Merged Call Stacks
-## Runtime Pauses
-## Thrown Exceptions
 
 # Contributing
 
 ## How to contribute
 
-- Checkout the [Code of Conduct](code-of-conduct.md)
 - Make a Github issue
   - If you observed a bug, please indicate the reproduction steps and the Dr-Dotnet version you were using.
   - If you want to propose changes or new features
-    - Checkout the [Project Spirit](##project-spirit)
+    - Checkout the [Project Spirit](#project-spirit)
     - If you want to propose a Pull Request
-      - Checkout the [architecture](achitecture.md) and the [building guidelines](BUILDING.md) to get started
+      - Check out the [architecture](#architecture) and the [building guidelines](#building) to get started
       - Make sure it builds and that tests are passing
-
-Also checkout the [CI/CD](ci-cd.md) for more information on how versioning and releases work.
+      - Don't mix topics in a PR. One PR addressed one topic (eg: code formatting is one topic, fixing a bug is another)
+      - Check out the [CI/CD](#ci--cd) for more information on how versioning and releases work.
 
 ## Project Spirit
 
@@ -251,24 +247,24 @@ The recommended workflow is the following:
 
 The `DrDotnet.csproj` project has a prebuild step that will try to build the Rust profilers. If it fails, you'll find the Rust compiler output in the Output window for instance if you are using Visual Studio. You usually don't need to use cargo commands yourself directly at this first stage.
 
-You can also simply use dotnet build or dotnet run if you are more a CLI person 😊
+You can also simply use dotnet build or dotnet run if you are more of a CLI person 😊
 
 ## How to create new profilers
 
 The `DrDotnet.sln` links to the Rust part which is ann in the `src/DrDotnet.Profilers` directory.   
-The Rust codebase is divider in two projects:
+The Rust codebase is divided into two projects:
 - `profilers` is where all profilers are
-- `profiling_api` is where is CLR profiling API bindings are (it wraps the unsafe pointed based C syntax and brings some safety and convenience to it)
+- `profiling_api` is where CLR profiling API bindings are (it wraps the unsafe pointed-based C syntax and brings some safety and convenience to it)
 
-To create a new profiler, checkout `src/DrDotnet.Profilers/profilers/src/profilers/` and checkout any profiler. You can basically duplicate one and change its UUID (make it unique). Then, head to `src/DrDotnet.Profilers/profilers/src/lib.rs/` and add the new profiler in the `register!` macro. Then you're good to go, you can now start using the CLR Profiling API. Checkout [the official documentation to get started](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/profiling-interfaces).
+To create a new profiler, check out `src/DrDotnet.Profilers/profilers/src/profilers/` and checkout any profiler. You can duplicate one and change its UUID (make it unique). Then, head to `src/DrDotnet.Profilers/profilers/src/lib.rs/` and add the new profiler to the `register!` macro. Then you're good to go, you can now start using the CLR Profiling API. Check out [the official documentation to get started](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/profiling-interfaces).
 I also recommend checking our [Christophe Nasarre blog posts](https://chnasarre.medium.com/start-a-journey-into-the-net-profiling-apis-40c76e2e36cc) for a more "friendly" introduction to this API ;)    
 
 Note: You'll need to set `is_released` in your profiler to true if you want to be able to view your profiler in the C# UI when built in release mode.    
-Another note: DrDotnet attaches to an already running process, meaning that not all callbacks are usable, only those who can be enable after attaching. See the flags [here](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration) and [here](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-high-monitor-enumeration).
+Another note: DrDotnet attaches to an already running process, meaning that not all callbacks are usable, only those that can be enabled after attaching. See the flags [here](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-monitor-enumeration) and [here](https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/cor-prf-high-monitor-enumeration).
 
 ### Useful Links
 
-If you take on an adventure to develop / improve profilers, here are few useful links to get into the swing of things:
+If you take on an adventure to develop/improve profilers, here are a few useful links to get into the swing of things:
 
 - [Pavel Yosifovich — Writing a .NET Core cross platform profiler in an hour](https://www.youtube.com/watch?v=TqS4OEWn6hQ)
 - [Pavel Yosifovich — DotNext Moscou 2019 Source Code](https://github.com/zodiacon/DotNextMoscow2019)
@@ -292,7 +288,7 @@ In the Dr-Dotnet UI, the version is displayed in the header. That version is tak
 
 ### How to test/experiment
 
-Follow the [building guidelines](BUILDING.md) to build the project. Then you should already be able to test and experiment with things locally, either by starting the desktop or the web version.
+Follow the [building guidelines](#building) to build the project. Then you should already be able to test and experiment with things locally, either by starting the desktop or the web version.
 
 Release candidates and other experimental versions can be pushed to Docker Hub by manually triggering a dev deployment on the `on-commit` workflow. This can only happen for non-master branches. The docker image will be tagged `x.x.x.build_id-branch_name` (for instance `0.145.23.1234-my-branch`).
 
