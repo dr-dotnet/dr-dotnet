@@ -1817,7 +1817,7 @@ impl CorProfilerInfo9 for ClrProfilerInfo {
     }
 }
 impl CorProfilerInfo10 for ClrProfilerInfo {
-    fn enumerate_object_references(&self, object_id: ObjectID, callback: ObjectReferenceCallback, client_data: *const std::ffi::c_void) -> Result<(), HRESULT> {
+    fn enumerate_object_references(&self, object_id: ObjectID, callback: ObjectReferenceCallback, client_data: *mut std::ffi::c_void) -> Result<(), HRESULT> {
         let hr = unsafe { self.info().EnumerateObjectReferences(object_id, callback, client_data) };
 
         match hr {

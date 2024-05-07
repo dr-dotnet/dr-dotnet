@@ -168,7 +168,7 @@ pub type StackSnapshotCallback = unsafe extern "system" fn(
     context: *const BYTE,
     clientData: *mut c_void,
 ) -> HRESULT;
-pub type ObjectReferenceCallback = unsafe extern "system" fn(root: ObjectID, reference: *const ObjectID, clientData: *const c_void) -> BOOL;
+pub type ObjectReferenceCallback = unsafe extern "system" fn(root: ObjectID, reference: *const ObjectID, clientData: *mut c_void) -> BOOL;
 
 // profiler types
 #[repr(C)]

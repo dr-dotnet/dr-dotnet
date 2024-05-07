@@ -5,7 +5,7 @@ use crate::{
 use std::ffi::c_void;
 
 pub trait CorProfilerInfo10: CorProfilerInfo9 {
-    fn enumerate_object_references(&self, object_id: ObjectID, callback: ObjectReferenceCallback, client_data: *const c_void) -> Result<(), HRESULT>;
+    fn enumerate_object_references(&self, object_id: ObjectID, callback: ObjectReferenceCallback, client_data: *mut c_void) -> Result<(), HRESULT>;
     fn is_frozen_object(&self, object_id: ObjectID) -> Result<bool, HRESULT>;
     fn get_loh_object_size_threshold(&self) -> Result<u32, HRESULT>;
     fn request_rejit_with_inliners(

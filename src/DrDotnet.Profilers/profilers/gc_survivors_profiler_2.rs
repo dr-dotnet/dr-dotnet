@@ -1,3 +1,16 @@
+// Idea is the following:
+// - Trigger a compacting GC using force_gc()
+// - Store root references using root_references_2() callback
+// - When GC is over, build dependency tree using enumerate_object_references()
+//   Here are the challenges:
+//   - When to stop recursion?
+//   - How to handle cycles?
+//   - Storing ObjectID at this stage will be too memory intensive, can we store ClassID instead?
+//
+//   Idea: Have a Tree of ClassID/HashSet<ClassID, Node>
+//   For every object reference, we 
+
+
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -14,10 +27,10 @@ use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::{TreeNode, CachedNameResolver, NameResolver};
+use crate::utils::{CachedNameResolver, NameResolver, ObjectReferencesCallbackReceiver, TreeNode};
 
 #[derive(Default)]
-pub struct GCSurvivorsProfiler {
+pub struct GCSurvivorsProfiler2 {
     name_resolver: CachedNameResolver,
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
@@ -53,7 +66,7 @@ impl Display for References {
     }
 }
 
-impl Profiler for GCSurvivorsProfiler {
+impl Profiler for GCSurvivorsProfiler2 {
     profiler_getset!();
 
     fn profiler_info() -> ProfilerInfo {
@@ -69,14 +82,6 @@ impl Profiler for GCSurvivorsProfiler {
                     description: "If true, sort the results by inclusive size (bytes). Otherwise, sort by inclusive instances count.".to_owned(),
                     type_: ParameterType::BOOLEAN.into(),
                     value: "true".to_owned(),
-                    ..std::default::Default::default()
-                },
-                ProfilerParameter {
-                    name: "Sort multi-threaded".to_owned(),
-                    key: "sort_multithreaded".to_owned(),
-                    description: "If true, sort the results with a multi-threaded methode. Otherwise, sort with an iterative method.".to_owned(),
-                    type_: ParameterType::BOOLEAN.into(),
-                    value: "false".to_owned(),
                     ..std::default::Default::default()
                 },
                 ProfilerParameter { 
@@ -101,9 +106,18 @@ impl Profiler for GCSurvivorsProfiler {
     }
 }
 
-impl GCSurvivorsProfiler
+impl ObjectReferencesCallbackReceiver for GCSurvivorsProfiler2 {
+    type AssociatedType = GCSurvivorsProfiler2;
+
+    fn callback(&mut self, referencer: ObjectID, reference: ObjectID) {
+        
+    }
+}
+
+impl GCSurvivorsProfiler2
 {
-    fn fill_tree(&self, node: &mut TreeNode<ClassID, References>, depth: usize, max_depth: usize, minimum_bytes: usize) { // MAYBE WE MISSE SOMETHING HERE
+    fn fill_tree(&self, node: &mut TreeNode<ClassID, References>, depth: usize, max_depth: usize, minimum_bytes: usize) {
+        // MAYBE WE MISS SOMETHING HERE
         let mut node_map: HashMap<ClassID, HashMap<ObjectID, usize>> = HashMap::default();
    
         if depth > max_depth {
@@ -160,11 +174,11 @@ impl GCSurvivorsProfiler
             // }
 
             // in fact this method is garbage because we can't really discard at this stage, we don't know yet what the final retained bytes is
-            let total_retained_objects: usize = roots.values().len();
-            if total_retained_objects < 10 {
+            //let total_retained_objects: usize = roots.values().len();
+            //if total_retained_objects < 10 {
                 // Skip
-                continue;
-            }
+            //    continue;
+            //}
 
             let mut new_node = TreeNode { key: class_id, value: Some(References { 0: roots }), children: Vec::new() };
             self.fill_tree(&mut new_node, depth + 1, max_depth, minimum_bytes);
@@ -173,51 +187,113 @@ impl GCSurvivorsProfiler
         }
     }
 
-   // Post-process tracked persisting references
+    fn dodo(&self, parent_node: &mut TreeNode<ClassID, References>, object_id: ObjectID, depth: usize, max_depth: usize)
+    {
+        let info = self.clr();
+
+        if let Ok(class_id) = info.get_class_from_object(object_id) {
+
+            let child_node = if let Some(i) = parent_node.children.iter().position(|child| child.key.eq(&class_id)) {
+                &mut parent_node.children[i]
+            } else {
+                let new_child = TreeNode::new(class_id);
+                parent_node.children.push(new_child);
+                let len = parent_node.children.len();
+                &mut parent_node.children[len - 1]
+            };
+
+            let size = info.get_object_size_2(object_id).unwrap_or(0);
+            match child_node.value {
+                None => {
+                    child_node.value = Some(References(HashMap::new()));
+                    child_node.value.as_mut().unwrap().0.insert(object_id, size);
+                },
+                Some(_) => {
+                    let r = &mut child_node.value.as_mut().unwrap();
+                    r.0.insert(object_id, size);
+                }
+            }
+
+            if depth > max_depth {
+                // Keep this node as-is, don't drill further
+                return;
+            }
+
+            let references = Vec::<ObjectID>::new();
+
+            // We must pass this data as a pointer for callback to mutate it with actual object references ids
+            let references_ptr_c = &references as *const Vec<ObjectID> as *mut std::ffi::c_void;
+    
+            let _ = self.clr().enumerate_object_references(
+                object_id,
+                crate::utils::enum_references_callback,
+                references_ptr_c
+            );
+
+            for i in 0..references.len() {
+                self.dodo(child_node, references[i], depth + 1, max_depth);
+            }
+        }
+    }
+
+    // Post-process tracked persisting references
     fn build_sequences(&mut self) -> TreeNode<ClassID, References>
     {
         info!("Building graph of surviving references... {} roots to process", self.root_objects.len());
 
         let now = std::time::Instant::now();
 
-        let info = self.clr();
-
         let mut tree = TreeNode::new(0);
 
-        let mut node_map: HashMap<ClassID, HashMap<ObjectID, usize>> = HashMap::default();
-   
         for object_id in self.root_objects.iter() {
-            if let Ok(class_id) = info.get_class_from_object(*object_id) {
-                node_map.entry(class_id)
-                    .and_modify(|roots| {
-                        roots.insert(*object_id, 0);
-                    })
-                    .or_insert_with(|| {
-                        let mut roots: HashMap<ObjectID, usize> = HashMap::default();
-                        roots.insert(*object_id, 0);
-                        roots
-                    });
-            }
-        }
 
-        for (class_id, roots) in node_map {
-            // let total_retained_bytes: usize = roots.values().sum();
-            // if total_retained_bytes < 0 {
-            //     // Skip
-            //     continue;
+            self.dodo(&mut tree, *object_id, 0, 6);
+            // if let Ok(class_id) = info.get_class_from_object(*object_id) {
+
+            //     let child = if let Some(i) = tree.children.iter().position(|child| child.key.eq(&class_id)) {
+            //         &mut tree.children[i]
+            //     } else {
+            //         let new_child = TreeNode::new(class_id);
+            //         tree.children.push(new_child);
+            //         let len = tree.children.len();
+            //         &mut tree.children[len - 1]
+            //     };
+
+                // let class_name = self.name_resolver.get_class_name(class_id);
+                // info!("Root object: {}", class_name);
+
+                // node_map.entry(class_id)
+                //     .and_modify(|roots| {
+                //         roots.insert(*object_id, 0);
+                //     })
+                //     .or_insert_with(|| {
+                //         let mut roots: HashMap<ObjectID, usize> = HashMap::default();
+                //         roots.insert(*object_id, 0);
+                //         roots
+                //     });
             // }
-
-            let total_retained_objects: usize = roots.values().len();
-            if total_retained_objects < 10 {
-                // Skip
-                continue;
-            }
-
-            let mut new_node = TreeNode { key: class_id, value: Some(References { 0: roots }), children: Vec::new() };
-            self.fill_tree(&mut new_node, 0, 10, 1000);
-
-            tree.children.push(new_node);
         }
+
+        info!("Tree built");
+
+        // for (class_id, roots) in node_map {
+        //     // let total_retained_bytes: usize = roots.values().sum();
+        //     // if total_retained_bytes < 0 {
+        //     //     // Skip
+        //     //     continue;
+        //     // }
+
+        //     let total_retained_objects: usize = roots.values().len();
+        //     if total_retained_objects < 10 {
+        //         // Skip
+        //         continue;
+        //     }
+
+        //     let mut new_node = TreeNode { key: class_id, value: Some(References { 0: roots }), children: Vec::new() };
+        //     self.fill_tree(&mut new_node, 0, 10, 1000);
+
+        //     tree.children.push(new_node);
+        // }
 
         info!("Graph built in {} ms", now.elapsed().as_millis());
 
@@ -249,19 +325,20 @@ impl GCSurvivorsProfiler
         // Start by sorting the tree "roots" (only the first level of childrens)
         tree.children.sort_by(compare);
 
+        tree.log(0, &|node: &TreeNode<usize, References>| {
+            let total_size: usize = node.get_inclusive_value().0.values().sum();
+            let total_objects: usize = node.get_inclusive_value().0.len();
+            let class_name = self.name_resolver.get_class_name(node.key);
+            format!("{} / {} objects, {} bytes", class_name, total_objects, total_size)
+        });
+
         // Keep the first "max_types_display" roots
         let mut max_types_display = self.session_info().get_parameter::<usize>("max_types_display").unwrap();
         max_types_display = min(max_types_display, tree.children.len());
         tree.children.truncate(max_types_display);
 
         // Then sort the whole tree (all levels of childrens)
-        let sort_multithreaded = self.session_info().get_parameter::<bool>("sort_multithreaded").unwrap();
-        if sort_multithreaded {
-            tree.sort_by_multithreaded(compare);
-        }
-        else {
-            tree.sort_by_iterative(compare);
-        }
+        tree.sort_by_iterative(compare);
  
         info!("Tree sorted in {} ms", now.elapsed().as_millis());
     }
@@ -317,9 +394,9 @@ impl GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback for GCSurvivorsProfiler {}
+impl CorProfilerCallback for GCSurvivorsProfiler2 {}
 
-impl CorProfilerCallback2 for GCSurvivorsProfiler
+impl CorProfilerCallback2 for GCSurvivorsProfiler2
 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
         info!("garbage_collection_started on gen {} for reason {:?}", ClrProfilerInfo::get_gc_gen(&generation_collected), reason);
@@ -380,7 +457,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler
     }
 }
 
-impl CorProfilerCallback3 for GCSurvivorsProfiler
+impl CorProfilerCallback3 for GCSurvivorsProfiler2
 {
     fn initialize_for_attach(&mut self, profiler_info: ClrProfilerInfo, client_data: *const std::os::raw::c_void, client_data_length: u32) -> Result<(), HRESULT> {
         self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
@@ -404,15 +481,15 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler
         }).join();
         
         // Security timeout
-        detach_after_duration::<GCSurvivorsProfiler>(&self, 320);
+        detach_after_duration::<GCSurvivorsProfiler2>(&self, 320);
 
         Ok(())
     }
 }
 
-impl CorProfilerCallback4 for GCSurvivorsProfiler {}
-impl CorProfilerCallback5 for GCSurvivorsProfiler {}
-impl CorProfilerCallback6 for GCSurvivorsProfiler {}
-impl CorProfilerCallback7 for GCSurvivorsProfiler {}
-impl CorProfilerCallback8 for GCSurvivorsProfiler {}
-impl CorProfilerCallback9 for GCSurvivorsProfiler {}
+impl CorProfilerCallback4 for GCSurvivorsProfiler2 {}
+impl CorProfilerCallback5 for GCSurvivorsProfiler2 {}
+impl CorProfilerCallback6 for GCSurvivorsProfiler2 {}
+impl CorProfilerCallback7 for GCSurvivorsProfiler2 {}
+impl CorProfilerCallback8 for GCSurvivorsProfiler2 {}
+impl CorProfilerCallback9 for GCSurvivorsProfiler2 {}

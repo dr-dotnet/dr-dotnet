@@ -1,6 +1,9 @@
 pub mod stack_snapshot_receiver;
 pub use stack_snapshot_receiver::*;
 
+pub mod object_references_receiver;
+pub use object_references_receiver::*;
+
 pub mod tree;
 pub use tree::*;
 
