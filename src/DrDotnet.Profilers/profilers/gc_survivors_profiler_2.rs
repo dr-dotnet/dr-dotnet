@@ -16,10 +16,8 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
-use std::process::Child;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
-use dashmap::DashMap;
 use thousands::{digits, Separable, SeparatorPolicy};
 
 use crate::ffi::*;
@@ -27,7 +25,7 @@ use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
 use crate::session::Report;
-use crate::utils::{CachedNameResolver, NameResolver, ObjectReferencesCallbackReceiver, TreeNode};
+use crate::utils::{CachedNameResolver, NameResolver, ObjectReferencesCallbackReceiver, SimpleHasher, TreeNode};
 
 #[derive(Default)]
 pub struct GCSurvivorsProfiler2 {
@@ -39,7 +37,7 @@ pub struct GCSurvivorsProfiler2 {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct References(HashMap<ObjectID, usize>);
+pub struct References(HashMap<ObjectID, usize, BuildHasherDefault<SimpleHasher>>);
 
 // Implement AddAssign for get_inclusive_value to be usable
 impl AddAssign<&References> for References {
@@ -116,78 +114,7 @@ impl ObjectReferencesCallbackReceiver for GCSurvivorsProfiler2 {
 
 impl GCSurvivorsProfiler2
 {
-    fn fill_tree(&self, node: &mut TreeNode<ClassID, References>, depth: usize, max_depth: usize, minimum_bytes: usize) {
-        // MAYBE WE MISS SOMETHING HERE
-        let mut node_map: HashMap<ClassID, HashMap<ObjectID, usize>> = HashMap::default();
-   
-        if depth > max_depth {
-            // Keep this node as-is, don't drill further
-            return;
-        }
-
-        let info = self.clr();
-
-        let mut references = Vec::<ObjectID>::new();
-
-        if let Some(objects) = &node.value {
-            for (object_id, size) in &objects.0 {
-                references.clear();
-                // We must pass this data as a pointer for callback to mutate it with actual object references ids
-                let references_ptr_c = &references as *const Vec<ObjectID> as *mut std::ffi::c_void;
-    
-                let _ = info.enumerate_object_references(
-                    *object_id, 
-                    crate::utils::enum_references_callback,
-                    references_ptr_c
-                );    
-    
-                if references.len() == 0 {
-                    // We reached the end of a path, copy the branch and add it to our branches, but only if final object lies in gen 2
-                } else {
-                    // Push new referencers if we are within our allowed depth
-                    for i in 0..references.len() {
-                        if let Ok(class_id) = info.get_class_from_object(references[i]) {
-
-                            let size = info.get_object_size_2(references[i]).unwrap_or(0);
-
-                            node_map.entry(class_id)
-                                .and_modify(|roots| {
-                                    roots.insert(references[i], size);
-                                })
-                                .or_insert_with(|| {
-                                    let mut roots: HashMap<ObjectID, usize> = HashMap::default();
-                                    roots.insert(references[i], size);
-                                    roots
-                                });
-    
-                        }
-                    }
-                }
-            }
-        }
-
-        for (class_id, roots) in node_map {
-            // let total_retained_bytes: usize = roots.values().sum();
-            // if total_retained_bytes < 0 {
-            //     // Skip
-            //     continue;
-            // }
-
-            // in fact this method is garbage because we can't really discard at this stage, we don't know yet what the final retained bytes is
-            //let total_retained_objects: usize = roots.values().len();
-            //if total_retained_objects < 10 {
-                // Skip
-            //    continue;
-            //}
-
-            let mut new_node = TreeNode { key: class_id, value: Some(References { 0: roots }), children: Vec::new() };
-            self.fill_tree(&mut new_node, depth + 1, max_depth, minimum_bytes);
-
-            node.children.push(new_node);
-        }
-    }
-
-    fn dodo(&self, parent_node: &mut TreeNode<ClassID, References>, object_id: ObjectID, depth: usize, max_depth: usize)
+    fn gather_references_recursive(&self, parent_node: &mut TreeNode<ClassID, References>, object_id: ObjectID, depth: usize, max_depth: usize)
     {
         let info = self.clr();
 
@@ -205,7 +132,7 @@ impl GCSurvivorsProfiler2
             let size = info.get_object_size_2(object_id).unwrap_or(0);
             match child_node.value {
                 None => {
-                    child_node.value = Some(References(HashMap::new()));
+                    child_node.value = Some(References(HashMap::default()));
                     child_node.value.as_mut().unwrap().0.insert(object_id, size);
                 },
                 Some(_) => {
@@ -224,78 +151,44 @@ impl GCSurvivorsProfiler2
             // We must pass this data as a pointer for callback to mutate it with actual object references ids
             let references_ptr_c = &references as *const Vec<ObjectID> as *mut std::ffi::c_void;
     
-            let _ = self.clr().enumerate_object_references(
+            let _ = info.enumerate_object_references(
                 object_id,
                 crate::utils::enum_references_callback,
                 references_ptr_c
             );
 
             for i in 0..references.len() {
-                self.dodo(child_node, references[i], depth + 1, max_depth);
+                self.gather_references_recursive(child_node, references[i], depth + 1, max_depth);
             }
+
+            // if depth == 0 {
+            //     // Remove the worthless root nodes
+            //     parent_node.children.retain(|x| {
+            //         if let Some(value) = &x.value {
+            //             value.0.len() > 10
+            //         } else {
+            //             false
+            //         }
+            //     });
+            // }
         }
     }
 
-    // Post-process tracked persisting references
-    fn build_sequences(&mut self) -> TreeNode<ClassID, References>
+    fn build_tree(&mut self) -> TreeNode<ClassID, References>
     {
-        info!("Building graph of surviving references... {} roots to process", self.root_objects.len());
+        info!("Building tree of surviving references... {} roots to process", self.root_objects.len());
 
         let now = std::time::Instant::now();
 
         let mut tree = TreeNode::new(0);
 
+        let max_retention_depth = self.session_info().get_parameter::<usize>("max_retention_depth").unwrap();
+
         for object_id in self.root_objects.iter() {
-
-            self.dodo(&mut tree, *object_id, 0, 6);
-            // if let Ok(class_id) = info.get_class_from_object(*object_id) {
-
-            //     let child = if let Some(i) = tree.children.iter().position(|child| child.key.eq(&class_id)) {
-            //         &mut tree.children[i]
-            //     } else {
-            //         let new_child = TreeNode::new(class_id);
-            //         tree.children.push(new_child);
-            //         let len = tree.children.len();
-            //         &mut tree.children[len - 1]
-            //     };
-
-                // let class_name = self.name_resolver.get_class_name(class_id);
-                // info!("Root object: {}", class_name);
-
-                // node_map.entry(class_id)
-                //     .and_modify(|roots| {
-                //         roots.insert(*object_id, 0);
-                //     })
-                //     .or_insert_with(|| {
-                //         let mut roots: HashMap<ObjectID, usize> = HashMap::default();
-                //         roots.insert(*object_id, 0);
-                //         roots
-                //     });
-            // }
+            self.gather_references_recursive(&mut tree, *object_id, 0, max_retention_depth);
         }
 
-        info!("Tree built");
-
-        // for (class_id, roots) in node_map {
-        //     // let total_retained_bytes: usize = roots.values().sum();
-        //     // if total_retained_bytes < 0 {
-        //     //     // Skip
-        //     //     continue;
-        //     // }
-
-        //     let total_retained_objects: usize = roots.values().len();
-        //     if total_retained_objects < 10 {
-        //         // Skip
-        //         continue;
-        //     }
-
-        //     let mut new_node = TreeNode { key: class_id, value: Some(References { 0: roots }), children: Vec::new() };
-        //     self.fill_tree(&mut new_node, 0, 10, 1000);
-
-        //     tree.children.push(new_node);
-        // }
-
-        info!("Graph built in {} ms", now.elapsed().as_millis());
+        info!("Tree built in {} ms", now.elapsed().as_millis());
 
         tree
     }
@@ -304,7 +197,7 @@ impl GCSurvivorsProfiler2
         info.get_object_generation(object_id).map_or(false, |gen_info| gen_info.generation == ffi::COR_PRF_GC_GENERATION::COR_PRF_GC_GEN_2)
     }
 
-    fn build_tree(&self, tree: &mut TreeNode<usize, References>)
+    fn sort_tree(&self, tree: &mut TreeNode<usize, References>)
     {
         info!("Sorting tree");
 
@@ -424,8 +317,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2
             Err(hresult) => error!("Error setting event mask: {:?}", hresult)
         }
 
-        let mut tree = self.build_sequences();
-        self.build_tree(&mut tree);
+        let mut tree = self.build_tree();
+        self.sort_tree(&mut tree);
         let _ = self.write_report(tree);
         
         // We're done, we can detach :)
