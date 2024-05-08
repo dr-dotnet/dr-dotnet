@@ -17,17 +17,20 @@ mod rust_protobuf_protos {
     include!(concat!(env!("OUT_DIR"), "/rust_protobuf_protos/mod.rs"));
 }
 
-// Create function to list and attach profilers
 register!(
-    GCSurvivorsProfiler,
-    GCSurvivorsProfiler2,
     ExceptionsProfiler,
     AllocationByClassProfiler,
-    MemoryLeakProfiler,
     RuntimePauseProfiler,
     CpuHotpathProfiler,
     DuplicatedStringsProfiler,
     MergedCallStacksProfiler
+);
+
+#[cfg(feature = "include_unreleased")]
+register!(
+    GCSurvivorsProfiler,
+    GCSurvivorsProfiler2,
+    MemoryLeakProfiler
 );
 
 // Actual COM entry point

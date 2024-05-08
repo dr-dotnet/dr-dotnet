@@ -7,6 +7,10 @@ license = "MIT"
 repository = "https://github.com/ogxd/dr-dotnet"
 build = "build.rs"
 
+[features]
+default = []
+include_unreleased = []
+
 [dependencies]
 uuid = { version = "0.8", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }

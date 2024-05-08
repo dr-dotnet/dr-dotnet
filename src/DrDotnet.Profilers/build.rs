@@ -1,6 +1,8 @@
 fn main() {
-    // For debugging purpose:
-    //panic!("[build.rs] VERSION={:?}", std::env::var("VERSION"));
+
+    if std::env::var("INCLUDE_UNRELEASED").unwrap_or_default() == "1" {
+        println!("cargo:rustc-cfg=feature=\"include_unreleased\"");
+    }
 
     if let Ok(val) = std::env::var("VERSION") {
         println!("cargo:rustc-env=CARGO_PKG_VERSION={}", val);

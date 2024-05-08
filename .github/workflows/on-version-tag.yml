@@ -62,6 +62,7 @@ jobs:
     env:
       VERSION: ${{ github.ref_name }}
       BUILD_NUMBER: ${{ github.run_number }}
+      INCLUDE_UNRELEASED: ${{ inputs.suffix == '' && '1' || '0' }}
 
     steps:
       - name: Checkout

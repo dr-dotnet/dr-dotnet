@@ -31,6 +31,7 @@ runs:
     - name: Publish
       shell: bash
       env:
+        INCLUDE_UNRELEASED: ${{ inputs.suffix == '' && '1' || '0' }}
         VERSION: ${{ inputs.version }}
         BUILD_NUMBER: ${{ github.run_number }}
       run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
