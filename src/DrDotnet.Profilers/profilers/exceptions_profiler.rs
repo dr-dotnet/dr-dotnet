@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
-use crate::utils::CachedNameResolver;
 use crate::utils::NameResolver;
 
 #[derive(Default)]
@@ -40,7 +39,7 @@ impl CorProfilerCallback for ExceptionsProfiler {
     fn exception_thrown(&mut self, thrown_object_id: ffi::ObjectID) -> Result<(), ffi::HRESULT> {
         let clr = self.clr();
         let name = match clr.get_class_from_object(thrown_object_id) {
-            Ok(class_id) => clr.clone().get_class_name(class_id),
+            Ok(class_id) => clr.get_class_name(class_id),
             _ => "unknown".to_owned(),
         };
 

@@ -64,7 +64,7 @@ impl Profiler for GCSurvivorsProfiler {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E86".to_owned(),
             name: "GC Survivors".to_owned(),
             description: "Todo.".to_owned(),
-            is_released: true,
+            is_released: false,
             parameters: vec![
                 ProfilerParameter {
                     name: "Sort by size".to_owned(),

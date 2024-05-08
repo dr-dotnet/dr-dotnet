@@ -14,7 +14,7 @@ pub mod gc_survivors_profiler;
 pub use gc_survivors_profiler::GCSurvivorsProfiler;
 
 pub mod gc_survivors_profiler_2;
-pub use gc_survivors_profiler_2::GCSurvivorsProfiler2 as GCSurvivorsProfiler2;
+pub use gc_survivors_profiler_2::GCSurvivorsProfiler2;
 
 pub mod cpu_hotpath_profiler;
 pub use cpu_hotpath_profiler::CpuHotpathProfiler;

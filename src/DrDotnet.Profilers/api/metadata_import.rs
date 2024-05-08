@@ -1,12 +1,12 @@
 use crate::{
     api::ffi::HCORENUM,
-    ffi::{mdMethodDef, CorMethodAttr, CorMethodImpl, CorTypeAttr, MetaDataImport as FFIMetaDataImport, HRESULT, HRESULT::S_OK, WCHAR},
+    ffi::{mdMethodDef, CorMethodAttr, CorMethodImpl, CorTypeAttr, MetaDataImport as FFIMetaDataImport, HRESULT, WCHAR},
     MetadataImportTrait, MethodProps, TypeProps,
 };
 use std::{mem::MaybeUninit, ptr};
 use widestring::U16CString;
 
-use super::ffi::{mdGenericParam, mdTypeDef};
+use super::ffi::mdGenericParam;
 
 #[derive(Clone)]
 pub struct MetadataImport {

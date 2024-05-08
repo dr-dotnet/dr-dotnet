@@ -29,13 +29,13 @@ fn build_random_sequences() -> HashMap<Vec<FunctionID>, Threads> {
     let mut sequences: HashMap<Vec<FunctionID>, Threads> = HashMap::new();
 
     // Build some random sequences
-    for i in 0..100000 {
+    for _ in 0..100000 {
         let mut func_ids: Vec<FunctionID> = Vec::new();
-        for j in 0..r.gen_range(3..10) {
+        for _ in 0..r.gen_range(3..10) {
             func_ids.push(r.gen_range(1..100));
         }
         let mut thread_ids: Vec<ThreadID> = Vec::new();
-        for j in 0..r.gen_range(3..10) {
+        for _ in 0..r.gen_range(3..10) {
             thread_ids.push(r.gen_range(1..100));
         }
         sequences.insert(func_ids, Threads(thread_ids));

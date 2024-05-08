@@ -878,7 +878,7 @@ impl CorProfilerInfo2 for ClrProfilerInfo {
 
         match hr {
             HRESULT::S_OK => {
-                let class_id = unsafe { class_id };
+                let class_id = class_id;
                 Ok(class_id)
             }
             _ => {

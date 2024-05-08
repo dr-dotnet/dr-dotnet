@@ -21,7 +21,7 @@ impl Profiler for AllocationByClassProfiler {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E84".to_owned(),
             name: "Allocations by Class".to_owned(),
-            description: "For now, just allocations by class".to_owned(),
+            description: "Just allocations by class".to_owned(),
             is_released: true,
             ..std::default::Default::default()
         };
@@ -30,7 +30,6 @@ impl Profiler for AllocationByClassProfiler {
 
 impl CorProfilerCallback for AllocationByClassProfiler {
     fn objects_allocated_by_class(&mut self, class_ids: &[ffi::ClassID], num_objects: &[u32]) -> Result<(), ffi::HRESULT> {
-        // TODO: https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo10-enumerateobjectreferences-method
         for i in 0..class_ids.len() {
             let clr = self.clr();
             let name = clr.clone().get_class_name(class_ids[i]);
@@ -53,7 +52,7 @@ impl CorProfilerCallback for AllocationByClassProfiler {
 }
 
 impl CorProfilerCallback2 for AllocationByClassProfiler {
-    fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
+    fn garbage_collection_started(&mut self, _generation_collected: &[ffi::BOOL], _reason: ffi::COR_PRF_GC_REASON) -> Result<(), ffi::HRESULT> {
         self.collections += 1;
 
         Ok(())

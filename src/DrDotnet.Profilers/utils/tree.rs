@@ -266,7 +266,7 @@ mod tests {
             ],
         };
 
-        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
+        let tree = TreeNode::build_from_sequences(&sequences, 0);
 
         println!("Unsorted:");
         print(&tree, 0, &|node: &TreeNode<u32, usize>| {

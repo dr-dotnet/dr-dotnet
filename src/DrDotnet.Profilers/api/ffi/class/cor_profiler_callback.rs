@@ -2,7 +2,7 @@
 use super::{CorProfilerAssemblyReferenceProvider, CorProfilerFunctionControl, CorProfilerInfo};
 use crate::api::AttachedStatus;
 use crate::profilers::Profiler;
-use crate::{ffi::*, profilers, traits::CorProfilerCallback9, ClrProfilerInfo};
+use crate::{ffi::*, ClrProfilerInfo};
 use std::{
     ffi::c_void,
     ptr, slice,

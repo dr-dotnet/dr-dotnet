@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 pub mod api;
 pub mod interop;
 pub mod macros;

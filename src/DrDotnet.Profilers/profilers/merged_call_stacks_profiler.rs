@@ -45,7 +45,7 @@ impl StackFrame {
     fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
         match frame.kind {
             StackFrameType::Native => "unmanaged".to_string(),
-            StackFrameType::Managed => unsafe { clr.clone().get_full_method_name(frame.fct_id) },
+            StackFrameType::Managed => clr.clone().get_full_method_name(frame.fct_id),
         }
     }
 }
@@ -58,7 +58,7 @@ impl MergedStack {
     pub fn add_stack(&mut self, clr: &ClrProfilerInfo, thread_id: ThreadID, stack_trace: Vec<StackFrame>, index: Option<usize>) {
         self.thread_ids.push(thread_id);
 
-        let mut index = index.unwrap_or(0);
+        let index = index.unwrap_or(0);
         let first_frame = &stack_trace[index];
 
         let mut merged_stack = self.stacks.iter_mut().find(|s| s.frame.fct_id == first_frame.fct_id);
@@ -92,9 +92,9 @@ impl MergedStack {
         self.write_stack(report, 0);
     }
 
-    fn write_html(&self, report: &mut Report, isSame: bool) {
+    fn write_html(&self, report: &mut Report, is_same: bool) {
         if self.stacks.is_empty() {
-            if !isSame {
+            if !is_same {
                 report.write(format!("\n</details>\n"));
                 report.write(self.render_as_html_summary());
                 report.write(format!("\n<details>\n\t"));
@@ -104,7 +104,7 @@ impl MergedStack {
             return;
         }
 
-        if !isSame {
+        if !is_same {
             report.write(format!("\n</details>\n"));
         }
 
@@ -135,7 +135,7 @@ impl MergedStack {
             }
         }
 
-        if isSame {
+        if is_same {
             report.write(self.render_as_html_li());
         } else {
             report.write(self.render_as_html_summary());
@@ -174,10 +174,6 @@ impl MergedStack {
         let count = self.thread_ids.len();
         let limit = min(count, NB_THREAD_IDS_TO_PRINT);
 
-        if limit < 0 {
-            return self.thread_ids.iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
-        }
-
         let mut result = self
             .thread_ids
             .get(..limit)
@@ -186,6 +182,7 @@ impl MergedStack {
             .map(|k| format!("{k}"))
             .collect::<Vec<String>>()
             .join(",");
+
         if count > limit {
             result += "...";
         }
