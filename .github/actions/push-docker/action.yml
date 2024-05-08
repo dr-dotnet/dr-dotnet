@@ -53,7 +53,7 @@ runs:
       env:
         VERSION: ${{ inputs.version }}
       shell: bash
-      run: docker build -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
+      run: docker build --build-arg="HIDE_UNRELEASED=1" -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
 
     - name: Docker Push
       shell: bash
