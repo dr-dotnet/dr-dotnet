@@ -1,6 +1,7 @@
 ﻿@page "/job/{ProcessId:int}/{ProfilerId:guid}"
 
 @using DrDotnet.Utils;
+@using Markdig
 @using Microsoft.Extensions.Logging
 
 @inject NavigationManager NavigationManager
@@ -23,7 +24,7 @@
         </div>
 
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
-            @Profiler.Description
+            @MarkdownStringToMarkup(Profiler.Description)
         </div>
         
         @if (Profiler.Parameters.Count > 0)
@@ -102,6 +103,11 @@
         base.OnInitialized();
         
         Profiler = ProfilerDiscovery.GetProfilers().FirstOrDefault(x => x.Guid == ProfilerId)!;
+    }
+    
+    private static MarkupString MarkdownStringToMarkup(string str)
+    {
+        return new MarkupString(Markdown.ToHtml(str, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()));
     }
 
     private void OnRunAnalysisClicked(object data)

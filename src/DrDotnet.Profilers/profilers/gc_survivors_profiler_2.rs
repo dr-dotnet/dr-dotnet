@@ -71,9 +71,8 @@ impl Profiler for GCSurvivorsProfiler2 {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A307B-061C-47F3-9B30-F795C3186E86".to_owned(),
-            name: "GC Survivors (from roots)".to_owned(),
-            description: "Alternative method using roots.".to_owned(),
-            is_released: false,
+            name: "List GC survivors V2".to_owned(),
+            description: "Wait for the next naturally occuring blocking gen 1 GC, and then lists surviving references. If no gen 1 GC occurred, this profiler will timeout after 360 seconds.\n\n*⚠️ Experimental*".to_owned(),
             parameters: vec![
                 ProfilerParameter {
                     name: "Sort by size".to_owned(),

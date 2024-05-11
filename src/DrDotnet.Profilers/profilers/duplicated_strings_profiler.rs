@@ -35,9 +35,8 @@ impl Profiler for DuplicatedStringsProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "bdaba522-104c-4343-8952-036bed81527d".to_owned(),
-            name: "Duplicated Strings".to_owned(),
+            name: "List duplicated strings".to_owned(),
             description: "List strings object with the same value by count".to_owned(),
-            is_released: true,
             parameters: vec![
                 ProfilerParameter {
                     name: "Top".to_owned(),

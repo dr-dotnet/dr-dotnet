@@ -19,9 +19,8 @@ impl Profiler for ExceptionsProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E82".to_owned(),
-            name: "Exceptions Profiler".to_owned(),
+            name: "Count thrown exceptions by type".to_owned(),
             description: "Lists occuring exceptions by importance.\nHandled exceptions are also listed.".to_owned(),
-            is_released: true,
             parameters: vec![ProfilerParameter {
                 name: "Duration".to_owned(),
                 key: "duration".to_owned(),

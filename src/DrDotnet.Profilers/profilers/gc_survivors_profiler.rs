@@ -62,9 +62,8 @@ impl Profiler for GCSurvivorsProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E86".to_owned(),
-            name: "GC Survivors".to_owned(),
-            description: "Todo.".to_owned(),
-            is_released: false,
+            name: "List GC survivors".to_owned(),
+            description: "Triggers a full block garbage collection, and then lists surviving references as a dependency tree.\n\n*⚠️ Experimental. This profiler can be very slow due to the huge amount of data it has to deal with.*".to_owned(),
             parameters: vec![
                 ProfilerParameter {
                     name: "Sort by size".to_owned(),

@@ -54,9 +54,8 @@ impl Profiler for MemoryLeakProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E83".to_owned(),
-            name: "Memory Leaks Profiler".to_owned(),
-            description: "Finds managed memory leaks.".to_owned(),
-            is_released: false,
+            name: "Find memory leaks".to_owned(),
+            description: "Keep track of references over the course of several garbage collection and try identify managed memory leaks with various strategies.\n\n*⚠️ Experimental*".to_owned(),
             ..std::default::Default::default()
         };
     }

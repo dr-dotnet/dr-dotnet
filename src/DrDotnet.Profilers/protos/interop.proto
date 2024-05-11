@@ -20,7 +20,6 @@ message ProfilerInfo {
     string uuid = 1;
     string name = 2;
     string description = 3;
-    bool is_released = 4;
     repeated ProfilerParameter parameters = 5;
 }
 

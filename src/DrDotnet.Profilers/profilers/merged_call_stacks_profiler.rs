@@ -13,6 +13,19 @@ const PADDING: usize = 5;
 /// if < 0 will print all thread ids
 const NB_THREAD_IDS_TO_PRINT: usize = 4;
 
+impl Profiler for MergedCallStacksProfiler {
+    profiler_getset!();
+
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
+            uuid: "9404d16c-b49e-11ed-afa1-0242ac120002".to_owned(),
+            name: "List merged call stacks".to_owned(),
+            description: "Lists threads call stacks merged by stack frame.".to_owned(),
+            ..std::default::Default::default()
+        };
+    }
+}
+
 #[derive(Default)]
 pub struct MergedCallStacksProfiler {
     clr_profiler_info: ClrProfilerInfo,
@@ -199,20 +212,6 @@ impl MergedStack {
         let frame = self.frame.display.as_ref().unwrap();
         let thread_count = format!("{}", self.thread_ids.len());
         format!("<li><span>{thread_count}</span>{frame}</li>")
-    }
-}
-
-impl Profiler for MergedCallStacksProfiler {
-    profiler_getset!();
-
-    fn profiler_info() -> ProfilerInfo {
-        return ProfilerInfo {
-            uuid: "9404d16c-b49e-11ed-afa1-0242ac120002".to_owned(),
-            name: "Merged call stacks Profiler".to_owned(),
-            description: "Display a view of threads merged call stacks. ".to_owned(),
-            is_released: true,
-            ..std::default::Default::default()
-        };
     }
 }
 

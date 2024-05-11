@@ -20,9 +20,8 @@ impl Profiler for AllocationByClassProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E84".to_owned(),
-            name: "Allocations by Class".to_owned(),
-            description: "Just allocations by class".to_owned(),
-            is_released: true,
+            name: "List allocations by type".to_owned(),
+            description: "Lists allocated objects by type".to_owned(),
             ..std::default::Default::default()
         };
     }

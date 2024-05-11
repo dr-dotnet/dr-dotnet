@@ -23,7 +23,7 @@
         <div class="mat-layout-grid-cell mat-layout-grid-cell-span-6" title="ProfilerId: @Session.Profiler.Uuid">
             <h4 class="mat-h4">Profiler</h4>
             <h5 class="mat-h5">@Session.Profiler.Name</h5>
-            @Session.Profiler.Description
+            @MarkdownStringToMarkup(Session.Profiler.Description)
         </div>
 
         @if (Session.Profiler.Parameters.Count > 0)
@@ -80,6 +80,11 @@
     private SessionInfo? _session;
     private SessionInfo Session => _session ??= SessionDiscovery.TryGetSession(SessionId, out SessionInfo? session) ? session : throw new InvalidOperationException($"Session {SessionId} not found");
 
+    private static MarkupString MarkdownStringToMarkup(string str)
+    {
+        return new MarkupString(Markdown.ToHtml(str, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()));
+    }
+    
     private static MarkupString ConvertFileToMarkup(FileInfo file)
     {
         string content = File.ReadAllText(file.FullName);

@@ -22,9 +22,8 @@ impl Profiler for CpuHotpathProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
-            name: "CPU Hotpath Profiler".to_owned(),
-            description: "Lists CPU hotpaths.".to_owned(),
-            is_released: true,
+            name: "List CPU hotpaths".to_owned(),
+            description: "Capture callstacks every X ms and for a given duration and with minimal overhead, and then sort and list hotpaths in a tree view.".to_owned(),
             parameters: vec![
                 ProfilerParameter {
                     name: "Duration".to_owned(),
