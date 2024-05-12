@@ -4,7 +4,6 @@ use std::fmt::{Display, Formatter};
 use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
 use std::time::Instant;
 use thousands::{digits, Separable, SeparatorPolicy};
 
@@ -358,13 +357,15 @@ impl CorProfilerCallback for GCSurvivorsProfiler {
 
 impl CorProfilerCallback2 for GCSurvivorsProfiler {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
+        let gen = ClrProfilerInfo::get_gc_gen(&generation_collected);
+
         info!(
             "garbage_collection_started on gen {} for reason {:?}",
-            ClrProfilerInfo::get_gc_gen(&generation_collected),
+            gen,
             reason
         );
 
-        if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
+        if gen == 1 {
             self.is_triggered_gc.store(true, Ordering::Relaxed);
         }
 
@@ -424,15 +425,15 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler {
         // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
         let clr = self.clr().clone();
 
-        let _ = thread::spawn(move || {
-            debug!("Force GC");
+        // let _ = thread::spawn(move || {
+        //     debug!("Force GC");
 
-            match clr.force_gc() {
-                Ok(_) => debug!("GC Forced!"),
-                Err(hresult) => error!("Error forcing GC: {:?}", hresult),
-            };
-        })
-        .join();
+        //     match clr.force_gc() {
+        //         Ok(_) => debug!("GC Forced!"),
+        //         Err(hresult) => error!("Error forcing GC: {:?}", hresult),
+        //     };
+        // })
+        // .join();
 
         // Security timeout
         detach_after_duration::<GCSurvivorsProfiler>(&self, 320);

@@ -12,12 +12,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DrDotnet.Tests.Profilers;
 
-[StructLayout(LayoutKind.Sequential)]
-public record SurvivorObject(int a, int b, long c);
-
-public class GCSurvivorsProfilerTests : ProfilerTests
+public class GCSurvivorsProfilerV1Tests : ProfilerTests
 {
-    protected override Guid ProfilerGuid => new Guid("{805A307B-061C-47F3-9B30-F795C3186E86}");
+    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E86}");
 
     [Test]
     [Order(0)]
@@ -37,8 +34,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
-        profiler.Parameters.First(x => x.Key == "retained_references_threshold").Value = 10.ToString();
-        profiler.Parameters.First(x => x.Key == "retained_bytes_threshold").Value = 1000.ToString();
+        profiler.Parameters.First(x => x.Key == "max_types_display").Value = 1000.ToString();
         profiler.Parameters.First(x => x.Key == "max_retention_depth").Value = 3.ToString();
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 

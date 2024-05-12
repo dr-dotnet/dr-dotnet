@@ -31,7 +31,7 @@ pub struct GCSurvivorsProfiler2 {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
     root_objects: Vec<ObjectID>,
-    is_triggered_gc: AtomicBool,
+    is_relevant_gc: AtomicBool,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -220,12 +220,12 @@ impl GCSurvivorsProfiler2 {
         // Start by sorting the tree "roots" (only the first level of childrens)
         tree.children.sort_by(compare);
 
-        tree.log(0, &|node: &TreeNode<usize, References>| {
-            let total_size: usize = node.get_inclusive_value().0.values().sum();
-            let total_objects: usize = node.get_inclusive_value().0.len();
-            let class_name = self.name_resolver.get_class_name(node.key);
-            format!("{} / {} objects, {} bytes", class_name, total_objects, total_size)
-        });
+        // tree.log(0, &|node: &TreeNode<usize, References>| {
+        //     let total_size: usize = node.get_inclusive_value().0.values().sum();
+        //     let total_objects: usize = node.get_inclusive_value().0.len();
+        //     let class_name = self.name_resolver.get_class_name(node.key);
+        //     format!("{} / {} objects, {} bytes", class_name, total_objects, total_size)
+        // });
 
         // Then sort the whole tree (all levels of childrens)
         tree.sort_by_iterative(compare);
@@ -286,14 +286,18 @@ impl CorProfilerCallback for GCSurvivorsProfiler2 {}
 
 impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
+
+        let gen = ClrProfilerInfo::get_gc_gen(&generation_collected);
+
         info!(
             "garbage_collection_started on gen {} for reason {:?}",
-            ClrProfilerInfo::get_gc_gen(&generation_collected),
+            gen,
             reason
         );
 
-        if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
-            self.is_triggered_gc.store(true, Ordering::Relaxed);
+        // Only consider gen 1 GC
+        if gen == 1 {
+            self.is_relevant_gc.store(true, Ordering::Relaxed);
         }
 
         Ok(())
@@ -302,7 +306,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
     fn garbage_collection_finished(&mut self) -> Result<(), HRESULT> {
         info!("garbage_collection_finished");
 
-        if !self.is_triggered_gc.load(Ordering::Relaxed) {
+        if !self.is_relevant_gc.load(Ordering::Relaxed) {
             error!("Early return of garbage_collection_finished because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
             return Ok(());
@@ -332,7 +336,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
         root_flags: &[COR_PRF_GC_ROOT_FLAGS],
         root_ids: &[UINT_PTR], // TODO: Maybe this should be a single array of some struct kind.
     ) -> Result<(), HRESULT> {
-        if !self.is_triggered_gc.load(Ordering::Relaxed) {
+        if !self.is_relevant_gc.load(Ordering::Relaxed) {
             error!("Early return of garbage_collection_finished because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
             return Ok(());
@@ -358,20 +362,6 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler2 {
 
     fn profiler_attach_complete(&mut self) -> Result<(), HRESULT> {
         self.name_resolver = CachedNameResolver::new(self.clr().clone());
-
-        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack.
-        // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
-        let clr = self.clr().clone();
-
-        let _ = thread::spawn(move || {
-            debug!("Force GC");
-
-            match clr.force_gc() {
-                Ok(_) => debug!("GC Forced!"),
-                Err(hresult) => error!("Error forcing GC: {:?}", hresult),
-            };
-        })
-        .join();
 
         // Security timeout
         detach_after_duration::<GCSurvivorsProfiler2>(&self, 320);
