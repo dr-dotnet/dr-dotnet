@@ -275,6 +275,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
         // }
 
         if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
+            info!("induced gc!");
             self.is_relevant_gc.store(true, Ordering::Relaxed);
         }
 
@@ -339,8 +340,8 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler2 {
         client_data_length: u32,
     ) -> Result<(), HRESULT> {
         self.init(
-            ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE,
-            Some(ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_BASIC_GC),
+            ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC,
+            None,
             profiler_info,
             client_data,
             client_data_length,
