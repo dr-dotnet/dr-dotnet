@@ -12,3 +12,6 @@ pub use name_resolver::*;
 
 pub mod simple_hasher;
 pub use simple_hasher::*;
+
+pub mod define_profiler_parameter;
+pub use define_profiler_parameter::*;

@@ -56,6 +56,14 @@ impl Profiler for CpuHotpathProfiler {
                     type_: ParameterType::BOOLEAN.into(),
                     value: "false".to_owned(),
                     ..std::default::Default::default()
+                },
+                ProfilerParameter {
+                    name: "Maximum stacks to display".to_owned(),
+                    key: "max_stacks".to_owned(),
+                    description: "The maximum number of stacks to display".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "100".to_owned(),
+                    ..std::default::Default::default()
                 }
             ],
             ..std::default::Default::default()
@@ -164,6 +172,13 @@ impl CpuHotpathProfiler {
 
         // Sort by descending inclusive count (hotpaths first)
         tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+
+        let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
+
+        // Truncate tree to max_stacks to avoid too large reports
+        if tree.children.len() > max_stacks {
+            tree.children.truncate(max_stacks);
+        }
 
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());

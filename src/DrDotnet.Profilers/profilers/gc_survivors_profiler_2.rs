@@ -74,38 +74,10 @@ impl Profiler for GCSurvivorsProfiler2 {
             name: "List GC survivors V2".to_owned(),
             description: "Wait for the next naturally occuring blocking gen 1 GC, and then lists surviving references. If no gen 1 GC occurred, this profiler will timeout after 360 seconds.\n\n*⚠️ Experimental*".to_owned(),
             parameters: vec![
-                ProfilerParameter {
-                    name: "Sort by size".to_owned(),
-                    key: "sort_by_size".to_owned(),
-                    description: "If true, sort the results by inclusive size (bytes). Otherwise, sort by inclusive instances count.".to_owned(),
-                    type_: ParameterType::BOOLEAN.into(),
-                    value: "true".to_owned(),
-                    ..std::default::Default::default()
-                },
-                ProfilerParameter {
-                    name: "Retained references threshold".to_owned(),
-                    key: "retained_references_threshold".to_owned(),
-                    description: "Threshold of number of retained references by a root to ignore it".to_owned(),
-                    type_: ParameterType::INT.into(),
-                    value: "10".to_owned(),
-                    ..std::default::Default::default()
-                },
-                ProfilerParameter {
-                    name: "Retained bytes threshold".to_owned(),
-                    key: "retained_bytes_threshold".to_owned(),
-                    description: "Threshold of number of retained bytes by a root to ignore it".to_owned(),
-                    type_: ParameterType::INT.into(),
-                    value: "1000".to_owned(),
-                    ..std::default::Default::default()
-                },
-                ProfilerParameter {
-                    name: "Maximum depth".to_owned(),
-                    key: "max_retention_depth".to_owned(),
-                    description: "The maximum depth while drilling through retention paths".to_owned(),
-                    type_: ParameterType::INT.into(),
-                    value: "5".to_owned(),
-                    ..std::default::Default::default()
-                },
+                ProfilerParameter::define("Sort by size", "sort_by_size", true, "If true, sort the results by inclusive size (bytes). Otherwise, sort by inclusive instances count."),
+                ProfilerParameter::define("Retained references threshold", "retained_references_threshold", 10, "Threshold of number of retained references by a root to ignore it"),
+                ProfilerParameter::define("Retained bytes threshold", "retained_bytes_threshold", 1000, "Threshold of number of retained bytes by a root to ignore it"),
+                ProfilerParameter::define("Maximum depth", "max_retention_depth", 5, "The maximum depth while drilling through retention paths"),
             ],
             ..std::default::Default::default()
         };
@@ -286,18 +258,20 @@ impl CorProfilerCallback for GCSurvivorsProfiler2 {}
 
 impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
-
         let gen = ClrProfilerInfo::get_gc_gen(&generation_collected);
 
-        info!(
-            "garbage_collection_started on gen {} for reason {:?}",
-            gen,
-            reason
-        );
+        info!("garbage_collection_started on gen {} for reason {:?}", gen, reason);
 
         // Only consider gen 1 GC
         if gen == 1 {
+            info!("setting monitor gc flags!");
+
             self.is_relevant_gc.store(true, Ordering::Relaxed);
+
+            match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
+                Ok(_) => (),
+                Err(hresult) => error!("Error setting event mask: {:?}", hresult),
+            }
         }
 
         Ok(())
@@ -313,7 +287,10 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
         }
 
         // Disable profiling to free some resources
-        match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE) {
+        match self
+            .clr()
+            .set_event_mask_2(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE, ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_MONITOR_NONE)
+        {
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:?}", hresult),
         }
@@ -357,7 +334,13 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler2 {
         client_data: *const std::os::raw::c_void,
         client_data_length: u32,
     ) -> Result<(), HRESULT> {
-        self.init(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC, None, profiler_info, client_data, client_data_length)
+        self.init(
+            ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_NONE,
+            Some(ffi::COR_PRF_HIGH_MONITOR::COR_PRF_HIGH_BASIC_GC),
+            profiler_info,
+            client_data,
+            client_data_length,
+        )
     }
 
     fn profiler_attach_complete(&mut self) -> Result<(), HRESULT> {

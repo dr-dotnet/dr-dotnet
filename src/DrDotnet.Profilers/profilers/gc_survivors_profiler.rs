@@ -359,11 +359,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler {
     fn garbage_collection_started(&mut self, generation_collected: &[ffi::BOOL], reason: ffi::COR_PRF_GC_REASON) -> Result<(), HRESULT> {
         let gen = ClrProfilerInfo::get_gc_gen(&generation_collected);
 
-        info!(
-            "garbage_collection_started on gen {} for reason {:?}",
-            gen,
-            reason
-        );
+        info!("garbage_collection_started on gen {} for reason {:?}", gen, reason);
 
         if gen == 1 {
             self.is_triggered_gc.store(true, Ordering::Relaxed);
