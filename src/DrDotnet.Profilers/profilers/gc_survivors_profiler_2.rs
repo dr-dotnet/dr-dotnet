@@ -263,15 +263,19 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
         info!("garbage_collection_started on gen {} for reason {:?}", gen, reason);
 
         // Only consider gen 1 GC
-        if gen == 1 {
-            info!("setting monitor gc flags!");
+        // if gen == 1 {
+        //     info!("setting monitor gc flags!");
 
+        //     self.is_relevant_gc.store(true, Ordering::Relaxed);
+
+        //     match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
+        //         Ok(_) => (),
+        //         Err(hresult) => error!("Error setting event mask: {:?}", hresult),
+        //     }
+        // }
+
+        if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
             self.is_relevant_gc.store(true, Ordering::Relaxed);
-
-            match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
-                Ok(_) => (),
-                Err(hresult) => error!("Error setting event mask: {:?}", hresult),
-            }
         }
 
         Ok(())
@@ -345,6 +349,20 @@ impl CorProfilerCallback3 for GCSurvivorsProfiler2 {
 
     fn profiler_attach_complete(&mut self) -> Result<(), HRESULT> {
         self.name_resolver = CachedNameResolver::new(self.clr().clone());
+
+        // The ForceGC method must be called only from a thread that does not have any profiler callbacks on its stack.
+        // https://learn.microsoft.com/en-us/dotnet/framework/unmanaged-api/profiling/icorprofilerinfo-forcegc-method
+        let clr = self.clr().clone();
+
+        let _ = thread::spawn(move || {
+            debug!("Force GC");
+
+            match clr.force_gc() {
+                Ok(_) => debug!("GC Forced!"),
+                Err(hresult) => error!("Error forcing GC: {:?}", hresult),
+            };
+        })
+        .join();
 
         // Security timeout
         detach_after_duration::<GCSurvivorsProfiler2>(&self, 320);
