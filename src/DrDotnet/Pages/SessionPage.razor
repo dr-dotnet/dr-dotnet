@@ -6,11 +6,11 @@
 
 @using Markdig;
 @using System.IO;
-@using System.IO.Compression;
+@using DrDotnet.Utils
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
-<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Download" OnClick="DownloadFileFromStream" Style="float: right;"/>
+<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Download" OnClick="() => Session.DownloadZipAsync(JsRuntime)" Style="float: right;"/>
 
 <h3 class="mat-h3">Session</h3>
 
@@ -32,28 +32,34 @@
                 <h4 class="mat-h5">Parameters Used</h4>
             </div>
             
-            @foreach (ProfilerParameter parameter in Session.Profiler.Parameters)
-            {
-                <p>
-                    <MatTooltip Tooltip="@parameter.Description">           
-                        @switch (parameter.Type)
-                        {
-                            case ParameterType.String:
-                                <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.Value" Label="@parameter.Name"></MatTextField> 
-                                break;
-                            case ParameterType.Int:
-                                <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MatTextField>
-                                break;
-                            case ParameterType.Float:
-                                <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MatTextField>
-                                break;
-                            case ParameterType.Boolean:
-                                <MatCheckbox Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MatCheckbox>
-                                break;
-                        }       
-                    </MatTooltip>
-                </p>
-            }
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 flex-container" style="display: flex">
+                @foreach (ProfilerParameter parameter in Session.Profiler.Parameters)
+                {
+                    <div style="padding-right: 20px;">
+                        <p>
+                            <MatTooltip Tooltip="@parameter.Description">           
+                                @switch (parameter.Type)
+                                {
+                                    case ParameterType.String:
+                                        <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.Value" Label="@parameter.Name"></MatTextField> 
+                                        break;
+                                    case ParameterType.Int:
+                                        <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MatTextField>
+                                        break;
+                                    case ParameterType.Float:
+                                        <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MatTextField>
+                                        break;
+                                    case ParameterType.Boolean:
+                                        <MatCheckbox Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MatCheckbox>
+                                        break;
+                                }       
+                            </MatTooltip>
+                        </p>
+                    </div>
+                }
+            </div>
+            
+            
         }
     </div>
 </div>
@@ -99,23 +105,5 @@
     private void OnBackClick(object data)
     {
         NavigationManager.NavigateTo("/", true);
-    }
-    
-    private async Task DownloadFileFromStream()
-    {
-        var memoryStream = new MemoryStream();
-
-        using var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true);
-      
-        foreach (var file in Session.EnumerateReports())
-        {
-            archive.CreateEntryFromFile(file.FullName, file.Name);
-        }
-            
-        memoryStream.Seek(0, SeekOrigin.Begin);
-        
-        using var streamRef = new DotNetStreamReference(stream: memoryStream, leaveOpen: true);
-
-        await JsRuntime.InvokeVoidAsync("downloadFileFromStream", $"session-{Session.Guid}.zip", streamRef);
     }
 }

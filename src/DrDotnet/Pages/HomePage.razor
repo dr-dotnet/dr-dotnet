@@ -1,7 +1,9 @@
 ﻿@page "/"
+@using DrDotnet.Utils
 
 @inject ISessionDiscovery SessionDiscovery;
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime;
 
 <MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"/>
 
@@ -9,14 +11,16 @@
 
 <MatTable Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
-        <th>Process</th>
-        <th style="min-width:300px;">Date (UTC)</th>
-        <th>Profiler</th>
+        <th style="min-width:300px;">Process</th>
+        <th style="min-width:200px;">Date (UTC)</th>
+        <th style="width:100%;">Profiler</th>
+        <th style="min-width:180px;">Download Zip</th>
     </MatTableHeader>
     <MatTableRow>
         <td>@context.ProcessName</td>
         <td>@context.TimestampDate</td>
         <td>@context.Profiler?.Name</td>
+        <td><MatIconButton Icon="@MatIconNames.Cloud_download" OnClick="() => context.DownloadZipAsync(JsRuntime)" OnClickStopPropagation="true" Style="float: right;"/></td>
     </MatTableRow>
 </MatTable>
 

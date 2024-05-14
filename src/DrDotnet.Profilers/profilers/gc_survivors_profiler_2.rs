@@ -16,6 +16,7 @@ use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
+use deepsize::DeepSizeOf;
 use thousands::{digits, Separable, SeparatorPolicy};
 
 use crate::api::*;
@@ -299,6 +300,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
             Ok(_) => (),
             Err(hresult) => error!("Error setting event mask: {:?}", hresult),
         }
+
+        info!("Deep size of roots: {} bytes", self.root_objects.deep_size_of());
 
         let mut tree = self.build_tree();
         self.sort_tree(&mut tree);
