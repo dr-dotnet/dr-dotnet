@@ -43,7 +43,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 
         // Create 1000 SurvivorObject objects that will be placed in the GEN 2 heap
-        var survivorObjects = Enumerable.Range(0, 1000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
+        var survivorObjects = Enumerable.Range(0, 1_000_000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
 
         // Force two garbage collections to promote objects from GEN 0 to GEN 2
         GC.Collect();

@@ -10,7 +10,7 @@
 //   Idea: Have a Tree of ClassID/HashSet<ClassID, Node>
 //   For every object reference, we
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
@@ -79,6 +79,7 @@ impl Profiler for GCSurvivorsProfiler2 {
                 ProfilerParameter::define("Retained references threshold", "retained_references_threshold", 10, "Threshold of number of retained references by a root to ignore it"),
                 ProfilerParameter::define("Retained bytes threshold", "retained_bytes_threshold", 1000, "Threshold of number of retained bytes by a root to ignore it"),
                 ProfilerParameter::define("Maximum depth", "max_retention_depth", 5, "The maximum depth while drilling through retention paths"),
+                ProfilerParameter::define("Use old recursion", "use_old_recursion", true, "Use the old recursion method instead of the new one"),
             ],
             ..std::default::Default::default()
         };
@@ -135,6 +136,55 @@ impl GCSurvivorsProfiler2 {
         }
     }
 
+    fn gather_references_recursive_2(&self, node: &mut TreeNode<ClassID, References>, depth: usize, max_depth: usize, retained_references_threshold: usize, retained_bytes_threshold: usize) {
+        
+        if depth > max_depth {
+            // Keep this node as-is, don't drill further
+            return;
+        }
+        
+        let info = self.clr();
+
+        if let Some(references) = &node.value {
+
+            let mut map: HashMap<ClassID, References> = HashMap::new();  // initialize an empty HashMap
+
+            // For each object instance, enumerate its references
+            for &object_id in references.0.keys() {
+                if object_id == 0 {
+                    continue;
+                }
+                // Can we allocate it once and reuse it?
+                let references = Vec::<ObjectID>::new();
+                // We must pass this data as a pointer for callback to mutate it with actual object references ids
+                let references_ptr_c = &references as *const Vec<ObjectID> as *mut std::ffi::c_void;
+                let _ = info.enumerate_object_references(object_id, crate::utils::enum_references_callback, references_ptr_c);
+    
+                // For each reference, add it to the map of references to prepare the next level of the tree
+                for i in 0..references.len() {
+                    let reference_id = references[i];
+                    let refs = map.entry(info.get_class_from_object(reference_id).unwrap()).or_insert(References::default());
+                    let size = info.get_object_size_2(reference_id).unwrap_or(0);
+                    refs.0.insert(reference_id, size);
+                }
+            }
+
+            // For each class_id, create a child node and recurse
+            for (class_id, refs) in map {
+                let mut child_node = TreeNode::new(class_id);
+                child_node.value = Some(refs);
+                self.gather_references_recursive_2(&mut child_node, depth + 1, max_depth, retained_references_threshold, retained_bytes_threshold);
+
+                let inclusive_values = child_node.get_inclusive_value().0;
+                let mut discard_branch = inclusive_values.len() < retained_references_threshold;
+                discard_branch |= inclusive_values.values().sum::<usize>() < retained_bytes_threshold;
+                if !discard_branch {
+                    node.children.push(child_node);
+                }
+            }
+        }
+    }
+
     fn build_tree(&mut self) -> TreeNode<ClassID, References> {
         info!("Building tree of surviving references from {} roots...", self.root_objects.len());
 
@@ -145,17 +195,50 @@ impl GCSurvivorsProfiler2 {
         let max_retention_depth = self.session_info().get_parameter::<usize>("max_retention_depth").unwrap();
         let retained_references_threshold = self.session_info().get_parameter::<usize>("retained_references_threshold").unwrap();
         let retained_bytes_threshold = self.session_info().get_parameter::<usize>("retained_bytes_threshold").unwrap();
+        let use_old_recursion = self.session_info().get_parameter::<bool>("use_old_recursion").unwrap();
 
-        for object_id in self.root_objects.iter() {
-            self.gather_references_recursive(&mut tree, *object_id, 0, max_retention_depth);
+        if use_old_recursion {
+            for object_id in self.root_objects.iter() {
+                self.gather_references_recursive(&mut tree, *object_id, 0, max_retention_depth);
+    
+                // Discard worthless branches to free some memory
+                if let Some(last_branch) = tree.children.last() {
+                    let inclusive_values = last_branch.get_inclusive_value().0;
+                    let mut discard_branch = inclusive_values.len() < retained_references_threshold;
+                    discard_branch |= inclusive_values.values().sum::<usize>() < retained_bytes_threshold;
+                    if discard_branch {
+                        tree.children.pop();
+                    }
+                }
+            }
+        }
+        else {
+            info!("Build root node refs...");
+            let clr = self.clr();
 
-            // Discard worthless branches to free some memory
-            if let Some(last_branch) = tree.children.last() {
-                let inclusive_values = last_branch.get_inclusive_value().0;
+            let mut map: HashMap<ClassID, References> = HashMap::new();  // initialize an empty HashMap
+
+            // For each object instance, enumerate its references
+            for &object_id in self.root_objects.iter() {
+                if object_id == 0 {
+                    continue;
+                }
+                let refs = map.entry(clr.get_class_from_object(object_id).unwrap()).or_insert(References::default());
+                let size = clr.get_object_size_2(object_id).unwrap_or(0);
+                refs.0.insert(object_id, size);
+            }
+
+            // For each class_id, create a child node and recurse
+            for (class_id, refs) in map {
+                let mut child_node = TreeNode::new(class_id);
+                child_node.value = Some(refs);
+                self.gather_references_recursive_2(&mut child_node, 0, max_retention_depth, retained_references_threshold, retained_bytes_threshold);
+
+                let inclusive_values = child_node.get_inclusive_value().0;
                 let mut discard_branch = inclusive_values.len() < retained_references_threshold;
                 discard_branch |= inclusive_values.values().sum::<usize>() < retained_bytes_threshold;
-                if discard_branch {
-                    tree.children.pop();
+                if !discard_branch {
+                    tree.children.push(child_node);
                 }
             }
         }
