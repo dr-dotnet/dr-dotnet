@@ -102,7 +102,7 @@ impl CpuHotpathProfiler {
         filter_suspended_threads: bool,
         caller_to_callee: bool,
     ) {
-        info!("Starts building callstacks");
+        debug!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
@@ -157,7 +157,7 @@ impl CpuHotpathProfiler {
 
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
             if clr.suspend_runtime().is_ok() {
-                info!("Suspend runtime");
+                debug!("Suspend runtime");
                 Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee);
 
                 if clr.resume_runtime().is_err() {

@@ -193,13 +193,6 @@ impl GCSurvivorsProfiler2 {
         // Start by sorting the tree "roots" (only the first level of childrens)
         tree.children.sort_by(compare);
 
-        // tree.log(0, &|node: &TreeNode<usize, References>| {
-        //     let total_size: usize = node.get_inclusive_value().0.values().sum();
-        //     let total_objects: usize = node.get_inclusive_value().0.len();
-        //     let class_name = self.name_resolver.get_class_name(node.key);
-        //     format!("{} / {} objects, {} bytes", class_name, total_objects, total_size)
-        // });
-
         // Then sort the whole tree (all levels of childrens)
         tree.sort_by_iterative(compare);
 
@@ -263,20 +256,8 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
 
         info!("garbage_collection_started on gen {} for reason {:?}", gen, reason);
 
-        // Only consider gen 1 GC
-        // if gen == 1 {
-        //     info!("setting monitor gc flags!");
-
-        //     self.is_relevant_gc.store(true, Ordering::Relaxed);
-
-        //     match self.clr().set_event_mask(ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_GC) {
-        //         Ok(_) => (),
-        //         Err(hresult) => error!("Error setting event mask: {:?}", hresult),
-        //     }
-        // }
-
         if reason == ffi::COR_PRF_GC_REASON::COR_PRF_GC_INDUCED {
-            info!("induced gc!");
+            debug!("induced gc!");
             self.is_relevant_gc.store(true, Ordering::Relaxed);
         }
 

@@ -97,7 +97,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static mut LOGGING_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-// #[cfg(debug_assertions)]
 pub fn init_logging() {
     // Init once.
     unsafe {
@@ -107,26 +106,22 @@ pub fn init_logging() {
         }
     }
 
+    // Set log level to debug in debug builds.
+    let level_filter = if cfg!(debug_assertions) {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+
     match CombinedLogger::init(vec![
         TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
         WriteLogger::new(
-            LevelFilter::Debug,
+            level_filter,
             Config::default(),
-            File::create(format!("{}/profiler.debug.log", SessionInfo::get_root_directory())).unwrap(),
+            File::create(format!("{}/profiler.log", SessionInfo::get_root_directory())).unwrap(),
         ),
     ]) {
         Ok(_) => info!("Logging initialized!"),
         Err(error) => println!("Logging initialization failed: {:?}", error),
     }
 }
-
-// #[cfg(not(debug_assertions))]
-// fn init_logging(uuid: Uuid) {
-//     let config = ConfigBuilder::new().set_max_level(LevelFilter::Error).build();
-//     CombinedLogger::init(
-//         vec![
-//             TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
-//             WriteLogger::new(LevelFilter::Warn, config.clone(), File::create(format!("{}/profiler.release.log", Session::get_directory(uuid))).unwrap()),
-//         ]
-//     ).unwrap();
-// }

@@ -230,7 +230,7 @@ impl StackSnapshotCallbackReceiver for MergedCallstacksStackSnapshotCallbackRece
 
 impl MergedCallStacksProfiler {
     fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>) {
-        info!("Starts building callstacks");
+        debug!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {

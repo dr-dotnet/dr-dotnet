@@ -44,10 +44,10 @@
     private bool IsLogDialogOpen { get; set; }
 
     private string? _appLogs;
-    public string AppLogs => _appLogs ??= GetLogs("app.debug.log");
+    public string AppLogs => _appLogs ??= GetLogs("app.log");
     
     private string? _profilerLogs;
-    public string ProfilerLogs => _profilerLogs ??= GetLogs("profiler.debug.log");
+    public string ProfilerLogs => _profilerLogs ??= GetLogs("profiler.log");
 
     void OpenLogs()
     {
