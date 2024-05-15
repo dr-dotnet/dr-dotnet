@@ -107,11 +107,7 @@ pub fn init_logging() {
     }
 
     // Set log level to debug in debug builds.
-    let level_filter = if cfg!(debug_assertions) {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Info
-    };
+    let level_filter = if cfg!(debug_assertions) { LevelFilter::Debug } else { LevelFilter::Info };
 
     match CombinedLogger::init(vec![
         TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
