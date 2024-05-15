@@ -1,17 +1,5 @@
-// Idea is the following:
-// - Trigger a compacting GC using force_gc()
-// - Store root references using root_references_2() callback
-// - When GC is over, build dependency tree using enumerate_object_references()
-//   Here are the challenges:
-//   - When to stop recursion?
-//   - How to handle cycles?
-//   - Storing ObjectID at this stage will be too memory intensive, can we store ClassID instead?
-//
-//   Idea: Have a Tree of ClassID/HashSet<ClassID, Node>
-//   For every object reference, we
-
 use deepsize::DeepSizeOf;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::BuildHasherDefault;
 use std::ops::AddAssign;
@@ -62,6 +50,7 @@ impl Display for References {
             "???".to_string()
         };
 
+        // Todo: display generation?
         write!(f, "({total_size_str} bytes) - {nb_objects}")
     }
 }
@@ -84,19 +73,19 @@ impl Profiler for GCSurvivorsProfiler2 {
                 ProfilerParameter::define(
                     "Retained references threshold",
                     "retained_references_threshold",
-                    10,
+                    100,
                     "Threshold of number of retained references by a root to ignore it",
                 ),
                 ProfilerParameter::define(
                     "Retained bytes threshold",
                     "retained_bytes_threshold",
-                    1000,
+                    10000,
                     "Threshold of number of retained bytes by a root to ignore it",
                 ),
                 ProfilerParameter::define(
                     "Maximum depth",
                     "max_retention_depth",
-                    5,
+                    4,
                     "The maximum depth while drilling through retention paths",
                 ),
             ],
@@ -135,11 +124,11 @@ impl GCSurvivorsProfiler2 {
             Self::build_tree_nodes(
                 info,
                 &reference_object_ids,
+                node,
                 depth,
                 max_depth,
                 retained_references_threshold,
                 retained_bytes_threshold,
-                node,
             );
         }
     }
@@ -147,11 +136,11 @@ impl GCSurvivorsProfiler2 {
     fn build_tree_nodes(
         clr: &ClrProfilerInfo,
         reference_object_ids: &Vec<ObjectID>,
+        node: &mut TreeNode<usize, References>,
         depth: usize,
         max_retention_depth: usize,
         retained_references_threshold: usize,
-        retained_bytes_threshold: usize,
-        tree: &mut TreeNode<usize, References>,
+        retained_bytes_threshold: usize
     ) {
         let mut map: HashMap<ClassID, References> = HashMap::new();
 
@@ -185,7 +174,7 @@ impl GCSurvivorsProfiler2 {
             let mut discard_branch = inclusive_values.len() < retained_references_threshold;
             discard_branch |= inclusive_values.values().sum::<usize>() < retained_bytes_threshold;
             if !discard_branch {
-                tree.children.push(child_node);
+                node.children.push(child_node);
             }
         }
     }
@@ -207,11 +196,11 @@ impl GCSurvivorsProfiler2 {
         Self::build_tree_nodes(
             clr,
             &self.root_objects,
+            &mut tree,
             0,
             max_retention_depth,
             retained_references_threshold,
             retained_bytes_threshold,
-            &mut tree,
         );
 
         info!("Tree built in {} ms", now.elapsed().as_millis());
@@ -357,7 +346,7 @@ impl CorProfilerCallback2 for GCSurvivorsProfiler2 {
         root_ids: &[UINT_PTR], // TODO: Maybe this should be a single array of some struct kind.
     ) -> Result<(), HRESULT> {
         if !self.is_relevant_gc.load(Ordering::Relaxed) {
-            error!("Early return of garbage_collection_finished because GC wasn't forced yet");
+            warn!("Early return of garbage_collection_finished because GC wasn't forced yet");
             // Early return if we received an event before the forced GC started
             return Ok(());
         }
