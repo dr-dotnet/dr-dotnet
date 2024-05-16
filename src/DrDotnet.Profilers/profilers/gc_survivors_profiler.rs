@@ -259,10 +259,10 @@ impl GCSurvivorsProfiler {
                     <code>MyRootObject</code> \
                     <div class=\"chip\"><span>retained objects including all children / retained bytes including all children</span><i class=\"material-icons\">radio_button_checked</i></div> \
                     <div class=\"chip\"><span>retained objects / retained bytes</span><i class=\"material-icons\">radio_button_unchecked</i></div> \
-                    <div class=\"chip\"><span>stack</span><i class=\"material-icons\">segment</i></div> \
-                    <div class=\"chip\"><span>handle</span><i class=\"material-icons\">point_scan</i></div> \
-                    <div class=\"chip\"><span>finalizer</span><i class=\"material-icons\">auto_delete</i></div> \
                     <div class=\"chip\"><span>other</span><i class=\"material-icons\">help</i></div> \
+                    <div class=\"chip\"><span>finalizer</span><i class=\"material-icons\">auto_delete</i></div> \
+                    <div class=\"chip\"><span>handle</span><i class=\"material-icons\">flag</i></div> \
+                    <div class=\"chip\"><span>stack</span><i class=\"material-icons\">segment</i></div> \
                 </summary> \
                 <ul><li> \
                     <code>MySurvivingObject</code> \
@@ -285,8 +285,9 @@ impl GCSurvivorsProfiler {
 
     fn print_html(&self, tree: &TreeNode<ClassID, References>, depth: usize, report: &mut Report) {
 
+        let binding = References::default();
         let references_exlusive = match &tree.value {
-            None => &References::default(),
+            None => &binding,
             Some(refs) => refs
         };
         let references_inclusive = &tree.get_inclusive_value();
@@ -317,7 +318,7 @@ impl GCSurvivorsProfiler {
                 let kind_icon = match kind {
                     ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_STACK => "segment",
                     ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_FINALIZER => "auto_delete",
-                    ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_HANDLE => "point_scan",
+                    ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_HANDLE => "flag",
                     ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_OTHER => "help"
                 };
                 line = format!("{line}<div class=\"chip\"><span>{count}</span><i class=\"material-icons\">{kind_icon}</i></div>");
