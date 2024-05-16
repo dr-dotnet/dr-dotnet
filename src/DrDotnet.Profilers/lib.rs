@@ -20,7 +20,6 @@ mod rust_protobuf_protos {
 // Create function to list and attach profilers
 register!(
     GCSurvivorsProfiler,
-    GCSurvivorsProfiler2,
     ExceptionsProfiler,
     AllocationByClassProfiler,
     MemoryLeakProfiler,

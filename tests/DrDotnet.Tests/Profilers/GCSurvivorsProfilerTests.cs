@@ -52,10 +52,6 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
         SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
 
-        await Task.Delay(3000);
-        
-        GC.Collect(1, GCCollectionMode.Forced);
-
         await session.AwaitUntilCompletion();
 
         var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.html");
@@ -66,9 +62,10 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         
         Console.WriteLine(content);
         
-        string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
-        string expectedArrayEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</summary>";
+        string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000,000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
+        string expectedArrayEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000,000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</summary>";
 
+        // Todo: Not sure what to assert
         //content.Should().Contain(expectedEntry);
         //content.Should().Contain(expectedArrayEntry);
 

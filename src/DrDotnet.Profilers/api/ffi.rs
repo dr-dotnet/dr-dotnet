@@ -202,7 +202,7 @@ pub enum COR_PRF_GC_REASON {
     COR_PRF_GC_OTHER = 0,
 }
 #[repr(C)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum COR_PRF_GC_ROOT_KIND {
     COR_PRF_GC_ROOT_STACK = 1,
     COR_PRF_GC_ROOT_FINALIZER = 2,
@@ -210,7 +210,7 @@ pub enum COR_PRF_GC_ROOT_KIND {
     COR_PRF_GC_ROOT_OTHER = 0,
 }
 #[repr(C)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum COR_PRF_GC_ROOT_FLAGS {
     COR_PRF_GC_ROOT_PINNING = 1,
     COR_PRF_GC_ROOT_WEAKREF = 2,

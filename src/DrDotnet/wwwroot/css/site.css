@@ -71,6 +71,8 @@ a, .btn-link {
 }
 .report code {
     color: #6200ee;
+    font-family: "Fira Code", monospace;
+    font-size: 0.8em;
 }
 
 /* report html */
@@ -117,7 +119,7 @@ a, .btn-link {
     margin: 0;
     padding: 0;
 }
-.report span {
+.report div {
     float: right;
 }
 .report li {
@@ -164,6 +166,29 @@ a, .btn-link {
 }
 .report details > ul > li[open]:not(:last-child)::after {
     height: calc(100% + 5px);
+}
+.report .chip > * {
+    margin-right: 4px;
+    color: #757373;
+    vertical-align: middle;
+}
+.report .chip {
+    /*transition: all 0.3s ease-in-out;*/
+    background-color: #fff;
+    border-radius: 5px;
+    border: 1px solid #d3d2d2;
+    align-items: end;
+    /*min-width: 100px;*/
+    padding: 2px 0px 2px 6px;
+    margin-right: 2px;
+    font-family: "Fira Code", monospace;
+    font-size: 0.8em;
+}
+
+.report .material-icons {
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .page {
