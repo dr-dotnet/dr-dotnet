@@ -39,7 +39,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ProfilerInfo profiler = GetProfiler();
         profiler.Parameters.First(x => x.Key == "retained_references_threshold").Value = 10.ToString();
         profiler.Parameters.First(x => x.Key == "retained_bytes_threshold").Value = 1000.ToString();
-        profiler.Parameters.First(x => x.Key == "max_retention_depth").Value = 3.ToString();
+        profiler.Parameters.First(x => x.Key == "max_depth").Value = 3.ToString();
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 
         // Create 1000 SurvivorObject objects that will be placed in the GEN 2 heap

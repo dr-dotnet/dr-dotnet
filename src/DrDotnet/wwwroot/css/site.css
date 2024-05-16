@@ -54,7 +54,7 @@ a, .btn-link {
 }
 
 .logs {
-    font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+    font-family: "Fira Code", monospace;
 }
 
 /* report markdown */
