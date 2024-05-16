@@ -205,13 +205,13 @@ impl MergedStack {
     pub fn render_as_html_summary(&self) -> String {
         let frame = self.frame.display.as_ref().unwrap();
         let thread_count = format!("{}", self.thread_ids.len());
-        format!("<summary><span>{thread_count}</span>{frame}</summary>")
+        format!("<summary><div>{thread_count}</div>{frame}</summary>")
     }
 
     pub fn render_as_html_li(&self) -> String {
         let frame = self.frame.display.as_ref().unwrap();
         let thread_count = format!("{}", self.thread_ids.len());
-        format!("<li><span>{thread_count}</span>{frame}</li>")
+        format!("<li><div>{thread_count}</div>{frame}</li>")
     }
 }
 

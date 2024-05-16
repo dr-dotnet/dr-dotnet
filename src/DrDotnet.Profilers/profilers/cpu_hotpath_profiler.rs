@@ -182,12 +182,9 @@ impl CpuHotpathProfiler {
 
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
-        report.write_line(format!(
-            "<h3>Hotpaths <small class=\"text-muted\">{}</small></h3>",
-            if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }
-        ));
-        report.write_line(format!("<li>{} samples</li>", total_samples));
-        report.write_line(format!("<li>{} roots</li>", tree.children.len()));
+        report.write_line("<h2>Hotpaths</h2>".to_owned());
+        report.write_line(format!("<h3>{} Tree</h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
+        report.write_line(format!("<h4>{} samples of {} roots</h4>", total_samples, tree.children.len()));
         tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
 
         if let Err(e) = clr.request_profiler_detach(3000) {
@@ -196,16 +193,21 @@ impl CpuHotpathProfiler {
     }
 
     fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize) {
-        let percentage = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
+        let percentage_exclusive = 100f64 * node.value.unwrap_or_default() as f64 / total_samples as f64;
+        let percentage_inclusive = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
 
         let mut method_name: String = clr.get_full_method_name(node.key);
         let escaped_class_name = html_escape::encode_text(&mut method_name);
 
         let has_children = node.children.len() > 0;
 
+        let line: String = format!("<code>{escaped_class_name}</code> \
+            <div class=\"chip\"><span>{percentage_inclusive:.2} %</span><i class=\"material-icons\">radio_button_checked</i></div> \
+            <div class=\"chip\"><span>{percentage_exclusive:.2} %</span><i class=\"material-icons\">radio_button_unchecked</i></div>");
+
         if has_children {
             report.write_line(format!(
-                "<details><summary><span>{percentage:.2} %</span><code>{escaped_class_name}</code></summary>"
+                "<details><summary>{line}</summary>"
             ));
             report.write_line(format!("<ul>"));
             for child in &node.children {
@@ -214,7 +216,7 @@ impl CpuHotpathProfiler {
             report.write_line(format!("</ul>"));
             report.write_line(format!("</details>"));
         } else {
-            report.write_line(format!("<li><span>{percentage:.2} %</span><code>{escaped_class_name}</code></li>"));
+            report.write_line(format!("<li>{line}</li>"));
         }
     }
 }

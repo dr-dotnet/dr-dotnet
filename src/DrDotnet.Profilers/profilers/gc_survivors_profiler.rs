@@ -252,13 +252,15 @@ impl GCSurvivorsProfiler {
         report.write_line(format!("<h2>GC Survivors Report</h2>"));
         report.write_line(format!("The GC survivors report displays a tree of objects that survived the last garbage collection. The first level of the tree represents the roots of the objects grouped by typed. Each node of the tree represents a class of objects that are retained by its parent node, and so on until there are no more references to follow or maximum depth is reached. The tree is sorted by the number of retained objects or bytes, depending on the selected parameter."));
 
+        report.write_line(format!("<h4>Example</h4>"));
+
         // Quick legend
         report.write_line(format!(" \
-            <details> \
+            <details open> \
                 <summary> \
                     <code>MyRootObject</code> \
-                    <div class=\"chip\"><span>retained objects including all children / retained bytes including all children</span><i class=\"material-icons\">radio_button_checked</i></div> \
-                    <div class=\"chip\"><span>retained objects / retained bytes</span><i class=\"material-icons\">radio_button_unchecked</i></div> \
+                    <div class=\"chip\"><span>self+children instances / self+children bytes</span><i class=\"material-icons\">radio_button_checked</i></div> \
+                    <div class=\"chip\"><span>self instances / self bytes</span><i class=\"material-icons\">radio_button_unchecked</i></div> \
                     <div class=\"chip\"><span>other</span><i class=\"material-icons\">help</i></div> \
                     <div class=\"chip\"><span>finalizer</span><i class=\"material-icons\">auto_delete</i></div> \
                     <div class=\"chip\"><span>handle</span><i class=\"material-icons\">flag</i></div> \
@@ -266,8 +268,8 @@ impl GCSurvivorsProfiler {
                 </summary> \
                 <ul><li> \
                     <code>MySurvivingObject</code> \
-                    <div class=\"chip\"><span>retained objects including all children / retained bytes including all children</span><i class=\"material-icons\">radio_button_checked</i></div> \
-                    <div class=\"chip\"><span>retained objects / retained bytes</span><i class=\"material-icons\">radio_button_unchecked</i></div> \
+                    <div class=\"chip\"><span>self+children instances / self+children bytes</span><i class=\"material-icons\">radio_button_checked</i></div> \
+                    <div class=\"chip\"><span>self instances / self bytes</span><i class=\"material-icons\">radio_button_unchecked</i></div> \
                 </li></ul> \
             </details>"));
         
