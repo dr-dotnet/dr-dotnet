@@ -70,7 +70,7 @@ a, .btn-link {
     background-color: #ddd;
 }
 .report code {
-    color: #6200ee;
+    color: #000000;
     font-family: "Fira Code", monospace;
     font-size: 0.8em;
 }
@@ -107,8 +107,8 @@ a, .btn-link {
 }
 .report summary {
     margin: 5px 0px 0px 0px;
-    padding: 5px 10px;
-    background-color: #f2f2f2;
+    padding: 5px 5px 5px 12px;
+    background-color: #ece9f7;
     border: 0px solid #c7d3df;
     border-radius: 3px;
     color: #545f69;
@@ -125,8 +125,8 @@ a, .btn-link {
 .report li {
     list-style-type: none;
     margin: 5px 0;
-    padding: 5px 10px;
-    background-color: #ffeeee;
+    padding: 5px 5px 5px 25px;
+    background-color: #f4f2fb;
     border: 0px solid #c7d3df;
     border-radius: 3px;
     color: #545f69;
@@ -134,8 +134,8 @@ a, .btn-link {
 }
 .report details > ul > li {
     margin: 5px 0;
-    padding: 5px 10px;
-    background-color: #ffeeee;
+    padding: 5px 5px 5px 25px;
+    background-color: #f4f2fb;
     border: 0px solid #c7d3df;
     border-radius: 3px;
     color: #545f69;
@@ -189,6 +189,10 @@ a, .btn-link {
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+.report h1, h2, h3, h4, h5, h6 {
+    line-height: 2;
 }
 
 .page {
