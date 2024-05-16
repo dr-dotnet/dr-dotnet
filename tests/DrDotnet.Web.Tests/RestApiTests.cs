@@ -65,7 +65,7 @@ public class RestApiTests
         List<SessionInfo>? response = JsonSerializer.Deserialize<List<SessionInfo>>(httpContentString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         Assert.NotNull(response);
         
-        Assert.True(response!.Any(x => string.Equals(x.Uuid, "805a308b-061c-47f3-9b30-f785c3186e86", StringComparison.OrdinalIgnoreCase)));
+        Assert.True(response!.Any(x => string.Equals(x.Uuid, "805A307B-061C-47F3-9B30-F795C3186E86", StringComparison.OrdinalIgnoreCase)));
     }
     
     [Test]
