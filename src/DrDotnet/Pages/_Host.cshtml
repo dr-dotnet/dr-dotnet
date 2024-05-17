@@ -15,7 +15,7 @@
     <base href="~/" />
     <link rel="icon" href="_content/DrDotnet/favicon.ico" />
     
-    <link rel="stylesheet" href="_content/DrDotnet/css/bootstrap/bootstrap.min.css" />
+    @* <link rel="stylesheet" href="_content/DrDotnet/css/bootstrap/bootstrap.min.css" /> *@
     <link rel="stylesheet" href="_content/DrDotnet/css/site.css" />
     <link rel="stylesheet" href="_content/MatBlazor/dist/matBlazor.css"  />
     
@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Code">
     
     <script>
-        async function  downloadFileFromStream(fileName, contentStreamReference) {
+        async function downloadFileFromStream(fileName, contentStreamReference) {
             const arrayBuffer = await contentStreamReference.arrayBuffer();
             const blob = new Blob([arrayBuffer]);
             const url = URL.createObjectURL(blob);
@@ -43,6 +43,7 @@
             }
             element.scrollTop = element.scrollHeight;
         }
+    
     </script>
 
 </head>
