@@ -1,6 +1,6 @@
 use crate::{ParameterType, ProfilerParameter};
 
-trait DefineParameter {
+pub trait DefineParameter {
     fn define(&self, name: &str, key: &str, description: &str) -> ProfilerParameter;
 }
 
