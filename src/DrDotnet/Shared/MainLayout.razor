@@ -5,14 +5,18 @@
 @inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 
+<MudThemeProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
 <div class="page">
     <div class="main">
         <div class="top-row px-4">
             <img @onclick="NavigateToRoot" src="_content/DrDotnet/logo.png" width="36" height="36" style="margin-right: 10px; cursor: pointer;"/>
             <b style="flex-grow: 1;">Dr.Dotnet</b>
             <i>Version @VersionUtils.CurrentVersion</i>
-            <MatButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MatButton>
-            <MatButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MatButton>
+            <MudButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MudButton>
+            <MudButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MudButton>
         </div>
         <div class="content px-4">
             @Body
@@ -20,8 +24,8 @@
     </div>
 </div>
 
-<MatDialog @bind-IsOpen="@IsLogDialogOpen">
-    <MatDialogContent>
+<MudButton @bind-IsOpen="@IsLogDialogOpen">
+    <DialogContent>
         <MatTabGroup>
             <MatTab Label="App Logs">
                 <LogsArea>@AppLogs</LogsArea>
@@ -30,11 +34,11 @@
                 <LogsArea>@ProfilerLogs</LogsArea>
             </MatTab>
         </MatTabGroup>
-    </MatDialogContent>
-    <MatDialogActions>
-        <MatButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MatButton>
-    </MatDialogActions>
-</MatDialog>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MudButton>
+    </DialogActions>
+</MudButton>
  
 @code
 {

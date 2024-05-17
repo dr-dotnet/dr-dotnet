@@ -32,9 +32,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Markdig" Version="0.26.0" />
-    <PackageReference Include="MatBlazor" Version="2.10.0" />
     <PackageReference Include="Microsoft.Diagnostics.NETCore.Client" Version="0.2.351802" />
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.0.6" />
+    <PackageReference Include="MudBlazor" Version="6.19.1" />
   </ItemGroup>
 
   <ItemGroup>

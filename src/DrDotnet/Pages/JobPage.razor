@@ -9,7 +9,7 @@
 @inject IProcessDiscovery ProcessDiscovery
 @inject ILogger<JobPage> Logger
 
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
+<MudIconButton Style="float: left;" Icon="@Icons.Material.Filled.ArrowBack" OnClick="@OnBackClick"/>
 
 <h3 class="mat-h3">Job</h3>
 
@@ -36,23 +36,23 @@
             @foreach (ProfilerParameter parameter in Profiler.Parameters)
             {
                 <p>
-                    <MatTooltip Tooltip="@parameter.Description">           
+                    <MudTooltip Tooltip="@parameter.Description">           
                         @switch (parameter.Type)
                         {
                             case ParameterType.String:
-                                <MatTextField RefBack="@context" @bind-Value="@parameter.Value" Label="@parameter.Name"></MatTextField> 
+                                <MudTextField @bind-Value="@parameter.Value" Label="@parameter.Name"></MudTextField> 
                                 break;
                             case ParameterType.Int:
-                                <MatTextField RefBack="@context" @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MatTextField>
+                                <MudTextField @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MudTextField>
                                 break;
                             case ParameterType.Float:
-                                <MatTextField RefBack="@context" @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MatTextField>
+                                <MudTextField @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MudTextField>
                                 break;
                             case ParameterType.Boolean:
-                                <MatCheckbox RefBack="@context" @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MatCheckbox>
+                                <MudCheckBox @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MudCheckBox>
                                 break;
                         }       
-                    </MatTooltip>
+                    </MudTooltip>
                 </p>
             }
         }
@@ -61,14 +61,14 @@
             @switch (State)
             {
                 case JobState.NotStarted:
-                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"/>
+                    <MudButton Raised="true" Icon="@Icons.Material.Filled.PlayArrow" Label="Attach to process" OnClick="OnRunAnalysisClicked" Style="float: right;"/>
                     break;
                 case JobState.InProgress:
                     <h3 class="mat-subtitle1">Analysis in progress, please wait...</h3>
-                    <MatProgressBar Indeterminate="true"/>
+                    <MudProgressLinear Indeterminate="true"/>
                     break;
                 case JobState.Completed:
-                    <MatButton Raised="true" Icon="@MatIconNames.Play_arrow" Label="View session results" OnClick="OnViewSessionResultsClicked" Style="float: right;"/>
+                    <MudButton Raised="true" Icon="@Icons.Material.Filled.PlayArrow" Label="View session results" OnClick="OnViewSessionResultsClicked" Style="float: right;"/>
                     break;
                 case JobState.Failed:
                     <h3 class="mat-subtitle1">Job failed. Check out logs for more information.</h3>

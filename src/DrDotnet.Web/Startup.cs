@@ -5,14 +5,13 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MatBlazor;
 using System.Net.Http;
 using DrDotnet.Logging;
 using DrDotnet.Utils;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 
 namespace DrDotnet.Web;
 
@@ -66,7 +65,7 @@ public class Startup
         {
             services.AddRazorPages();
             services.AddServerSideBlazor();
-            services.AddMatBlazor();
+            services.AddMudServices();
         }
 
         if (_restApiEnabled)

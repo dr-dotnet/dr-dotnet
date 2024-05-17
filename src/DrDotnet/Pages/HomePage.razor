@@ -5,24 +5,24 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime;
 
-<MatButton Raised="true" Icon="@MatIconNames.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"/>
+<MudButton Raised="true" Icon="@Icons.Material.Filled.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"/>
 
 <h3 class="mat-h3">Recent Sessions</h3>
 
-<MatTable Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
-    <MatTableHeader>
-        <th style="min-width:300px;">Process</th>
-        <th style="min-width:200px;">Date (UTC)</th>
-        <th style="width:100%;">Profiler</th>
-        <th style="min-width:180px;">Download Zip</th>
-    </MatTableHeader>
-    <MatTableRow>
-        <td>@context.ProcessName</td>
-        <td>@context.TimestampDate</td>
-        <td>@context.Profiler?.Name</td>
-        <td><MatIconButton Icon="@MatIconNames.Cloud_download" OnClick="() => context.DownloadZipAsync(JsRuntime)" OnClickStopPropagation="true" Style="float: right;"/></td>
-    </MatTableRow>
-</MatTable>
+<MudTable T="SessionInfo" Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
+    <HeaderContent>
+        <MudTh style="min-width:300px;">Process</MudTh>
+        <MudTh style="min-width:200px;">Date (UTC)</MudTh>
+        <MudTh style="width:100%;">Profiler</MudTh>
+        <MudTh style="min-width:180px;">Download Zip</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.ProcessName</MudTd>
+        <MudTd>@context.TimestampDate</MudTd>
+        <MudTd>@context.Profiler?.Name</MudTd>
+        <MudTd><MudIconButton Icon="@Icons.Material.Filled.Download" OnClick="() => context.DownloadZipAsync(JsRuntime)" OnClickStopPropagation="true" Style="float: right;"/></MudTd>
+    </RowTemplate>
+</MudTable>
 
 @code
 {
@@ -35,9 +35,9 @@
         Sessions = SessionDiscovery.GetSessions().OrderByDescending(x => x.TimestampDate);
     }
 
-    private void OnSelectionChanged(object data)
+    private void OnSelectionChanged(TableRowClickEventArgs<SessionInfo> tableRowClickEventArgs)
     {
-        NavigationManager.NavigateTo($"/sessions/{(data as SessionInfo)!.Guid}", true);
+        NavigationManager.NavigateTo($"/sessions/{tableRowClickEventArgs.Item!.Guid}", true);
     }
 
     private void OnNewSessionClicked(object data)

@@ -9,9 +9,9 @@
 @using DrDotnet.Utils
 @using System.Collections
 
-<MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
+<MudIconButton Style="float: left;" Icon="@Icons.Material.Filled.ArrowBack" OnClick="@OnBackClick"/>
 
-<MatButton Raised="true" Icon="@MatIconNames.Cloud_download" Label="Download" OnClick="() => Session.DownloadZipAsync(JsRuntime)" Style="float: right;"/>
+<MatButton Raised="true" Icon="@Icons.Material.Filled.Download" Label="Download" OnClick="() => Session.DownloadZipAsync(JsRuntime)" Style="float: right;"/>
 
 <h3 class="mat-h3">Session</h3>
 
@@ -42,16 +42,16 @@
                                 @switch (parameter.Type)
                                 {
                                     case ParameterType.String:
-                                        <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.Value" Label="@parameter.Name"></MatTextField> 
+                                        <MudTextField Disabled="true" @bind-Value="@parameter.Value" Label="@parameter.Name"></MudTextField> 
                                         break;
                                     case ParameterType.Int:
-                                        <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MatTextField>
+                                        <MudTextField Disabled="true" @bind-Value="@parameter.ValueInt32" Label="@parameter.Name"></MudTextField>
                                         break;
                                     case ParameterType.Float:
-                                        <MatTextField Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MatTextField>
+                                        <MudTextField Disabled="true" @bind-Value="@parameter.ValueFloat32" Label="@parameter.Name"></MudTextField>
                                         break;
                                     case ParameterType.Boolean:
-                                        <MatCheckbox Disabled="true" RefBack="@context" @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MatCheckbox>
+                                        <MudTextField Disabled="true" @bind-Value="@parameter.ValueBoolean" Label="@parameter.Name"></MudTextField>
                                         break;
                                 }       
                             </MatTooltip>
