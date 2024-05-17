@@ -7,6 +7,7 @@
 @using Markdig;
 @using System.IO;
 @using DrDotnet.Utils
+@using System.Collections
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
 
@@ -58,30 +59,38 @@
                     </div>
                 }
             </div>
-            
-            
         }
     </div>
 </div>
 
-@foreach (FileInfo report in Session.EnumerateReports())
+@foreach (MarkupString markupString in _markupStrings)
 {
     <div class="mat-layout-grid">
         <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
-            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
-                @report.Name
-            </div>
             <div class="report mat-layout-grid-cell mat-layout-grid-cell-span-12">
-                @ConvertFileToMarkup(report)
+                @markupString
+            </div>
+        </div>
+    </div>
+}
+
+@if (!IsLoadingComplete)
+{
+    <div class="mat-layout-grid">
+        <div class="mat-layout-grid-inner mat-elevation-z5" style="padding: 20px;">
+            <div class="report mat-layout-grid-cell mat-layout-grid-cell-span-12">
+                <h1>Loading...</h1>
             </div>
         </div>
     </div>
 }
 
 @code {
-
+    
     [Parameter]
     public required Guid SessionId { get; init; }
+    
+    private readonly List<MarkupString> _markupStrings = new();
 
     private SessionInfo? _session;
     private SessionInfo Session => _session ??= SessionDiscovery.TryGetSession(SessionId, out SessionInfo? session) ? session : throw new InvalidOperationException($"Session {SessionId} not found");
@@ -91,15 +100,65 @@
         return new MarkupString(Markdown.ToHtml(str, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()));
     }
     
-    private static MarkupString ConvertFileToMarkup(FileInfo file)
+    private static MarkupString? ConvertFileToMarkup(FileInfo file)
     {
         string content = File.ReadAllText(file.FullName);
         return file.Extension.ToLower() switch
         {
             ".md" => new MarkupString(Markdown.ToHtml(content, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build())),
             ".html" => new MarkupString(content),
-            _ => new MarkupString()
+            _ => null
         };
+    }
+
+    private bool isLoadingComplete;
+    
+    private bool IsLoadingComplete => isLoadingComplete;
+
+    public RenderFragment RenderRawHtml(string rawHtmlContent) => builder =>
+    {
+        builder.AddMarkupContent(0, rawHtmlContent);
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        await Task.Yield();
+
+        var reports = Session.EnumerateReports().ToList();
+        
+        for (int i = 0; i < reports.Count; i++)
+        {
+            FileInfo report = reports[i];
+            MarkupString? markupString = ConvertFileToMarkup(report);
+
+            bool stateChanged = false;
+            
+            if (i == reports.Count - 1)
+            {
+                isLoadingComplete = true;
+                stateChanged = true;
+            }
+            
+            if (markupString.HasValue)
+            {
+                _markupStrings.Add(markupString.Value);
+                stateChanged = true;
+            }
+            
+            if (stateChanged)
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void InjectHtml(string htmlSegment)
+    {
+        var element = new MarkupString(htmlSegment);
+        // Use JS Interop to append the segment to the inner HTML of the content div
+        JsRuntime.InvokeVoidAsync("appendHtmlToContent", element);
     }
 
     private void OnBackClick(object data)
