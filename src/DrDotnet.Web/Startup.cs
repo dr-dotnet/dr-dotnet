@@ -9,7 +9,9 @@ using MatBlazor;
 using System.Net.Http;
 using DrDotnet.Logging;
 using DrDotnet.Utils;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
 namespace DrDotnet.Web;
@@ -95,6 +97,10 @@ public class Startup
 
         //app.UseHttpsRedirection();
         app.UseStaticFiles();
+        
+        app.UseStaticFiles(new StaticFileOptions() {
+            FileProvider = new PhysicalFileProvider(PathUtils.DrDotnetBaseDirectory)
+        });
 
         app.UseRouting();
 
