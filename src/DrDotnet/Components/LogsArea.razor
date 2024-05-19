@@ -1,64 +1,37 @@
 @using DrDotnet.Utils
+@using System.Text
 @namespace DrDotnet
 
-@inject IJSRuntime JSRuntime
-
-<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
-    <MudTabPanel Text="App Logs">
-        <textarea id="@Id" class="logs" style="height: 70vh; width: 85vw;">@ChildContent</textarea>
-    </MudTabPanel>
-    <MudTabPanel Text="Tab Two">
-        <textarea id="@Id" class="logs" style="height: 70vh; width: 85vw;">@ChildContent</textarea>
-    </MudTabPanel>
-</MudTabs>
+<InputTextArea @bind-Value="@Logs" class="logs" style="height: 70vh; width: 85vw;" />
 
 @code {
-    [Parameter]
-    public EventCallback OnAfterRendered { get; set; }
     
     [Parameter]
-    public RenderFragment? ChildContent { get; set; }
-    
-    [Parameter]  
-    public string? Id { get; set; }
-    
-    [Inject(Key = "app.log")]
-    public FileContentWatcher? AppLogWatcher { get; set; }
+    public FileContentWatcher? FileWatcher { get; set; }
 
+    private StringBuilder _logs = new();
+
+    public string Logs {
+        get { return _logs.ToString(); }
+        set {}
+    }
+    
     protected override void OnInitialized()
     {
-        Console.WriteLine("OnInitialized");
-
-        AppLogWatcher!.ContentWritten += OnContentWritten;
+        FileWatcher!.ContentWritten += OnContentWritten;
         
-        // In case Id is not set, set a random one
-        Id ??= Random.Shared.Next().ToString();
         base.OnInitialized();
     }
     
     private void OnContentWritten(string content)
     {
-        Console.WriteLine("OnContentWritten");
-        Console.WriteLine(content);
-    }
-   
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await OnAfterRendered.InvokeAsync(Id);
-            //await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
-        }
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await base.OnParametersSetAsync();
-        //await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
+        _logs.AppendLine(content);
+        
+        StateHasChanged();
     }
     
     public void Dispose()
     {
-        AppLogWatcher!.ContentWritten -= OnContentWritten;
+        FileWatcher!.ContentWritten -= OnContentWritten;
     }
 }
