@@ -22,9 +22,8 @@ impl Profiler for CpuHotpathProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-A485B2056E71".to_owned(),
-            name: "CPU Hotpath Profiler".to_owned(),
-            description: "Lists CPU hotpaths.".to_owned(),
-            is_released: true,
+            name: "List CPU hotpaths".to_owned(),
+            description: "Capture callstacks every X ms and for a given duration and with minimal overhead, and then sort and list hotpaths in a tree view.".to_owned(),
             parameters: vec![
                 ProfilerParameter {
                     name: "Duration".to_owned(),
@@ -56,6 +55,14 @@ impl Profiler for CpuHotpathProfiler {
                     description: "If set, the output will display callers first and callees as children in the tree representation".to_owned(),
                     type_: ParameterType::BOOLEAN.into(),
                     value: "false".to_owned(),
+                    ..std::default::Default::default()
+                },
+                ProfilerParameter {
+                    name: "Maximum stacks to display".to_owned(),
+                    key: "max_stacks".to_owned(),
+                    description: "The maximum number of stacks to display".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "100".to_owned(),
                     ..std::default::Default::default()
                 }
             ],
@@ -95,7 +102,7 @@ impl CpuHotpathProfiler {
         filter_suspended_threads: bool,
         caller_to_callee: bool,
     ) {
-        info!("Starts building callstacks");
+        debug!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
@@ -150,7 +157,7 @@ impl CpuHotpathProfiler {
 
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
             if clr.suspend_runtime().is_ok() {
-                info!("Suspend runtime");
+                debug!("Suspend runtime");
                 Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee);
 
                 if clr.resume_runtime().is_err() {
@@ -166,14 +173,18 @@ impl CpuHotpathProfiler {
         // Sort by descending inclusive count (hotpaths first)
         tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
 
+        let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
+
+        // Truncate tree to max_stacks to avoid too large reports
+        if tree.children.len() > max_stacks {
+            tree.children.truncate(max_stacks);
+        }
+
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
-        report.write_line(format!(
-            "<h3>Hotpaths <small class=\"text-muted\">{}</small></h3>",
-            if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }
-        ));
-        report.write_line(format!("<li>{} samples</li>", total_samples));
-        report.write_line(format!("<li>{} roots</li>", tree.children.len()));
+        report.write_line("<h2>Hotpaths</h2>".to_owned());
+        report.write_line(format!("<h3>{} Tree</h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
+        report.write_line(format!("<h4>{} samples of {} roots</h4>", total_samples, tree.children.len()));
         tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
 
         if let Err(e) = clr.request_profiler_detach(3000) {
@@ -182,16 +193,21 @@ impl CpuHotpathProfiler {
     }
 
     fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize) {
-        let percentage = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
+        let percentage_exclusive = 100f64 * node.value.unwrap_or_default() as f64 / total_samples as f64;
+        let percentage_inclusive = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
 
         let mut method_name: String = clr.get_full_method_name(node.key);
         let escaped_class_name = html_escape::encode_text(&mut method_name);
 
         let has_children = node.children.len() > 0;
 
+        let line: String = format!("<code>{escaped_class_name}</code> \
+            <div class=\"chip\"><span>{percentage_inclusive:.2} %</span><i class=\"material-icons\">radio_button_checked</i></div> \
+            <div class=\"chip\"><span>{percentage_exclusive:.2} %</span><i class=\"material-icons\">radio_button_unchecked</i></div>");
+
         if has_children {
             report.write_line(format!(
-                "<details><summary><span>{percentage:.2} %</span><code>{escaped_class_name}</code></summary>"
+                "<details><summary>{line}</summary>"
             ));
             report.write_line(format!("<ul>"));
             for child in &node.children {
@@ -200,7 +216,7 @@ impl CpuHotpathProfiler {
             report.write_line(format!("</ul>"));
             report.write_line(format!("</details>"));
         } else {
-            report.write_line(format!("<li><span>{percentage:.2} %</span><code>{escaped_class_name}</code></li>"));
+            report.write_line(format!("<li>{line}</li>"));
         }
     }
 }

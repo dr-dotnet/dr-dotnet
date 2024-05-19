@@ -44,9 +44,8 @@ impl Profiler for RuntimePauseProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E85".to_owned(),
-            name: "Runtime Profiler".to_owned(),
-            description: "Lists runtime pauses and their durations (like blocking garbage collections)".to_owned(),
-            is_released: true,
+            name: "List runtime pauses".to_owned(),
+            description: "Lists runtime pauses and their durations, such as blocking garbage collections.".to_owned(),
             ..std::default::Default::default()
         };
     }

@@ -23,6 +23,18 @@ where
         }
     }
 
+    pub fn log<F>(&self, depth: usize, format: &F)
+    where
+        F: Fn(&Self) -> String,
+    {
+        let tabs = " ".repeat(depth);
+        info!("{}- {}", tabs, format(self));
+
+        for child in self.children.iter() {
+            child.log::<F>(depth + 1, format);
+        }
+    }
+
     // Sort children recursively based on the given closure
     pub fn sort_by<F>(&mut self, compare: &F)
     where
@@ -254,7 +266,7 @@ mod tests {
             ],
         };
 
-        let mut tree = TreeNode::build_from_sequences(&sequences, 0);
+        let tree = TreeNode::build_from_sequences(&sequences, 0);
 
         println!("Unsorted:");
         print(&tree, 0, &|node: &TreeNode<u32, usize>| {

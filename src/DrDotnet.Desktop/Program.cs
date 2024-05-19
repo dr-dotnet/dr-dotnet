@@ -24,7 +24,7 @@ class Program
         
         appBuilder.Services.AddLogging(lb => lb
             .AddSimpleConsole()
-            .AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.debug.log")));
+            .AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.log")));
 
         appBuilder.Services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         appBuilder.Services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();

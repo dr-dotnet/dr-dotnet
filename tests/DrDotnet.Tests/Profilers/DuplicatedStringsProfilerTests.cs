@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -37,7 +38,7 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
         List<string> list = new();
         for (int i = 0; i < 666; i++)
         {
-            list.Add(new string('6',6));
+            list.Add(new string('7', 6));
         }
 
         Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
@@ -51,8 +52,15 @@ public class DuplicatedStringsProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+        var content = await File.ReadAllTextAsync(summary.FullName);
 
+#if DEBUG
         Console.WriteLine(content);
+#endif
+
+        // We look for 77777 instead of 777777 otherwise we're going to allocate that string once more for
+        // that assertion and count might not be 666 but 667
+        content.Should().Contain("77777", "There should be 666 strings with 777777 content");
+        content.Should().Contain("666", "There should be 666 strings with 777777 content");
     }
 }

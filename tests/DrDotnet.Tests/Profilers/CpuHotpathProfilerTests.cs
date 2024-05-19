@@ -52,8 +52,12 @@ public class CpuHotpathProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+        var content = await File.ReadAllTextAsync(summary.FullName);
 
+#if DEBUG
         Console.WriteLine(content);
+#endif
+        
+        // Todo: Add assertions
     }
 }

@@ -70,10 +70,11 @@ public class AllocationByClassProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+        var content = await File.ReadAllTextAsync(summary.FullName);
 
+#if DEBUG
         Console.WriteLine(content);
-
+#endif
         Assert.IsTrue(content.Contains("System.String:"));
         Assert.IsTrue(content.Contains("Node:"));
     }

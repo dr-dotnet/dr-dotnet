@@ -17,7 +17,7 @@ public record SurvivorObject(int a, int b, long c);
 
 public class GCSurvivorsProfilerTests : ProfilerTests
 {
-    protected override Guid ProfilerGuid => new Guid("{805A308B-061C-47F3-9B30-F785C3186E86}");
+    protected override Guid ProfilerGuid => new Guid("{805A307B-061C-47F3-9B30-F795C3186E86}");
 
     [Test]
     [Order(0)]
@@ -37,12 +37,13 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
-        profiler.Parameters.First(x => x.Key == "max_types_display").Value = int.MaxValue.ToString();
-        profiler.Parameters.First(x => x.Key == "max_retention_depth").Value = 3.ToString();
+        profiler.Parameters.First(x => x.Key == "retained_references_threshold").Value = 10.ToString();
+        profiler.Parameters.First(x => x.Key == "retained_bytes_threshold").Value = 1000.ToString();
+        profiler.Parameters.First(x => x.Key == "max_depth").Value = 3.ToString();
         profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
 
         // Create 1000 SurvivorObject objects that will be placed in the GEN 2 heap
-        var survivorObjects = Enumerable.Range(0, 1000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
+        var survivorObjects = Enumerable.Range(0, 1_000_000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();
 
         // Force two garbage collections to promote objects from GEN 0 to GEN 2
         GC.Collect();
@@ -57,15 +58,17 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        string content = File.ReadAllText(summary.FullName);
+        string content = await File.ReadAllTextAsync(summary.FullName);
         
-        string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
-        string expectedArrayEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</summary>";
-
-        content.Should().Contain(expectedEntry);
-        content.Should().Contain(expectedArrayEntry);
-
+#if DEBUG
+        Console.WriteLine(content);
+#endif
+        
         // Check that the objects are in the GEN 2 heap
         Assert.AreEqual(2, GC.GetGeneration(survivorObjects));
+        
+        content.Should().Contain("SurvivorObject[]", "There should be a reference to the array of SurvivorObject objects");
+        content.Should().Contain("1,000,001", "There should be a path with 1,000,001 objects held (array itself + each elements)");
+        content.Should().Contain("1,000,000", "There should also be a path with 1,000,000 objects held (each element)");
     }
 }

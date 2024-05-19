@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -65,11 +66,13 @@ public class RuntimePausesProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+        var content = await File.ReadAllTextAsync(summary.FullName);
 
+#if DEBUG
         Console.WriteLine(content);
+#endif
 
-        Assert.IsTrue(content.Contains("Number of pauses:"));
-        Assert.IsFalse(content.Contains("Number of pauses: 0"));
+        content.Should().Contain("Number of pauses:");
+        content.Should().NotContain("Number of pauses: 0");
     }
 }

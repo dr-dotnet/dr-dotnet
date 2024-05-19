@@ -1,4 +1,5 @@
 ﻿@page "/profilers/{ProcessId:int}"
+@using Markdig
 
 @inject IProfilerDiscovery ProfilersDiscovery;
 @inject NavigationManager NavigationManager;
@@ -9,14 +10,12 @@
 
 <MatTable Items="@Profilers" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
     <MatTableHeader>
-        <th>Name</th>
-        <th style="min-width:300px;">Id</th>
+        <th style="min-width:330px;">Name</th>
         <th>Description</th>
     </MatTableHeader>
     <MatTableRow>
         <td>@context.Name</td>
-        <td>@context.Uuid</td>
-        <td>@context.Description</td>
+        <td>@MarkdownStringToMarkup(context.Description)</td>
     </MatTableRow>
 </MatTable>
 
@@ -26,6 +25,11 @@
     [Parameter]
     public required int ProcessId { get; init; }
 
+    private static MarkupString MarkdownStringToMarkup(string str)
+    {
+        return new MarkupString(Markdown.ToHtml(str, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()));
+    }
+    
     protected override void OnInitialized()
     {
         base.OnInitialized();

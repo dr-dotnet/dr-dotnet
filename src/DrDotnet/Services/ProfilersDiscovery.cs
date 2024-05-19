@@ -1,11 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using DrDotnet.Utils;
 
 namespace DrDotnet;
 
 public class ProfilersDiscovery : IProfilerDiscovery
 {
-    public List<ProfilerInfo> GetProfilers(bool listUnreleasedProfilers = false)
+    public List<ProfilerInfo> GetProfilers()
     {
         var profilers = new List<ProfilerInfo>();
 
@@ -13,10 +15,7 @@ public class ProfilersDiscovery : IProfilerDiscovery
 
         foreach (var interopProfiler in interopProfilers.Profilers)
         {
-            if (listUnreleasedProfilers || interopProfiler.IsReleased)
-            {
-                profilers.Add(interopProfiler);
-            }
+            profilers.Add(interopProfiler);
         }
 
         return profilers;

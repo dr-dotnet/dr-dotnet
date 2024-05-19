@@ -23,7 +23,7 @@ use crate::utils::NameResolver;
 
 #[derive(Default, Clone)]
 struct ReferenceInfo {
-    initial_size: usize,
+    //initial_size: usize,
     first_gc_survived: u16,
     last_gc_survived: u16,
 }
@@ -54,9 +54,8 @@ impl Profiler for MemoryLeakProfiler {
     fn profiler_info() -> ProfilerInfo {
         return ProfilerInfo {
             uuid: "805A308B-061C-47F3-9B30-F785C3186E83".to_owned(),
-            name: "Memory Leaks Profiler".to_owned(),
-            description: "Finds managed memory leaks.".to_owned(),
-            is_released: true,
+            name: "Find memory leaks".to_owned(),
+            description: "Keep track of references over the course of several garbage collection and try identify managed memory leaks with various strategies.\n\n*⚠️ Experimental*".to_owned(),
             ..std::default::Default::default()
         };
     }
@@ -369,7 +368,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
                     self.surviving_references.insert(
                         id,
                         ReferenceInfo {
-                            initial_size: object_lengths[i],
+                            //initial_size: object_lengths[i],
                             first_gc_survived: self.elegible_gcs_count,
                             last_gc_survived: self.elegible_gcs_count,
                         },
@@ -399,7 +398,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
             return Ok(());
         }
 
-        let mut new_tracked_refs = 0;
+        let new_tracked_refs = 0;
         let mut moved_tracked_refs = 0;
 
         for i in 0..old_object_ids.len() {
@@ -427,7 +426,7 @@ impl CorProfilerCallback4 for MemoryLeakProfiler {
                     self.surviving_references.insert(
                         new_id,
                         ReferenceInfo {
-                            initial_size: object_lengths[i],
+                            //initial_size: object_lengths[i],
                             first_gc_survived: self.elegible_gcs_count,
                             last_gc_survived: self.elegible_gcs_count,
                         },

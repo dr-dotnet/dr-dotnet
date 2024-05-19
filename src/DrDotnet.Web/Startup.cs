@@ -52,7 +52,7 @@ public class Startup
 
             if (_fileLoggingEnabled)
             {
-                lb.AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.debug.log"));
+                lb.AddFileLogger(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.log"));
             }
         });
         

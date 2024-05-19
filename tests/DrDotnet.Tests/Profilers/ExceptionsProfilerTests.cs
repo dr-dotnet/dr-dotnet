@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DrDotnet.Utils;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -55,12 +56,14 @@ public class ExceptionsProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        var content = File.ReadAllText(summary.FullName);
+        var content = await File.ReadAllTextAsync(summary.FullName);
 
+#if DEBUG
         Console.WriteLine(content);
-
-        Assert.IsTrue(content.Contains("DrDotnet.Tests.Profilers.TestException:"));
-        Assert.IsFalse(content.Contains("DrDotnet.Tests.Profilers.TestException: 0"));
+#endif
+        
+        content.Should().Contain("DrDotnet.Tests.Profilers.TestException:");
+        content.Should().NotContain("DrDotnet.Tests.Profilers.TestException: 0");
     }
 }
 

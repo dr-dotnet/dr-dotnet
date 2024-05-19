@@ -13,6 +13,19 @@ const PADDING: usize = 5;
 /// if < 0 will print all thread ids
 const NB_THREAD_IDS_TO_PRINT: usize = 4;
 
+impl Profiler for MergedCallStacksProfiler {
+    profiler_getset!();
+
+    fn profiler_info() -> ProfilerInfo {
+        return ProfilerInfo {
+            uuid: "9404d16c-b49e-11ed-afa1-0242ac120002".to_owned(),
+            name: "List merged call stacks".to_owned(),
+            description: "Lists threads call stacks merged by stack frame.".to_owned(),
+            ..std::default::Default::default()
+        };
+    }
+}
+
 #[derive(Default)]
 pub struct MergedCallStacksProfiler {
     clr_profiler_info: ClrProfilerInfo,
@@ -45,7 +58,7 @@ impl StackFrame {
     fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
         match frame.kind {
             StackFrameType::Native => "unmanaged".to_string(),
-            StackFrameType::Managed => unsafe { clr.clone().get_full_method_name(frame.fct_id) },
+            StackFrameType::Managed => clr.clone().get_full_method_name(frame.fct_id),
         }
     }
 }
@@ -58,7 +71,7 @@ impl MergedStack {
     pub fn add_stack(&mut self, clr: &ClrProfilerInfo, thread_id: ThreadID, stack_trace: Vec<StackFrame>, index: Option<usize>) {
         self.thread_ids.push(thread_id);
 
-        let mut index = index.unwrap_or(0);
+        let index = index.unwrap_or(0);
         let first_frame = &stack_trace[index];
 
         let mut merged_stack = self.stacks.iter_mut().find(|s| s.frame.fct_id == first_frame.fct_id);
@@ -92,9 +105,9 @@ impl MergedStack {
         self.write_stack(report, 0);
     }
 
-    fn write_html(&self, report: &mut Report, isSame: bool) {
+    fn write_html(&self, report: &mut Report, is_same: bool) {
         if self.stacks.is_empty() {
-            if !isSame {
+            if !is_same {
                 report.write(format!("\n</details>\n"));
                 report.write(self.render_as_html_summary());
                 report.write(format!("\n<details>\n\t"));
@@ -104,7 +117,7 @@ impl MergedStack {
             return;
         }
 
-        if !isSame {
+        if !is_same {
             report.write(format!("\n</details>\n"));
         }
 
@@ -135,7 +148,7 @@ impl MergedStack {
             }
         }
 
-        if isSame {
+        if is_same {
             report.write(self.render_as_html_li());
         } else {
             report.write(self.render_as_html_summary());
@@ -174,10 +187,6 @@ impl MergedStack {
         let count = self.thread_ids.len();
         let limit = min(count, NB_THREAD_IDS_TO_PRINT);
 
-        if limit < 0 {
-            return self.thread_ids.iter().map(|k| format!("{k}")).collect::<Vec<String>>().join(",");
-        }
-
         let mut result = self
             .thread_ids
             .get(..limit)
@@ -186,6 +195,7 @@ impl MergedStack {
             .map(|k| format!("{k}"))
             .collect::<Vec<String>>()
             .join(",");
+
         if count > limit {
             result += "...";
         }
@@ -195,27 +205,13 @@ impl MergedStack {
     pub fn render_as_html_summary(&self) -> String {
         let frame = self.frame.display.as_ref().unwrap();
         let thread_count = format!("{}", self.thread_ids.len());
-        format!("<summary><span>{thread_count}</span>{frame}</summary>")
+        format!("<summary><div>{thread_count}</div>{frame}</summary>")
     }
 
     pub fn render_as_html_li(&self) -> String {
         let frame = self.frame.display.as_ref().unwrap();
         let thread_count = format!("{}", self.thread_ids.len());
-        format!("<li><span>{thread_count}</span>{frame}</li>")
-    }
-}
-
-impl Profiler for MergedCallStacksProfiler {
-    profiler_getset!();
-
-    fn profiler_info() -> ProfilerInfo {
-        return ProfilerInfo {
-            uuid: "9404d16c-b49e-11ed-afa1-0242ac120002".to_owned(),
-            name: "Merged call stacks Profiler".to_owned(),
-            description: "Display a view of threads merged call stacks. ".to_owned(),
-            is_released: true,
-            ..std::default::Default::default()
-        };
+        format!("<li><div>{thread_count}</div>{frame}</li>")
     }
 }
 
@@ -234,7 +230,7 @@ impl StackSnapshotCallbackReceiver for MergedCallstacksStackSnapshotCallbackRece
 
 impl MergedCallStacksProfiler {
     fn build_callstacks(profiler_info: ClrProfilerInfo, mut merged_stack: std::sync::MutexGuard<MergedStack>) {
-        info!("Starts building callstacks");
+        debug!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
