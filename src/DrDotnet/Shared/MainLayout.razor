@@ -4,41 +4,57 @@
 @implements IDisposable
 @inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
 
 <MudThemeProvider/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
 
-<div class="page">
-    <div class="main">
-        <div class="top-row px-4">
-            <img @onclick="NavigateToRoot" src="_content/DrDotnet/logo.png" width="36" height="36" style="margin-right: 10px; cursor: pointer;"/>
-            <b style="flex-grow: 1;">Dr.Dotnet</b>
-            <i>Version @VersionUtils.CurrentVersion</i>
-            <MudButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MudButton>
-            <MudButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MudButton>
-        </div>
-        <div class="content px-4">
-            @Body
-        </div>
-    </div>
-</div>
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h5" Class="ml-3">Application</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+    </MudAppBar>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
 
-<MudButton @bind-IsOpen="@IsLogDialogOpen">
-    <DialogContent>
-        <MatTabGroup>
-            <MatTab Label="App Logs">
-                <LogsArea>@AppLogs</LogsArea>
-            </MatTab>
-            <MatTab Label="Profiler Logs">
-                <LogsArea>@ProfilerLogs</LogsArea>
-            </MatTab>
-        </MatTabGroup>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MudButton>
-    </DialogActions>
+<MudButton @onclick="OpenDialog" Variant="Variant.Filled" Color="Color.Primary">
+    Open Simple Dialog
 </MudButton>
+
+@* <div class="page"> *@
+@*     <div class="main"> *@
+@*         <div class="top-row px-4"> *@
+@*             <img @onclick="NavigateToRoot" src="_content/DrDotnet/logo.png" width="36" height="36" style="margin-right: 10px; cursor: pointer;"/> *@
+@*             <b style="flex-grow: 1;">Dr.Dotnet</b> *@
+@*             <i>Version @VersionUtils.CurrentVersion</i> *@
+@*             <MudButton OnClick="@OpenLogs" Icon="receipt" Style="">Logs</MudButton> *@
+@*             <MudButton Link="https://github.com/ogxd/dr-dotnet" Icon="open_in_new" Style="">See on Github</MudButton> *@
+@*         </div> *@
+@*         <div class="content px-4"> *@
+@*             @Body *@
+@*         </div> *@
+@*     </div> *@
+@* </div> *@
+
+@* <MudButton @bind-IsOpen="@IsLogDialogOpen"> *@
+@*     <DialogContent> *@
+@*         <MatTabGroup> *@
+@*             <MatTab Label="App Logs"> *@
+@*                 <LogsArea>@AppLogs</LogsArea> *@
+@*             </MatTab> *@
+@*             <MatTab Label="Profiler Logs"> *@
+@*                 <LogsArea>@ProfilerLogs</LogsArea> *@
+@*             </MatTab> *@
+@*         </MatTabGroup> *@
+@*     </DialogContent> *@
+@*     <DialogActions> *@
+@*         <MudButton OnClick="@(e => { IsLogDialogOpen = false; })">Close</MudButton> *@
+@*     </DialogActions> *@
+@* </MudButton> *@
  
 @code
 {
@@ -56,6 +72,12 @@
     void OpenLogs()
     {
         IsLogDialogOpen = true;
+    }
+    
+    private void OpenDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        DialogService.Show<LogsArea>("Simple Dialog", options);
     }
 
     private static string GetLogs(string file)
