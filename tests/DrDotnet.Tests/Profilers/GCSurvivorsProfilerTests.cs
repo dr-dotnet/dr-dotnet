@@ -58,18 +58,17 @@ public class GCSurvivorsProfilerTests : ProfilerTests
 
         Assert.NotNull(summary, "No summary have been created!");
 
-        string content = File.ReadAllText(summary.FullName);
+        string content = await File.ReadAllTextAsync(summary.FullName);
         
+#if DEBUG
         Console.WriteLine(content);
+#endif
         
-        string expectedEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000,000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}</summary>";
-        string expectedArrayEntry = $"<details><summary><span>({8 /*pointer size in array*/ + 8 /*base size*/ + Marshal.SizeOf<SurvivorObject>() /*object fields size*/},000,000 bytes) - {survivorObjects.Length}</span>{typeof(SurvivorObject)}[]</summary>";
-
-        // Todo: Not sure what to assert
-        //content.Should().Contain(expectedEntry);
-        //content.Should().Contain(expectedArrayEntry);
-
         // Check that the objects are in the GEN 2 heap
         Assert.AreEqual(2, GC.GetGeneration(survivorObjects));
+        
+        content.Should().Contain("SurvivorObject[]", "There should be a reference to the array of SurvivorObject objects");
+        content.Should().Contain("1,000,001", "There should be a path with 1,000,001 objects held (array itself + each elements)");
+        content.Should().Contain("1,000,000", "There should also be a path with 1,000,000 objects held (each element)");
     }
 }
