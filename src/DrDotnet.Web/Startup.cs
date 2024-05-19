@@ -60,6 +60,9 @@ public class Startup
         services.AddSingleton<ISessionDiscovery, SessionsDiscovery>();
         services.AddSingleton<IProcessDiscovery, ProcessDiscovery>();
         services.AddSingleton<IProfilerDiscovery, ProfilersDiscovery>();
+
+        services.AddKeyedSingleton("app.log", (sp, key) => new FileContentWatcher(Path.Combine(PathUtils.DrDotnetBaseDirectory, "app.log")));
+        services.AddKeyedSingleton("profiler.log", (sp, key) => new FileContentWatcher(Path.Combine(PathUtils.DrDotnetBaseDirectory, "profiler.log")));
         
         if (_webUiEnabled)
         {

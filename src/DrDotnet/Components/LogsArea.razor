@@ -1,3 +1,4 @@
+@using DrDotnet.Utils
 @namespace DrDotnet
 
 @inject IJSRuntime JSRuntime
@@ -20,14 +21,27 @@
     
     [Parameter]  
     public string? Id { get; set; }
+    
+    [Inject(Key = "app.log")]
+    public FileContentWatcher? AppLogWatcher { get; set; }
 
     protected override void OnInitialized()
     {
+        Console.WriteLine("OnInitialized");
+
+        AppLogWatcher!.ContentWritten += OnContentWritten;
+        
         // In case Id is not set, set a random one
         Id ??= Random.Shared.Next().ToString();
         base.OnInitialized();
     }
-
+    
+    private void OnContentWritten(string content)
+    {
+        Console.WriteLine("OnContentWritten");
+        Console.WriteLine(content);
+    }
+   
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -41,5 +55,10 @@
     {
         await base.OnParametersSetAsync();
         //await JSRuntime.InvokeVoidAsync("scrollToBottom", Id);
+    }
+    
+    public void Dispose()
+    {
+        AppLogWatcher!.ContentWritten -= OnContentWritten;
     }
 }

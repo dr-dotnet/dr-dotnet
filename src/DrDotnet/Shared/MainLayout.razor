@@ -101,6 +101,7 @@
 
     protected override void OnInitialized()
     {
+        Console.WriteLine("MainLayout OnInitialized");
         base.OnInitialized();
 
         _watcher.NotifyFilter = NotifyFilters.LastAccess
@@ -136,6 +137,7 @@
 
     public void Dispose()
     {
+        Console.WriteLine("MainLayout Disposed");
         _watcher.Dispose();
     }
 }
