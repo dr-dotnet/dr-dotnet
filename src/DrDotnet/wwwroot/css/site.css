@@ -191,59 +191,60 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
-/*h1 {*/
-/*    font-family:Roboto, sans-serif;*/
-/*    font-size:6rem;*/
-/*    line-height:6rem;*/
-/*    font-weight:300;*/
-/*    letter-spacing:-0.015625em;*/
-/*    text-decoration:inherit;*/
-/*    text-transform:inherit;*/
-/*}*/
-/*h2 {*/
-/*    font-family:Roboto, sans-serif;*/
-/*    font-size:3.75rem;*/
-/*    line-height:3.75rem;*/
-/*    font-weight:300;*/
-/*    letter-spacing:-0.0083333333em;*/
-/*    text-decoration:inherit;*/
-/*    text-transform:inherit;*/
-/*}*/
-/*h3 {*/
-/*    font-family:Roboto, sans-serif;*/
-/*    font-size:3rem;*/
-/*    line-height:3.125rem;*/
-/*    font-weight:400;*/
-/*    letter-spacing:normal;*/
-/*    text-decoration:inherit;*/
-/*    text-transform:inherit;*/
-/*}*/
-/*h4 {*/
-/*    font-family:Roboto, sans-serif;*/
-/*    font-size:2.125rem;*/
-/*    line-height:2.5rem;*/
-/*    font-weight:400;*/
-/*    letter-spacing:0.0073529412em;*/
-/*    text-decoration:inherit;*/
-/*    text-transform:inherit;*/
-/*}*/
-/*h5 {*/
-/*    font-family:Roboto, sans-serif;*/
-/*    font-size:1.5rem;*/
-/*    line-height:2rem;*/
-/*    font-weight:400;*/
-/*    letter-spacing:normal;*/
-/*    text-decoration:inherit;*/
-/*    text-transform:inherit;*/
-/*}*/
-/*h6 {*/
-/*    font-size:1.25rem;*/
-/*    line-height:2rem;*/
-/*    font-weight:500;*/
-/*    letter-spacing:0.0125em;*/
-/*    text-decoration:inherit;*/
-/*    text-transform:inherit;*/
-/*}*/
+h1 {
+    font-family:Roboto, sans-serif;
+    font-size:2.5rem;
+    line-height:3.5rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-decoration:inherit;
+    text-transform:inherit;
+}
+h2 {
+    font-family:Roboto, sans-serif;
+    font-size:2.25rem;
+    line-height:3.25rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-decoration:inherit;
+    text-transform:inherit;
+}
+h3 {
+    font-family:Roboto, sans-serif;
+    font-size:2rem;
+    line-height:3rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-decoration:inherit;
+    text-transform:inherit;
+}
+h4 {
+    font-family:Roboto, sans-serif;
+    font-size:1.75rem;
+    line-height:2.75rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-decoration:inherit;
+    text-transform:inherit;
+}
+h5 {
+    font-family:Roboto, sans-serif;
+    font-size:1.5rem;
+    line-height:2.5rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-decoration:inherit;
+    text-transform:inherit;
+}
+h6 {
+    font-family:Roboto, sans-serif;
+    font-size:1.25rem;
+    line-height:2.25rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-decoration:inherit;
+    text-transform:inherit;
+}
 
 .page {
     position: relative;

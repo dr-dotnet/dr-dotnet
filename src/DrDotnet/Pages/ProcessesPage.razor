@@ -3,22 +3,20 @@
 @inject IProcessDiscovery ProcessDiscovery
 @inject NavigationManager NavigationManager
 
-<MudIconButton Style="float: left;" Icon="@Icons.Material.Filled.ArrowBack" OnClick="@OnBackClick"/>
-
-<h3 class="mat-h3">Dotnet Processes</h3>
-
-<MudTable T="ProcessInfo" Items="@_processes" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged"  PageSize="Int32.MaxValue" ShowPaging="false">
-    <HeaderContent>
-        <MudTh>Id</MudTh>
-        <MudTh>Managed Assembly Name</MudTh>
-        <MudTh>Runtime Version</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.Id</MudTd>
-        <MudTd>@context.ManagedAssemblyName</MudTd>
-        <MudTd>@context.Version</MudTd>
-    </RowTemplate>
-</MudTable>
+<NavBar Title="Processes" ShowBackButton="true">
+    <MudTable T="ProcessInfo" Items="@_processes" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged"  PageSize="Int32.MaxValue" ShowPaging="false">
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Managed Assembly Name</MudTh>
+            <MudTh>Runtime Version</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Id</MudTd>
+            <MudTd>@context.ManagedAssemblyName</MudTd>
+            <MudTd>@context.Version</MudTd>
+        </RowTemplate>
+    </MudTable>
+</NavBar>
 
 @code {
     private IList<ProcessInfo> _processes = Array.Empty<ProcessInfo>();

@@ -5,24 +5,26 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime;
 
-<MudButton Raised="true" Icon="@Icons.Material.Filled.Add" Label="New session" OnClick="OnNewSessionClicked" Style="float: right;"/>
-
-<h3 class="mat-h3">Recent Sessions</h3>
-
-<MudTable T="SessionInfo" Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
-    <HeaderContent>
-        <MudTh style="min-width:300px;">Process</MudTh>
-        <MudTh style="min-width:200px;">Date (UTC)</MudTh>
-        <MudTh style="width:100%;">Profiler</MudTh>
-        <MudTh style="min-width:180px;">Download Zip</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.ProcessName</MudTd>
-        <MudTd>@context.TimestampDate</MudTd>
-        <MudTd>@context.Profiler?.Name</MudTd>
-        <MudTd><MudIconButton Icon="@Icons.Material.Filled.Download" OnClick="() => context.DownloadZipAsync(JsRuntime)" OnClickStopPropagation="true" Style="float: right;"/></MudTd>
-    </RowTemplate>
-</MudTable>
+<NavBar Title="Home" ShowBackButton="false">
+    <MudElement Style="display: block; position: fixed; bottom: 20px; right: 30px; z-index: 99;">
+        <MudFab OnClick="OnNewSessionClicked" StartIcon="@Icons.Material.Filled.Add" Href="https://github.com/ogxd/dr-dotnet" Color="Color.Primary"/>
+    </MudElement>
+    
+    <MudTable T="SessionInfo" Items="@Sessions" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
+        <HeaderContent>
+            <MudTh style="min-width:300px;">Process</MudTh>
+            <MudTh style="min-width:200px;">Date (UTC)</MudTh>
+            <MudTh style="width:100%;">Profiler</MudTh>
+            <MudTh style="min-width:180px;">Download Zip</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Process.ManagedAssemblyName</MudTd>
+            <MudTd>@context.TimestampDate</MudTd>
+            <MudTd>@context.Profiler?.Name</MudTd>
+            <MudTd><MudIconButton Icon="@Icons.Material.Filled.Download" OnClick="() => context.DownloadZipAsync(JsRuntime)" OnClickStopPropagation="true" Style="float: right;"/></MudTd>
+        </RowTemplate>
+    </MudTable>
+</NavBar>
 
 @code
 {

@@ -2,28 +2,33 @@
 @using Markdig
 
 @inject IProfilerDiscovery ProfilersDiscovery;
+@inject IProcessDiscovery ProcessDiscovery
 @inject NavigationManager NavigationManager;
 
-<MudIconButton Style="float: left;" Icon="@Icons.Material.Filled.ArrowBack" OnClick="@OnBackClick"/>
-
-<h3 class="mat-h3">Profilers</h3>
-
-<MudTable T="ProfilerInfo" Items="@Profilers" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
-    <HeaderContent>
-        <MudTh style="min-width:330px;">Name</MudTh>
-        <MudTh>Description</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.Name</MudTd>
-        <MudTd>@MarkdownStringToMarkup(context.Description)</MudTd>
-    </RowTemplate>
-</MudTable>
+<NavBar Title="Profilers" ShowBackButton="true" Process="@Process()">
+    <MudTable T="ProfilerInfo" Items="@Profilers" class="mat-elevation-z5" AllowSelection="true" OnRowClick="@OnSelectionChanged" PageSize="Int32.MaxValue" ShowPaging="false">
+        <HeaderContent>
+            <MudTh style="min-width:330px;">Name</MudTh>
+            <MudTh>Description</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>@MarkdownStringToMarkup(context.Description)</MudTd>
+        </RowTemplate>
+    </MudTable>
+</NavBar>
 
 @code {
     private IList<ProfilerInfo> Profilers { get; set; } = Array.Empty<ProfilerInfo>();
 
     [Parameter]
     public required int ProcessId { get; init; }
+
+    private ProcessInfo? Process()
+    {
+        ProcessDiscovery.TryGetProcessInfoFromPid(ProcessId, out ProcessInfo? process);
+        return process;
+    }
 
     private static MarkupString MarkdownStringToMarkup(string str)
     {
