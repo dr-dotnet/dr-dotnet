@@ -149,11 +149,7 @@ impl NameResolver for ClrProfilerInfo {
         let class_name = if class_id == 0 { "unknown_type".to_owned() } else { self.get_class_name(class_id) };
         let method_name = match self.get_token_and_metadata_from_function(method_id) {
             Ok(f) => match f.metadata_import.get_method_props(f.token) {
-                Ok(method_props) => {
-                    // let name = self.get_type_name(function_info.module_id, method_props.class_token);
-                    // let name = self.handle_generics(name, &class_info);
-                    method_props.name
-                },
+                Ok(method_props) => method_props.name,
                 Err(hresult) => {
                     warn!("metadata_import.get_method_props({}) failed ({:?})", f.token, hresult);
                     "unknown_method".to_owned()

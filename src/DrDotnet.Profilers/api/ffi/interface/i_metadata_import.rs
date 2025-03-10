@@ -282,19 +282,11 @@ pub struct IMetaDataImport<T> {
 }
 
 impl IMetaDataImport<()> {
-    // 7DAC8207-D3AE-4C75-9B67-92801A497D44 v1
+    // 7DAC8207-D3AE-4C75-9B67-92801A497D44
     pub const IID: GUID = GUID {
         data1: 0x7DAC8207,
         data2: 0xD3AE,
         data3: 0x4C75,
         data4: [0x9B, 0x67, 0x92, 0x80, 0x1A, 0x49, 0x7D, 0x44],
     };
-
-    // FCE5EFA0-8BBA-4f8e-A036-8F2022B08466 v2
-    // pub const IID: GUID = GUID {
-    //     data1: 0xFCE5EFA0,
-    //     data2: 0x8BBA,
-    //     data3: 0x4f8e,
-    //     data4: [0xA0, 0x36, 0x8F, 0x20, 0x22, 0xB0, 0x84, 0x66],
-    // };
 }

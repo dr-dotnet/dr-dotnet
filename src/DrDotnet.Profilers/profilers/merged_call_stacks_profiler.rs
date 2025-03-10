@@ -2,7 +2,7 @@ use itertools::Itertools;
 use std::cmp::min;
 use std::sync::{Arc, Mutex};
 
-use crate::api::ffi::{FunctionID, ThreadID};
+use crate::api::ffi::{FunctionID, ClassID, ThreadID, COR_PRF_FRAME_INFO};
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
@@ -45,6 +45,7 @@ struct StackFrame {
     display: Option<String>,
     kind: StackFrameType,
     fct_id: FunctionID,
+    class_id: ClassID,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -58,7 +59,7 @@ impl StackFrame {
     fn format(frame: &StackFrame, clr: &ClrProfilerInfo) -> String {
         match frame.kind {
             StackFrameType::Native => "unmanaged".to_string(),
-            StackFrameType::Managed => clr.clone().get_full_method_name(frame.fct_id, 0),
+            StackFrameType::Managed => clr.clone().get_full_method_name(frame.fct_id, frame.class_id),
         }
     }
 }
@@ -97,6 +98,7 @@ impl MergedStack {
                 kind: frame.kind.clone(),
                 fct_id: frame.fct_id,
                 display: Some(StackFrame::format(frame, clr)),
+                class_id: frame.class_id,
             },
         }
     }
@@ -215,16 +217,24 @@ impl MergedStack {
     }
 }
 
-#[derive(Default)]
 pub struct MergedCallstacksStackSnapshotCallbackReceiver {
-    method_ids: Vec<ffi::FunctionID>,
+    ids: Vec<(FunctionID, ClassID)>,
+    clr: ClrProfilerInfo,
 }
 
 impl StackSnapshotCallbackReceiver for MergedCallstacksStackSnapshotCallbackReceiver {
     type AssociatedType = Self;
 
-    fn callback(&mut self, method_id: FunctionID, ip: usize, _: usize, _: &[u8]) {
-        self.method_ids.push(method_id);
+    fn callback(&mut self, function_id: FunctionID, ip: usize, frame_info: COR_PRF_FRAME_INFO, _: &[u8]) {
+        
+        // ClassID is required to get the full function name, including generics
+        let class_id = if let Ok(f) = self.clr.get_function_info_2(function_id, frame_info) {
+            f.class_id
+        } else {
+            0
+        };
+
+        self.ids.push((function_id, class_id));
     }
 }
 
@@ -234,17 +244,21 @@ impl MergedCallStacksProfiler {
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
-            let mut stack_snapshot_receiver = MergedCallstacksStackSnapshotCallbackReceiver::default();
+            let mut stack_snapshot_receiver = MergedCallstacksStackSnapshotCallbackReceiver {
+                ids: Vec::new(),
+                clr: pinfo.clone(),
+            };
 
             stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
 
             let mut stack_trace = Vec::<StackFrame>::new();
 
-            for method_id in stack_snapshot_receiver.method_ids.iter().rev() {
+            for (function_id, class_id) in stack_snapshot_receiver.ids.iter().rev() {
                 let frame = StackFrame {
-                    kind: if *method_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
-                    fct_id: *method_id,
+                    kind: if *function_id == 0 { StackFrameType::Native } else { StackFrameType::Managed },
+                    fct_id: *function_id,
                     display: None,
+                    class_id: *class_id,
                 };
                 //TODO: handle correctly native frame, for now we just ignore them
                 if frame.kind == StackFrameType::Native {
