@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:7.0
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 COPY pub app/
 WORKDIR /app
 # Disable diagnostics for dr-dotnet, to disambiguate it from profileable processes

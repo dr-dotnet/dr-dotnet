@@ -2,7 +2,7 @@ use dashmap::DashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 
-use crate::api::ffi::{FunctionID, ThreadID, HRESULT};
+use crate::api::ffi::{ClassID, FunctionID, ThreadID, COR_PRF_FRAME_INFO, HRESULT};
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
@@ -30,7 +30,7 @@ impl Profiler for CpuHotpathProfiler {
                     key: "duration_seconds".to_owned(),
                     description: "The profiling duration in seconds".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "10".to_owned(),
+                    value: "30".to_owned(),
                     ..std::default::Default::default()
                 },
                 ProfilerParameter {
@@ -38,7 +38,15 @@ impl Profiler for CpuHotpathProfiler {
                     key: "time_interval_ms".to_owned(),
                     description: "Time interval between two samples in milliseconds".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "40".to_owned(),
+                    value: "20".to_owned(),
+                    ..std::default::Default::default()
+                },
+                ProfilerParameter {
+                    name: "Maximum stacks to display".to_owned(),
+                    key: "max_stacks".to_owned(),
+                    description: "The maximum number of stacks to display".to_owned(),
+                    type_: ParameterType::INT.into(),
+                    value: "20".to_owned(),
                     ..std::default::Default::default()
                 },
                 ProfilerParameter {
@@ -58,11 +66,11 @@ impl Profiler for CpuHotpathProfiler {
                     ..std::default::Default::default()
                 },
                 ProfilerParameter {
-                    name: "Maximum stacks to display".to_owned(),
-                    key: "max_stacks".to_owned(),
-                    description: "The maximum number of stacks to display".to_owned(),
-                    type_: ParameterType::INT.into(),
-                    value: "100".to_owned(),
+                    name: "Try Resolve Generics".to_owned(),
+                    key: "try_resolve_generics".to_owned(),
+                    description: "[Experimental] If set, try resolve generic arguments. This may not always work and might incurr additional overhead.".to_owned(),
+                    type_: ParameterType::BOOLEAN.into(),
+                    value: "false".to_owned(),
                     ..std::default::Default::default()
                 }
             ],
@@ -71,21 +79,40 @@ impl Profiler for CpuHotpathProfiler {
     }
 }
 
-#[derive(Default)]
 pub struct CpuHotpathStackSnapshotCallbackReceiver {
-    method_ids: Vec<FunctionID>,
+    method_ids: Vec<(FunctionID, ClassID)>,
     hasher: DefaultHasher,
+    clr: ClrProfilerInfo,
+    try_resolve_generics: bool,
+}
+
+impl CpuHotpathStackSnapshotCallbackReceiver {
+    fn new(clr: ClrProfilerInfo, try_resolve_generics: bool) -> Self {
+        CpuHotpathStackSnapshotCallbackReceiver {
+            method_ids: Vec::new(),
+            hasher: DefaultHasher::new(),
+            clr: clr,
+            try_resolve_generics: try_resolve_generics,
+        }
+    }
 }
 
 impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
     type AssociatedType = Self;
 
-    fn callback(&mut self, method_id: FunctionID, instruction_pointer: usize, _frame_info: usize, _context: &[u8]) {
+    fn callback(&mut self, method_id: FunctionID, instruction_pointer: usize, frame_info: COR_PRF_FRAME_INFO, _context: &[u8]) {
         // Filter out unmanaged stack frames
         if method_id == 0 {
             return;
         }
-        self.method_ids.push(method_id);
+
+        let class_id = self.try_resolve_generics
+            .then(|| self.clr.get_function_info_2(method_id, frame_info).ok())
+            .flatten()
+            .map_or(0, |info| info.class_id);
+
+        self.method_ids.push((method_id, class_id));
+        
         // Detect suspended threads appart from actual working threads
         // Inspired from: https://www.usenix.org/legacy/publications/library/proceedings/coots99/full_papers/liang/liang_html/node10.html
         // Not sure which is the best approach between utilizing the instruction pointer or the context
@@ -98,15 +125,16 @@ impl CpuHotpathProfiler {
     fn build_callstacks(
         profiler_info: ClrProfilerInfo,
         threads: &mut DashMap<ThreadID, u64>,
-        tree: &mut TreeNode<FunctionID, usize>,
+        tree: &mut TreeNode<(FunctionID, ClassID), usize>,
         filter_suspended_threads: bool,
         caller_to_callee: bool,
+        try_resolve_generics: bool
     ) {
         debug!("Starts building callstacks");
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
-            let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::default();
+            let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::new(pinfo.clone(), try_resolve_generics);
 
             stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
 
@@ -148,25 +176,31 @@ impl CpuHotpathProfiler {
         let duration_seconds = session_info.get_parameter::<u64>("duration_seconds").unwrap();
         let filter_suspended_threads = session_info.get_parameter::<bool>("filter_suspended_threads").unwrap();
         let caller_to_callee = session_info.get_parameter::<bool>("caller_to_callee").unwrap();
+        let try_resolve_generics = session_info.get_parameter::<bool>("try_resolve_generics").unwrap();
 
         let mut threads_by_context_hash = DashMap::<ThreadID, u64>::new();
-        let mut tree = TreeNode::<FunctionID, usize>::new(0);
+        let mut tree = TreeNode::<(FunctionID, ClassID), usize>::new((0, 0));
         let iterations = 1000 * duration_seconds / time_interval_ms;
         for _ in 0..iterations {
             std::thread::sleep(std::time::Duration::from_millis(time_interval_ms));
 
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
-            if clr.suspend_runtime().is_ok() {
-                debug!("Suspend runtime");
-                Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee);
+            match clr.suspend_runtime() {
+                Ok(_) => {
+                    debug!("Suspend runtime");
+                    Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee, try_resolve_generics);
 
-                if clr.resume_runtime().is_err() {
-                    error!("Can't resume runtime!");
+                    if clr.resume_runtime().is_err() {
+                        error!("Can't resume runtime!");
+                    }
                 }
-            } else {
-                error!("Can't suspend runtime!");
+                Err(e) => {
+                    error!("Can't suspend runtime! {:?}", e);
+                }
             }
         }
+
+        info!("Printing tree");
 
         let total_samples: usize = tree.get_inclusive_value();
 
@@ -185,6 +219,7 @@ impl CpuHotpathProfiler {
         report.write_line("<h2>Hotpaths</h2>".to_owned());
         report.write_line(format!("<h3>{} Tree</h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
         report.write_line(format!("<h4>{} samples of {} roots</h4>", total_samples, tree.children.len()));
+        
         tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
 
         if let Err(e) = clr.request_profiler_detach(3000) {
@@ -192,11 +227,11 @@ impl CpuHotpathProfiler {
         }
     }
 
-    fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize) {
+    fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<(FunctionID, ClassID), usize>, report: &mut Report, total_samples: usize) {
         let percentage_exclusive = 100f64 * node.value.unwrap_or_default() as f64 / total_samples as f64;
         let percentage_inclusive = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
 
-        let mut method_name: String = clr.get_full_method_name(node.key);
+        let mut method_name: String = clr.get_full_method_name(node.key.0, node.key.1);
         let escaped_class_name = html_escape::encode_text(&mut method_name);
 
         let has_children = node.children.len() > 0;
@@ -252,6 +287,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler {
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), HRESULT> {
+
         self.session_info.finish();
         Ok(())
     }

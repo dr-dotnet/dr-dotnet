@@ -37,10 +37,10 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
         ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
         ProfilerInfo profiler = GetProfiler();
-        profiler.Parameters.First(x => x.Key == "retained_references_threshold").Value = 10.ToString();
-        profiler.Parameters.First(x => x.Key == "retained_bytes_threshold").Value = 1000.ToString();
-        profiler.Parameters.First(x => x.Key == "max_depth").Value = 3.ToString();
-        profiler.Parameters.First(x => x.Key == "sort_by_size").Value = false.ToString();
+        profiler.SetParameter("retained_references_threshold", 10);
+        profiler.SetParameter("retained_bytes_threshold", 1000);
+        profiler.SetParameter("max_depth", 3);
+        profiler.SetParameter("sort_by_size", false);
 
         // Create 1000 SurvivorObject objects that will be placed in the GEN 2 heap
         var survivorObjects = Enumerable.Range(0, 1_000_000).Select(_ => new SurvivorObject(1, 2, 3)).ToArray();

@@ -7,12 +7,12 @@ use crate::ffi::*;
 #[derive(Default)]
 pub struct CachedNameResolver {
     classes_cache: RefCell<HashMap<ClassID, String>>,
-    functions_cache: RefCell<HashMap<FunctionID, String>>,
+    functions_cache: RefCell<HashMap<(FunctionID, COR_PRF_FRAME_INFO), String>>,
     info: ClrProfilerInfo,
 }
 
 pub trait NameResolver {
-    fn get_full_method_name(&self, method_id: FunctionID) -> String;
+    fn get_full_method_name(&self, method_id: FunctionID, class_id: ClassID) -> String;
     fn get_class_name(&self, class_id: ClassID) -> String;
 }
 
@@ -28,11 +28,11 @@ impl CachedNameResolver {
 
 impl NameResolver for CachedNameResolver {
     // Returns a method name and the type where it is defined (namespaced) for a given FunctionID
-    fn get_full_method_name(&self, method_id: FunctionID) -> String {
+    fn get_full_method_name(&self, method_id: FunctionID, class_id: ClassID) -> String {
         self.functions_cache
             .borrow_mut()
-            .entry(method_id)
-            .or_insert_with(|| self.info.get_full_method_name(method_id))
+            .entry((method_id, class_id))
+            .or_insert_with(|| self.info.get_full_method_name(method_id, class_id))
             .clone()
     }
 

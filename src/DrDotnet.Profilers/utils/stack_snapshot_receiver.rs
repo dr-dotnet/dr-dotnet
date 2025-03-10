@@ -4,7 +4,7 @@ use crate::api::*;
 pub trait StackSnapshotCallbackReceiver {
     type AssociatedType: StackSnapshotCallbackReceiver;
 
-    fn callback(&mut self, method_id: usize, ip: usize, frame_info: usize, context: &[u8]);
+    fn callback(&mut self, method_id: FunctionID, ip: usize, frame_info: COR_PRF_FRAME_INFO, context: &[u8]);
 
     fn do_stack_snapshot(&mut self, pinfo: ClrProfilerInfo, thread_id: usize, use_context: bool) {
         let _ = pinfo.do_stack_snapshot(
@@ -24,7 +24,7 @@ pub trait StackSnapshotCallbackReceiver {
     unsafe extern "system" fn stack_snapshot_callback(
         method_id: FunctionID,
         ip: usize,
-        frame_info: usize,
+        frame_info: COR_PRF_FRAME_INFO,
         context_size: u32,
         context: *const u8,
         client_data: *mut std::ffi::c_void,

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- .NET SDK 7.0
+- .NET SDK 8.0
 - Rust toolchain
 - *Recommended OS*: Any desktop platform you'd like (Windows / Linux / MacOS ARM64 or Intel)
 - *Recommended IDE*: Any of Visual Studio, Visual Studio Code or JetBrains Rider. Make sure you have both C# and Rust LSP for a comfortable experience, with everything in a single IDE.
