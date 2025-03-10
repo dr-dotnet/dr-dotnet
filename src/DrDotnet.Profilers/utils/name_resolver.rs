@@ -28,11 +28,11 @@ impl CachedNameResolver {
 
 impl NameResolver for CachedNameResolver {
     // Returns a method name and the type where it is defined (namespaced) for a given FunctionID
-    fn get_full_method_name(&self, method_id: FunctionID, frame_info: COR_PRF_FRAME_INFO) -> String {
+    fn get_full_method_name(&self, method_id: FunctionID, class_id: ClassID) -> String {
         self.functions_cache
             .borrow_mut()
-            .entry((method_id, frame_info))
-            .or_insert_with(|| self.info.get_full_method_name(method_id, frame_info))
+            .entry((method_id, class_id))
+            .or_insert_with(|| self.info.get_full_method_name(method_id, class_id))
             .clone()
     }
 

@@ -1,6 +1,8 @@
 use dashmap::DashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, Mutex};
 
 use crate::api::ffi::{ClassID, FunctionID, ThreadID, COR_PRF_FRAME_INFO, HRESULT};
 use crate::api::*;
@@ -14,6 +16,7 @@ use crate::utils::{NameResolver, StackSnapshotCallbackReceiver, TreeNode};
 pub struct CpuHotpathProfiler {
     clr_profiler_info: ClrProfilerInfo,
     session_info: SessionInfo,
+    tree: Arc<Mutex<Option<TreeNode<(FunctionID, ClassID), usize>>>>,
 }
 
 impl Profiler for CpuHotpathProfiler {
@@ -71,11 +74,20 @@ impl Profiler for CpuHotpathProfiler {
     }
 }
 
-#[derive(Default)]
 pub struct CpuHotpathStackSnapshotCallbackReceiver {
     method_ids: Vec<(FunctionID, ClassID)>,
     hasher: DefaultHasher,
     clr: ClrProfilerInfo,
+}
+
+impl CpuHotpathStackSnapshotCallbackReceiver {
+    fn new(clr: ClrProfilerInfo) -> Self {
+        CpuHotpathStackSnapshotCallbackReceiver {
+            method_ids: Vec::new(),
+            hasher: DefaultHasher::new(),
+            clr: clr,
+        }
+    }
 }
 
 impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
@@ -112,7 +124,7 @@ impl CpuHotpathProfiler {
         let pinfo = profiler_info.clone();
 
         for managed_thread_id in pinfo.enum_threads().unwrap() {
-            let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::default();
+            let mut stack_snapshot_receiver = CpuHotpathStackSnapshotCallbackReceiver::new(pinfo.clone());
 
             stack_snapshot_receiver.do_stack_snapshot(pinfo.clone(), managed_thread_id, false);
 
@@ -149,7 +161,7 @@ impl CpuHotpathProfiler {
         }
     }
 
-    fn profile(session_info: SessionInfo, clr: ClrProfilerInfo) {
+    fn profile(session_info: SessionInfo, clr: ClrProfilerInfo) -> TreeNode<(FunctionID, ClassID), usize> {
         let time_interval_ms = session_info.get_parameter::<u64>("time_interval_ms").unwrap();
         let duration_seconds = session_info.get_parameter::<u64>("duration_seconds").unwrap();
         let filter_suspended_threads = session_info.get_parameter::<bool>("filter_suspended_threads").unwrap();
@@ -177,28 +189,11 @@ impl CpuHotpathProfiler {
             }
         }
 
-        let total_samples: usize = tree.get_inclusive_value();
+        // if let Err(e) = clr.request_profiler_detach(3000) {
+        //     error!("Could not detach for reason: {:?}", e);
+        // }
 
-        // Sort by descending inclusive count (hotpaths first)
-        tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
-
-        let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
-
-        // Truncate tree to max_stacks to avoid too large reports
-        if tree.children.len() > max_stacks {
-            tree.children.truncate(max_stacks);
-        }
-
-        // Write tree into HTML report
-        let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
-        report.write_line("<h2>Hotpaths</h2>".to_owned());
-        report.write_line(format!("<h3>{} Tree</h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
-        report.write_line(format!("<h4>{} samples of {} roots</h4>", total_samples, tree.children.len()));
-        tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
-
-        if let Err(e) = clr.request_profiler_detach(3000) {
-            error!("Could not detach for reason: {:?}", e);
-        }
+        tree
     }
 
     fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<(FunctionID, ClassID), usize>, report: &mut Report, total_samples: usize) {
@@ -228,9 +223,59 @@ impl CpuHotpathProfiler {
             report.write_line(format!("<li>{line}</li>"));
         }
     }
+
+    fn print_tree(&mut self) {
+        let clr = self.clr().clone();
+
+        let tree = Arc::clone(&self.tree);
+        let mut handle = tree.lock().unwrap();
+        if let Some(tree) = handle.deref_mut() {
+
+            info!("Printing tree");
+
+            let caller_to_callee = self.session_info.get_parameter::<bool>("caller_to_callee").unwrap();
+
+            let total_samples: usize = tree.get_inclusive_value();
+    
+            // Sort by descending inclusive count (hotpaths first)
+            tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+    
+            let max_stacks = self.session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
+    
+            // Truncate tree to max_stacks to avoid too large reports
+            if tree.children.len() > max_stacks {
+                tree.children.truncate(max_stacks);
+            }
+    
+            // Write tree into HTML report
+            let mut report = self.session_info.create_report("cpu_hotpaths.html".to_owned());
+            report.write_line("<h2>Hotpaths</h2>".to_owned());
+            report.write_line(format!("<h3>{} Tree</h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
+            report.write_line(format!("<h4>{} samples of {} roots</h4>", total_samples, tree.children.len()));
+            
+            tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
+
+            // Clear tree
+            *handle = None;
+
+            if let Err(e) = clr.request_profiler_detach(3000) {
+                error!("Could not detach for reason: {:?}", e);
+            }
+        }
+        else {
+            //error!("No tree to print");
+        }
+    }
 }
 
-impl CorProfilerCallback for CpuHotpathProfiler {}
+impl CorProfilerCallback for CpuHotpathProfiler {
+    fn runtime_suspend_started(&mut self, suspend_reason: ffi::COR_PRF_SUSPEND_REASON) -> Result<(), HRESULT> {
+
+        self.print_tree();
+
+        Ok(())
+    }
+}
 
 impl CorProfilerCallback2 for CpuHotpathProfiler {}
 
@@ -242,7 +287,7 @@ impl CorProfilerCallback3 for CpuHotpathProfiler {
         client_data_length: u32,
     ) -> Result<(), ffi::HRESULT> {
         self.init(
-            ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT,
+            ffi::COR_PRF_MONITOR::COR_PRF_ENABLE_STACK_SNAPSHOT | ffi::COR_PRF_MONITOR::COR_PRF_MONITOR_SUSPENDS,
             None,
             profiler_info,
             client_data,
@@ -255,12 +300,20 @@ impl CorProfilerCallback3 for CpuHotpathProfiler {
         let session_info: SessionInfo = self.session_info().clone();
 
         // Run profiling in separate thread
-        std::thread::spawn(move || CpuHotpathProfiler::profile(session_info, clr));
+        let tree = Arc::clone(&self.tree);
+        std::thread::spawn(move || {
+            let r = CpuHotpathProfiler::profile(session_info, clr);
+            let mut handle = tree.lock().unwrap();
+            *handle = Some(r);
+        });
 
         Ok(())
     }
 
     fn profiler_detach_succeeded(&mut self) -> Result<(), HRESULT> {
+
+        //self.print_tree();
+
         self.session_info.finish();
         Ok(())
     }

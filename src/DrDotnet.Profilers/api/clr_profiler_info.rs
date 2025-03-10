@@ -124,37 +124,21 @@ impl ClrProfilerInfo {
     }
 
     fn handle_nesting(&self, type_props: TypeProps, metadata: &MetadataImport, td: mdTypeDef, module_id: ModuleID) -> String {
-        let type_name = if let Ok(generic_params) = metadata.enum_generic_params(td) {
-            let generic_args_names = generic_params
-                .iter()
-                .map(|gp| {
-                    if let Ok(t) = metadata.get_generic_params_props(*gp) {
-                        self.get_type_name(module_id, t)
-                    } else {
-                        "unknown".to_owned()
-                    }
-                })
-                .join(", ");
-            format!("{}<{}>", type_props.name, generic_args_names)
-        } else {
-            // The type is not a nested type, simply return its name
-            type_props.name
-        };
         if type_props.type_def_flags.is_nested() {
             match metadata.get_nested_class_props(td) {
                 Ok(nested_td) => {
                     let nesting_type_name = self.get_type_name(module_id, nested_td);
-                    format!("{}.{}", nesting_type_name, type_name)
+                    format!("{}.{}", nesting_type_name, type_props.name)
                 }
                 Err(hresult) => {
                     warn!("metadata.get_nested_class_props({}) failed ({:?})", td, hresult);
                     // Fallback to just using plain type name
-                    type_name
+                    type_props.name
                 }
             }
         } else {
             // The type is not a nested type, simply return its name
-            type_name
+            type_props.name
         }
     }
 }
@@ -162,11 +146,12 @@ impl ClrProfilerInfo {
 impl NameResolver for ClrProfilerInfo {
     // Returns a method name and the type where it is defined (namespaced) for a given FunctionID
     fn get_full_method_name(&self, method_id: FunctionID, class_id: ClassID) -> String {
-        let mut class_name = self.get_class_name(class_id);
+        let class_name = if class_id == 0 { "unknown_type".to_owned() } else { self.get_class_name(class_id) };
         let method_name = match self.get_token_and_metadata_from_function(method_id) {
             Ok(f) => match f.metadata_import.get_method_props(f.token) {
                 Ok(method_props) => {
-                    //class_name = self.get_type_name(function_info.module_id, method_props.class_token);
+                    // let name = self.get_type_name(function_info.module_id, method_props.class_token);
+                    // let name = self.handle_generics(name, &class_info);
                     method_props.name
                 },
                 Err(hresult) => {
@@ -176,7 +161,7 @@ impl NameResolver for ClrProfilerInfo {
             },
             Err(hresult) => {
                 warn!("info.get_token_and_metadata_from_function({}) failed ({:?})", method_id, hresult);
-                "unknown".to_owned()
+                "unknown_method".to_owned()
             }
         };
         format!("{}.{}", class_name, method_name)
@@ -196,7 +181,7 @@ impl NameResolver for ClrProfilerInfo {
                 let name = self.handle_generics(name, &class_info);
                 name
             }
-            _ => format!("unknown_class-{}", class_id),
+            Err(e) => format!("unknown_class-{} {:?}", class_id, e),
         };
 
         // Append array symbols []
@@ -443,7 +428,7 @@ impl CorProfilerInfo for ClrProfilerInfo {
     fn get_token_and_metadata_from_function(&self, function_id: FunctionID) -> Result<FunctionTokenAndMetadata, HRESULT> {
         let mut metadata_import = MaybeUninit::uninit();
         let mut token = MaybeUninit::uninit();
-        let riid = GUID::from(Uuid::parse_str("FCE5EFA0-8BBA-4f8e-A036-8F2022B08466").unwrap()); // TODO: This needs to come from an IMetaDataImport implementation
+        let riid = GUID::from(Uuid::parse_str("7DAC8207-D3AE-4C75-9B67-92801A497D44").unwrap()); // TODO: This needs to come from an IMetaDataImport implementation
         let hr = unsafe {
             self.info()
                 .GetTokenAndMetaDataFromFunction(function_id, &riid, metadata_import.as_mut_ptr(), token.as_mut_ptr())
