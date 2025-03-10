@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -57,6 +58,53 @@ public class CpuHotpathProfilerTests : ProfilerTests
 #if DEBUG
         Console.WriteLine(content);
 #endif
+        
+        // Todo: Add assertions
+    }
+    
+    [Test, Explicit]
+    [Order(1)]
+    [Timeout(160_000)]
+    [NonParallelizable]
+    public async Task Profiler_Lists_Cpu_Hotpaths_Generics()
+    {
+        ILogger<ProcessDiscovery> logger = NullLogger<ProcessDiscovery>.Instance;
+        ProcessDiscovery processDiscovery = new ProcessDiscovery(logger);
+        ProfilerInfo profiler = GetProfiler();
+
+        List<int> list = new List<int>();
+        bool flag = true;
+        
+        _ = Task.Run(() =>
+        {
+            while(flag)
+            {
+                list.Add(42);
+                if (list.Count > 100_000_000)
+                {
+                    list = new List<int>();
+                }
+            }
+        });
+        
+        await Task.Delay(3000);
+  
+        Assert.True(processDiscovery.TryGetProcessInfoFromPid(Process.GetCurrentProcess().Id, out ProcessInfo? processInfo), "Could not find current process info");
+        SessionInfo session = ProfilingExtensions.StartProfilingSession(profiler, processInfo, logger);
+
+        await session.AwaitUntilCompletion();
+        
+        flag = false;
+
+        Console.WriteLine("Session Directory: " + session.Path);
+
+        var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "cpu_hotpaths.html");
+
+        Assert.NotNull(summary, "No summary have been created!");
+
+        var content = await File.ReadAllTextAsync(summary.FullName);
+        
+        Console.WriteLine(content);
         
         // Todo: Add assertions
     }

@@ -2,7 +2,7 @@ use dashmap::DashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 
-use crate::api::ffi::{FunctionID, ThreadID, HRESULT};
+use crate::api::ffi::{ClassID, FunctionID, ThreadID, COR_PRF_FRAME_INFO, HRESULT};
 use crate::api::*;
 use crate::macros::*;
 use crate::profilers::*;
@@ -73,19 +73,25 @@ impl Profiler for CpuHotpathProfiler {
 
 #[derive(Default)]
 pub struct CpuHotpathStackSnapshotCallbackReceiver {
-    method_ids: Vec<FunctionID>,
+    method_ids: Vec<(FunctionID, ClassID)>,
     hasher: DefaultHasher,
+    clr: ClrProfilerInfo,
 }
 
 impl StackSnapshotCallbackReceiver for CpuHotpathStackSnapshotCallbackReceiver {
     type AssociatedType = Self;
 
-    fn callback(&mut self, method_id: FunctionID, instruction_pointer: usize, _frame_info: usize, _context: &[u8]) {
+    fn callback(&mut self, method_id: FunctionID, instruction_pointer: usize, frame_info: COR_PRF_FRAME_INFO, _context: &[u8]) {
         // Filter out unmanaged stack frames
         if method_id == 0 {
             return;
         }
-        self.method_ids.push(method_id);
+        let class_id = if let Ok(f) = self.clr.get_function_info_2(method_id, frame_info) {
+            f.class_id
+        } else {
+            0
+        };
+        self.method_ids.push((method_id, class_id));
         // Detect suspended threads appart from actual working threads
         // Inspired from: https://www.usenix.org/legacy/publications/library/proceedings/coots99/full_papers/liang/liang_html/node10.html
         // Not sure which is the best approach between utilizing the instruction pointer or the context
@@ -98,7 +104,7 @@ impl CpuHotpathProfiler {
     fn build_callstacks(
         profiler_info: ClrProfilerInfo,
         threads: &mut DashMap<ThreadID, u64>,
-        tree: &mut TreeNode<FunctionID, usize>,
+        tree: &mut TreeNode<(FunctionID, ClassID), usize>,
         filter_suspended_threads: bool,
         caller_to_callee: bool,
     ) {
@@ -150,21 +156,24 @@ impl CpuHotpathProfiler {
         let caller_to_callee = session_info.get_parameter::<bool>("caller_to_callee").unwrap();
 
         let mut threads_by_context_hash = DashMap::<ThreadID, u64>::new();
-        let mut tree = TreeNode::<FunctionID, usize>::new(0);
+        let mut tree = TreeNode::<(FunctionID, ClassID), usize>::new((0, 0));
         let iterations = 1000 * duration_seconds / time_interval_ms;
         for _ in 0..iterations {
             std::thread::sleep(std::time::Duration::from_millis(time_interval_ms));
 
             // https://github.com/dotnet/runtime/issues/37586#issuecomment-641114483
-            if clr.suspend_runtime().is_ok() {
-                debug!("Suspend runtime");
-                Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee);
+            match clr.suspend_runtime() {
+                Ok(_) => {
+                    debug!("Suspend runtime");
+                    Self::build_callstacks(clr.clone(), &mut threads_by_context_hash, &mut tree, filter_suspended_threads, caller_to_callee);
 
-                if clr.resume_runtime().is_err() {
-                    error!("Can't resume runtime!");
+                    if clr.resume_runtime().is_err() {
+                        error!("Can't resume runtime!");
+                    }
                 }
-            } else {
-                error!("Can't suspend runtime!");
+                Err(e) => {
+                    error!("Can't suspend runtime! {:?}", e);
+                }
             }
         }
 
@@ -192,11 +201,11 @@ impl CpuHotpathProfiler {
         }
     }
 
-    fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize) {
+    fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<(FunctionID, ClassID), usize>, report: &mut Report, total_samples: usize) {
         let percentage_exclusive = 100f64 * node.value.unwrap_or_default() as f64 / total_samples as f64;
         let percentage_inclusive = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
 
-        let mut method_name: String = clr.get_full_method_name(node.key);
+        let mut method_name: String = clr.get_full_method_name(node.key.0, node.key.1);
         let escaped_class_name = html_escape::encode_text(&mut method_name);
 
         let has_children = node.children.len() > 0;
