@@ -74,7 +74,6 @@ public class CpuHotpathProfilerTests : ProfilerTests
         ProfilerInfo profiler = GetProfiler();
         profiler.SetParameter("duration_seconds", 10);
         profiler.SetParameter("filter_suspended_threads", false);
-        profiler.SetParameter("try_resolve_generics", true);
         
         using var service1 = new FibonacciGeneric<int>();
         using var service2 = new FibonacciGeneric<List<int>>();
