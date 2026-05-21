@@ -24,56 +24,29 @@ const SEPARATOR_POLICY: SeparatorPolicy = SeparatorPolicy {
 
 /// Inline-small list of referencers. Most live objects are referenced by a
 /// single other object, so we keep that case inline (no heap allocation, no
-/// Vec header). Objects with many referencers spill to a boxed Vec.
+/// Vec header). Objects with two or more referencers spill to a boxed Vec.
+#[derive(Default)]
 enum Parents {
+    #[default]
     None,
     One(ObjectID),
     Many(Box<Vec<ObjectID>>),
-}
-
-impl Default for Parents {
-    fn default() -> Self {
-        Parents::None
-    }
 }
 
 impl Parents {
     fn push(&mut self, parent: ObjectID) {
         match self {
             Parents::None => *self = Parents::One(parent),
-            Parents::One(existing) => {
-                *self = Parents::Many(Box::new(vec![*existing, parent]));
-            }
+            Parents::One(existing) => *self = Parents::Many(Box::new(vec![*existing, parent])),
             Parents::Many(v) => v.push(parent),
         }
     }
-}
 
-enum ParentsIter<'a> {
-    Empty,
-    Single(Option<ObjectID>),
-    Slice(std::slice::Iter<'a, ObjectID>),
-}
-
-impl<'a> Iterator for ParentsIter<'a> {
-    type Item = ObjectID;
-    fn next(&mut self) -> Option<ObjectID> {
+    fn for_each(&self, mut f: impl FnMut(ObjectID)) {
         match self {
-            ParentsIter::Empty => None,
-            ParentsIter::Single(opt) => opt.take(),
-            ParentsIter::Slice(iter) => iter.next().copied(),
-        }
-    }
-}
-
-impl<'a> IntoIterator for &'a Parents {
-    type Item = ObjectID;
-    type IntoIter = ParentsIter<'a>;
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Parents::None => ParentsIter::Empty,
-            Parents::One(p) => ParentsIter::Single(Some(*p)),
-            Parents::Many(v) => ParentsIter::Slice(v.iter()),
+            Parents::None => {}
+            Parents::One(p) => f(*p),
+            Parents::Many(v) => v.iter().copied().for_each(f),
         }
     }
 }
@@ -82,7 +55,6 @@ impl<'a> IntoIterator for &'a Parents {
 struct ObjectInfo {
     class_id: ClassID,
     size: u32,
-    /// Direct referencers (i.e. parents in the retention graph).
     parents: Parents,
 }
 
@@ -299,14 +271,14 @@ impl GCSurvivorsProfiler {
             let mut groups: FastMap<ClassID, FastSet<ObjectID>> = FastMap::default();
             for &inst in instances.iter() {
                 if let Some(info) = graph.objects.get(&inst) {
-                    for parent in &info.parents {
+                    info.parents.for_each(|parent| {
                         if let Some(pinfo) = graph.objects.get(&parent) {
                             if on_path.contains(&pinfo.class_id) {
-                                continue;
+                                return;
                             }
                             groups.entry(pinfo.class_id).or_default().insert(parent);
                         }
-                    }
+                    });
                 }
             }
             groups.into_iter().collect()
