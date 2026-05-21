@@ -22,12 +22,68 @@ const SEPARATOR_POLICY: SeparatorPolicy = SeparatorPolicy {
     digits: digits::ASCII_DECIMAL,
 };
 
+/// Inline-small list of referencers. Most live objects are referenced by a
+/// single other object, so we keep that case inline (no heap allocation, no
+/// Vec header). Objects with many referencers spill to a boxed Vec.
+enum Parents {
+    None,
+    One(ObjectID),
+    Many(Box<Vec<ObjectID>>),
+}
+
+impl Default for Parents {
+    fn default() -> Self {
+        Parents::None
+    }
+}
+
+impl Parents {
+    fn push(&mut self, parent: ObjectID) {
+        match self {
+            Parents::None => *self = Parents::One(parent),
+            Parents::One(existing) => {
+                *self = Parents::Many(Box::new(vec![*existing, parent]));
+            }
+            Parents::Many(v) => v.push(parent),
+        }
+    }
+}
+
+enum ParentsIter<'a> {
+    Empty,
+    Single(Option<ObjectID>),
+    Slice(std::slice::Iter<'a, ObjectID>),
+}
+
+impl<'a> Iterator for ParentsIter<'a> {
+    type Item = ObjectID;
+    fn next(&mut self) -> Option<ObjectID> {
+        match self {
+            ParentsIter::Empty => None,
+            ParentsIter::Single(opt) => opt.take(),
+            ParentsIter::Slice(iter) => iter.next().copied(),
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a Parents {
+    type Item = ObjectID;
+    type IntoIter = ParentsIter<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Parents::None => ParentsIter::Empty,
+            Parents::One(p) => ParentsIter::Single(Some(*p)),
+            Parents::Many(v) => ParentsIter::Slice(v.iter()),
+        }
+    }
+}
+
 /// Lean per-object record in the reverse reference graph.
 struct ObjectInfo {
     class_id: ClassID,
     size: u32,
     /// Direct referencers (i.e. parents in the retention graph).
-    parents: Vec<ObjectID>,
+    parents: Parents,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -164,7 +220,7 @@ impl GCSurvivorsProfiler {
                 vac.insert(ObjectInfo {
                     class_id,
                     size,
-                    parents: Vec::new(),
+                    parents: Parents::None,
                 });
                 let agg = graph.class_totals.entry(class_id).or_default();
                 agg.count += 1;
@@ -243,7 +299,7 @@ impl GCSurvivorsProfiler {
             let mut groups: FastMap<ClassID, FastSet<ObjectID>> = FastMap::default();
             for &inst in instances.iter() {
                 if let Some(info) = graph.objects.get(&inst) {
-                    for &parent in info.parents.iter() {
+                    for parent in &info.parents {
                         if let Some(pinfo) = graph.objects.get(&parent) {
                             if on_path.contains(&pinfo.class_id) {
                                 continue;
