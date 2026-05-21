@@ -329,7 +329,7 @@ impl GCSurvivorsProfiler {
             };
             bk.cmp(&ak) // descending
         };
-        tree.sort_by_iterative(&compare);
+        tree.sort_by(&compare);
     }
 
     fn build_and_report(&mut self) -> Result<(), HRESULT> {

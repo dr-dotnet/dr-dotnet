@@ -1,9 +1,8 @@
-use rayon::prelude::*;
 use std::cmp::Ordering;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::ops::AddAssign;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeNode<K, V> {
     pub key: K,
     pub value: Option<V>,
@@ -12,8 +11,8 @@ pub struct TreeNode<K, V> {
 
 impl<K, V> TreeNode<K, V>
 where
-    K: PartialEq + Eq + Copy + Sync + Send,
-    V: Clone + Sync + Send,
+    K: PartialEq + Eq + Copy,
+    V: Clone,
 {
     pub fn new(key: K) -> Self {
         TreeNode {
@@ -23,50 +22,19 @@ where
         }
     }
 
-    pub fn log<F>(&self, depth: usize, format: &F)
-    where
-        F: Fn(&Self) -> String,
-    {
-        let tabs = " ".repeat(depth);
-        info!("{}- {}", tabs, format(self));
-
-        for child in self.children.iter() {
-            child.log::<F>(depth + 1, format);
-        }
-    }
-
-    // Sort children recursively based on the given closure
+    /// Sort children at every node, depth-first. Iterative so we never blow
+    /// the stack on deep trees.
+    ///
+    /// `compare` is invoked O(n log n) times *per parent*. If the closure
+    /// itself is expensive (e.g. calls `compute_inclusive_value`), memoize on
+    /// the caller side — see the bench for an example.
     pub fn sort_by<F>(&mut self, compare: &F)
     where
         F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
     {
-        self.children.sort_by(compare);
-        for child in &mut self.children {
-            child.sort_by(compare);
-        }
-    }
-
-    pub fn sort_by_iterative<F>(&mut self, compare: &F)
-    where
-        F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering,
-    {
-        let mut queue = VecDeque::new();
-        queue.push_back(self);
-        while let Some(node) = queue.pop_front() {
-            node.children.sort_by(compare);
-            for child in &mut node.children {
-                queue.push_back(child);
-            }
-        }
-    }
-
-    pub fn sort_by_multithreaded<F>(&mut self, compare: &F)
-    where
-        F: Fn(&TreeNode<K, V>, &TreeNode<K, V>) -> Ordering + Sync,
-    {
-        let mut stack = vec![self];
+        let mut stack: Vec<&mut TreeNode<K, V>> = vec![self];
         while let Some(node) = stack.pop() {
-            node.children.par_sort_by(compare);
+            node.children.sort_by(compare);
             for child in &mut node.children {
                 stack.push(child);
             }
@@ -92,15 +60,13 @@ where
 
     pub fn build_from_sequences(sequences: &HashMap<Vec<K>, V>, root_key: K) -> TreeNode<K, V> {
         let mut root = TreeNode::new(root_key);
-
         for (sequence, value) in sequences {
             let mut current = &mut root;
             for y in sequence {
                 let child = if let Some(i) = current.children.iter().position(|child| child.key.eq(&y)) {
                     &mut current.children[i]
                 } else {
-                    let new_child: TreeNode<K, V> = TreeNode::new(*y);
-                    current.children.push(new_child);
+                    current.children.push(TreeNode::new(*y));
                     let len = current.children.len();
                     &mut current.children[len - 1]
                 };
@@ -108,54 +74,29 @@ where
             }
             current.value = Some(value.clone());
         }
-        return root;
+        root
     }
-}
-
-impl<K, V> PartialEq for TreeNode<K, V>
-where
-    K: Eq,
-    V: Eq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        if self.key != other.key || self.value != other.value || self.children.len() != other.children.len() {
-            return false;
-        }
-        for (child1, child2) in self.children.iter().zip(other.children.iter()) {
-            if child1 != child2 {
-                return false;
-            }
-        }
-        true
-    }
-}
-
-impl<K, V> Eq for TreeNode<K, V>
-where
-    K: Eq,
-    V: Eq,
-{
 }
 
 impl<K, V> TreeNode<K, V>
 where
     V: for<'a> AddAssign<&'a V> + Default,
 {
-    fn get_inclusive_value_recursive(&self, value: &mut V) {
+    fn accumulate_inclusive(&self, value: &mut V) {
         if let Some(self_data) = &self.value {
             value.add_assign(self_data);
         }
         for child in self.children.iter() {
-            child.get_inclusive_value_recursive(value);
+            child.accumulate_inclusive(value);
         }
     }
 
-    // Compute recursively and return the inclusive value of a given TreeNode
-    pub fn get_inclusive_value(&self) -> V {
-        // Creating a single vector and passing it through get_inclusive_value_recursive
-        // enables us to avoid cloning.
+    /// Walk the whole subtree and accumulate `value` over every node via
+    /// `AddAssign`. Cost is O(subtree); cache the result if you intend to use
+    /// it during a sort comparator.
+    pub fn compute_inclusive_value(&self) -> V {
         let mut value = V::default();
-        self.get_inclusive_value_recursive(&mut value);
+        self.accumulate_inclusive(&mut value);
         value
     }
 }
@@ -171,7 +112,6 @@ mod tests {
     {
         let tabs = " ".repeat(depth);
         println!("{}- {}", tabs, format(tree));
-
         for child in &tree.children {
             print(child, depth + 1, format);
         }
@@ -180,7 +120,6 @@ mod tests {
     // Run tests with 'cargo test -- --nocapture --test-threads=1' to get output in console
     #[test]
     fn test_tree() {
-        // Sequences of u32
         let sequences: HashMap<Vec<u32>, usize> = HashMap::from([
             (vec![1, 2, 3], 1),
             (vec![2, 2, 3], 2),
@@ -191,7 +130,6 @@ mod tests {
             (vec![1, 3, 5, 1], 7),
         ]);
 
-        // Expected sequences in a tree, sorted by descending inclusive value
         let expected = TreeNode {
             key: 0,
             value: None,
@@ -270,37 +208,20 @@ mod tests {
 
         println!("Unsorted:");
         print(&tree, 0, &|node: &TreeNode<u32, usize>| {
-            format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value)
+            format!("{} [inc:{}, exc:{:?}]", node.key, node.compute_inclusive_value(), node.value)
         });
         assert_ne!(tree, expected);
 
-        // Sorts by descending inclusive value
         let mut tree_clone = tree.clone();
         assert_ne!(tree_clone, expected);
         let start = Instant::now();
-        tree_clone.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        tree_clone.sort_by(&|a, b| b.compute_inclusive_value().cmp(&a.compute_inclusive_value()));
         let duration = start.elapsed();
-        println!("Recursive sort_by duration: {:?}", duration);
-        assert_eq!(tree_clone, expected);
-
-        let mut tree_clone = tree.clone();
-        assert_ne!(tree_clone, expected);
-        let start = Instant::now();
-        tree_clone.sort_by_iterative(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
-        let duration = start.elapsed();
-        println!("Iterative sort_by duration: {:?}", duration);
-        assert_eq!(tree_clone, expected);
-
-        let mut tree_clone = tree.clone();
-        assert_ne!(tree_clone, expected);
-        let start = Instant::now();
-        tree_clone.sort_by_multithreaded(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
-        let duration = start.elapsed();
-        println!("Multithreaded sort_by duration: {:?}", duration);
+        println!("sort_by duration: {:?}", duration);
         assert_eq!(tree_clone, expected);
 
         print(&tree_clone, 0, &|node: &TreeNode<u32, usize>| {
-            format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value)
+            format!("{} [inc:{}, exc:{:?}]", node.key, node.compute_inclusive_value(), node.value)
         });
     }
 }
