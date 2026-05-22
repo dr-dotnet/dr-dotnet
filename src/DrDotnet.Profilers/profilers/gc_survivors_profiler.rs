@@ -210,8 +210,6 @@ impl GCSurvivorsProfiler {
         graph: &HeapGraph,
         target_class: ClassID,
         max_depth: usize,
-        retained_count_threshold: u64,
-        retained_bytes_threshold: u64,
     ) -> TreeNode<ClassID, NodeAgg> {
         let mut root = TreeNode::new(target_class);
 
@@ -235,15 +233,7 @@ impl GCSurvivorsProfiler {
         // tight retention cycles (e.g. doubly-linked lists where A→B→A).
         let mut on_path: FastSet<ClassID> = FastSet::default();
         on_path.insert(target_class);
-        Self::expand_parents(
-            graph,
-            &mut root,
-            0,
-            max_depth,
-            retained_count_threshold,
-            retained_bytes_threshold,
-            &mut on_path,
-        );
+        Self::expand_parents(graph, &mut root, 0, max_depth, &mut on_path);
 
         root
     }
@@ -253,8 +243,6 @@ impl GCSurvivorsProfiler {
         node: &mut TreeNode<ClassID, NodeAgg>,
         depth: usize,
         max_depth: usize,
-        retained_count_threshold: u64,
-        retained_bytes_threshold: u64,
         on_path: &mut FastSet<ClassID>,
     ) {
         if depth >= max_depth {
@@ -290,9 +278,6 @@ impl GCSurvivorsProfiler {
                 .iter()
                 .filter_map(|id| graph.objects.get(id).map(|i| i.size as u64))
                 .sum();
-            if count < retained_count_threshold || size < retained_bytes_threshold {
-                continue;
-            }
 
             let mut child = TreeNode::new(parent_class);
             child.value = Some(NodeAgg {
@@ -302,15 +287,7 @@ impl GCSurvivorsProfiler {
             });
 
             on_path.insert(parent_class);
-            Self::expand_parents(
-                graph,
-                &mut child,
-                depth + 1,
-                max_depth,
-                retained_count_threshold,
-                retained_bytes_threshold,
-                on_path,
-            );
+            Self::expand_parents(graph, &mut child, depth + 1, max_depth, on_path);
             on_path.remove(&parent_class);
 
             node.children.push(child);
@@ -365,13 +342,7 @@ impl GCSurvivorsProfiler {
         let build_started = std::time::Instant::now();
         let mut trees: Vec<TreeNode<ClassID, NodeAgg>> = Vec::with_capacity(candidates.len());
         for (class_id, _) in candidates.iter() {
-            let mut tree = self.build_retention_tree(
-                &graph,
-                *class_id,
-                max_depth,
-                retained_count_threshold,
-                retained_bytes_threshold,
-            );
+            let mut tree = self.build_retention_tree(&graph, *class_id, max_depth);
             self.sort_tree(&mut tree);
             trees.push(tree);
         }
