@@ -25,6 +25,7 @@ register!(
     MemoryLeakProfiler,
     RuntimePauseProfiler,
     CpuHotpathProfiler,
+    AsyncProfiler,
     DuplicatedStringsProfiler,
     MergedCallStacksProfiler
 );

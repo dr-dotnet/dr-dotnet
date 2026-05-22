@@ -16,6 +16,9 @@ pub use gc_survivors_profiler::GCSurvivorsProfiler;
 pub mod cpu_hotpath_profiler;
 pub use cpu_hotpath_profiler::CpuHotpathProfiler;
 
+pub mod async_profiler;
+pub use async_profiler::AsyncProfiler;
+
 pub mod duplicated_strings_profiler;
 pub use duplicated_strings_profiler::DuplicatedStringsProfiler;
 
