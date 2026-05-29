@@ -35,27 +35,65 @@ runs:
         BUILD_NUMBER: ${{ github.run_number }}
       run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
 
-    - name: Copy Native Profilers
+    # The publish step above already built the native profiler for the host
+    # architecture (linux-x64) via the csproj pre-build cargo step.
+    # We additionally cross-compile it for linux-arm64 so the Docker image can be
+    # multi-arch. Building on the same runner keeps the glibc floor identical to
+    # the x64 build (gcc-aarch64-linux-gnu on ubuntu-20.04 targets glibc 2.31).
+    - name: Build ARM64 Native Profiler
       shell: bash
-      run: cp bin/release/libprofilers.so pub/
+      env:
+        VERSION: ${{ inputs.version }}
+        BUILD_NUMBER: ${{ github.run_number }}
+        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      run: |
+        set -euo pipefail
+        rustup target add aarch64-unknown-linux-gnu
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+        (cd src/DrDotnet.Profilers && cargo build --release --target aarch64-unknown-linux-gnu)
+
+    # Stage one native library per architecture at the build-context root.
+    # The Dockerfile picks the right one using buildx's TARGETARCH build arg.
+    - name: Stage Native Profilers
+      shell: bash
+      run: |
+        set -euo pipefail
+        cp bin/release/libprofilers.so libprofilers-amd64.so
+        arm_so="$(find bin -path '*aarch64-unknown-linux-gnu/release/libprofilers.so' | head -n1)"
+        cp "$arm_so" libprofilers-arm64.so
+        ls -l libprofilers-amd64.so libprofilers-arm64.so
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
     - name: Docker Login
       shell: bash
       run: echo ${{ inputs.docker-token }} | docker login -u ${{ inputs.docker-username }} --password-stdin
 
-    - name: Docker Build (with suffix)
+    - name: Docker Build & Push (with suffix)
       if: ${{ inputs.suffix != '' }}
       shell: bash
-      run: docker build -f src/Dockerfile -t drdotnet/web:${{ inputs.version }}.${{ github.run_number }}-${{ inputs.suffix }} .
+      run: |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -f src/Dockerfile \
+          -t drdotnet/web:${{ inputs.version }}.${{ github.run_number }}-${{ inputs.suffix }} \
+          --push .
 
-    - name: Docker Build
+    - name: Docker Build & Push
       if: ${{ inputs.suffix == '' }}
       env:
         VERSION: ${{ inputs.version }}
       shell: bash
-      run: docker build --build-arg="HIDE_UNRELEASED=1" -f src/Dockerfile -t drdotnet/web:latest -t drdotnet/web:${VERSION%.*} .
-
-    - name: Docker Push
-      shell: bash
-      run: docker push --all-tags drdotnet/web
-      
+      run: |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --build-arg="HIDE_UNRELEASED=1" \
+          -f src/Dockerfile \
+          -t drdotnet/web:latest \
+          -t drdotnet/web:${VERSION%.*} \
+          --push .
