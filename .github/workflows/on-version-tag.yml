@@ -14,9 +14,37 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+  build-arm64-profiler:
+    name: Build ARM64 Native Profiler
+    needs: [check]
+    runs-on: ubuntu-22.04-arm # Native ARM runner: builds libprofilers.so for aarch64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build Native Profiler (linux-arm64)
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: (cd src/DrDotnet.Profilers && cargo build --release)
+
+      - name: Upload Native Profiler
+        uses: actions/upload-artifact@v4
+        with:
+          name: libprofilers-arm64
+          path: bin/release/libprofilers.so
+          if-no-files-found: error
+
   push-docker:
     name: Push Docker
-    needs: [check]
+    needs: [check, build-arm64-profiler]
     runs-on: ubuntu-20.04 # Had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
         
     steps:

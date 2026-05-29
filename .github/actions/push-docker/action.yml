@@ -35,23 +35,16 @@ runs:
         BUILD_NUMBER: ${{ github.run_number }}
       run: dotnet publish src/DrDotnet.Web/DrDotnet.Web.csproj -c Release -o pub
 
-    # The publish step above already built the native profiler for the host
+    # The publish step above already built the native profiler for this runner's
     # architecture (linux-x64) via the csproj pre-build cargo step.
-    # We additionally cross-compile it for linux-arm64 so the Docker image can be
-    # multi-arch. Building on the same runner keeps the glibc floor identical to
-    # the x64 build (gcc-aarch64-linux-gnu on ubuntu-20.04 targets glibc 2.31).
-    - name: Build ARM64 Native Profiler
-      shell: bash
-      env:
-        VERSION: ${{ inputs.version }}
-        BUILD_NUMBER: ${{ github.run_number }}
-        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-      run: |
-        set -euo pipefail
-        rustup target add aarch64-unknown-linux-gnu
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
-        (cd src/DrDotnet.Profilers && cargo build --release --target aarch64-unknown-linux-gnu)
+    # The linux-arm64 library is built natively on an ARM runner in the
+    # `build-arm64-profiler` job (no cross-compilation, no QEMU) and consumed
+    # here as an artifact.
+    - name: Download ARM64 Native Profiler
+      uses: actions/download-artifact@v4
+      with:
+        name: libprofilers-arm64
+        path: arm64-profiler
 
     # Stage one native library per architecture at the build-context root.
     # The Dockerfile picks the right one using buildx's TARGETARCH build arg.
@@ -60,13 +53,12 @@ runs:
       run: |
         set -euo pipefail
         cp bin/release/libprofilers.so libprofilers-amd64.so
-        arm_so="$(find bin -path '*aarch64-unknown-linux-gnu/release/libprofilers.so' | head -n1)"
-        cp "$arm_so" libprofilers-arm64.so
+        cp arm64-profiler/libprofilers.so libprofilers-arm64.so
         ls -l libprofilers-amd64.so libprofilers-arm64.so
+        file libprofilers-amd64.so libprofilers-arm64.so 2>/dev/null || true
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-
+    # buildx assembles the multi-arch manifest. No QEMU is needed because the
+    # Dockerfile only COPYs files (no RUN), so nothing is executed under emulation.
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
