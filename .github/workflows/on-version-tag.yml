@@ -45,7 +45,7 @@ jobs:
   push-docker:
     name: Push Docker
     needs: [check, build-arm64-profiler]
-    runs-on: ubuntu-20.04 # Had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
+    runs-on: ubuntu-22.04 # ubuntu-20.04 runners were retired; 22.04 (glibc 2.35) matches the arm64 builder and stays <= .NET 8's Debian 12 base (glibc 2.36)
         
     steps:
       - name: Checkout
