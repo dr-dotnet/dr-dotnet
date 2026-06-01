@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout 
+      - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install Rust Toolchain
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: '8.0'
-          
+
       - name: Install Dependencies
         run: dotnet restore
 
@@ -34,50 +34,81 @@ jobs:
       - name: Test
         run: dotnet test --no-restore --verbosity normal
 
-  build-arm64-profiler:
+  # One native build per architecture (no QEMU): each runner builds the multi-stage
+  # Dockerfile for its own arch and pushes the single-arch image by digest.
+  build:
     if: github.ref != 'refs/heads/master'
-    name: Build ARM64 Native Profiler
+    name: Build (${{ matrix.platform }})
     needs: [build-test]
-    runs-on: ubuntu-22.04-arm # Native ARM runner: builds libprofilers.so for aarch64
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Build Native Profiler (linux-arm64)
-        shell: bash
-        env:
-          VERSION: '0.0.0'
-          BUILD_NUMBER: ${{ github.run_number }}
-        run: (cd src/DrDotnet.Profilers && cargo build --release)
-
-      - name: Upload Native Profiler
-        uses: actions/upload-artifact@v4
-        with:
-          name: libprofilers-arm64
-          path: bin/release/libprofilers.so
-          if-no-files-found: error
-
-  push-docker:
-    if: github.ref != 'refs/heads/master'
-    name: Push Test Docker Image
-    needs: [build-test, build-arm64-profiler]
     environment: dev
-    runs-on: ubuntu-22.04 # ubuntu-20.04 runners were retired; 22.04 (glibc 2.35) matches the arm64 builder and stays <= .NET 8's Debian 12 base (glibc 2.36)
-        
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: amd64
+            runner: ubuntu-latest
+          - platform: arm64
+            runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Create Docker Image
+      - name: Build & push by digest
+        id: build
         uses: ./.github/actions/push-docker
         with:
           version: '0.0.0' # A test docker image has no version
-          suffix: ${{ github.ref_name }} # A test docker image can be identified by the branch name
           docker-token: ${{ secrets.DOCKERHUB_TOKEN }}
           docker-username: ${{ secrets.DOCKERHUB_USERNAME }}
+
+      - name: Export digest
+        shell: bash
+        run: |
+          mkdir -p digests
+          echo "${{ steps.build.outputs.digest }}" > "digests/${{ matrix.platform }}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.platform }}
+          path: digests/${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # Assemble the per-arch digests into one multi-arch manifest list and tag it.
+  merge:
+    if: github.ref != 'refs/heads/master'
+    name: Push Test Docker Image
+    needs: [build]
+    environment: dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create manifest list
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A test docker image is identified by the branch name
+          TAG="drdotnet/web:0.0.0.${{ github.run_number }}-${{ github.ref_name }}"
+          refs=""
+          for f in digests/*; do refs="$refs drdotnet/web@$(cat "$f")"; done
+          docker buildx imagetools create -t "$TAG" $refs
+          docker buildx imagetools inspect "$TAG"

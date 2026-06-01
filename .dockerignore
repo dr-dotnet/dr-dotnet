@@ -1,0 +1,18 @@
+# Keep the build context small and free of host build outputs:
+# the image rebuilds everything from source in the build stage.
+.git
+.github
+.serena
+.remember
+docs
+res
+tests
+bin
+obj
+target
+**/bin
+**/obj
+**/target
+pub
+pub-local
+*.user
