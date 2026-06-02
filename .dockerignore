@@ -1,0 +1,17 @@
+# build context excludes host build outputs (the image builds from source)
+.git
+.github
+.serena
+.remember
+docs
+res
+tests
+bin
+obj
+target
+**/bin
+**/obj
+**/target
+pub
+pub-local
+*.user

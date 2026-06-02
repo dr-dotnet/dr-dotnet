@@ -17,13 +17,13 @@ jobs:
   push-docker:
     name: Push Docker
     needs: [check]
-    runs-on: ubuntu-20.04 # Had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
-        
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Create Docker Image
+      - name: Build & push
         uses: ./.github/actions/push-docker
         with:
           version: ${{ github.ref_name }} # Since this job is triggered from x.x.x tag, we can use the tag as version

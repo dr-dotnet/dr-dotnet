@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout 
+      - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install Rust Toolchain
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: '8.0'
-          
+
       - name: Install Dependencies
         run: dotnet restore
 
@@ -39,13 +39,13 @@ jobs:
     name: Push Test Docker Image
     needs: [build-test]
     environment: dev
-    runs-on: ubuntu-20.04 # Had some GLIBC 2.33 errors not found since github switched to 22.04 end of 2022
-        
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Create Docker Image
+      - name: Build & push
         uses: ./.github/actions/push-docker
         with:
           version: '0.0.0' # A test docker image has no version
