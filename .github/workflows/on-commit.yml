@@ -48,7 +48,7 @@ jobs:
       - name: Build & push
         uses: ./.github/actions/push-docker
         with:
-          version: '0.0.0'
-          suffix: ${{ github.ref_name }}
+          version: '0.0.0' # A test docker image has no version
+          suffix: ${{ github.ref_name }} # A test docker image can be identified by the branch name
           docker-token: ${{ secrets.DOCKERHUB_TOKEN }}
           docker-username: ${{ secrets.DOCKERHUB_USERNAME }}
