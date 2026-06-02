@@ -1,5 +1,4 @@
-# Keep the build context small and free of host build outputs:
-# the image rebuilds everything from source in the build stage.
+# build context excludes host build outputs (the image builds from source)
 .git
 .github
 .serena

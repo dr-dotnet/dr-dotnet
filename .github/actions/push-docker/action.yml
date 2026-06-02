@@ -1,10 +1,13 @@
-name: 'Build and push (single arch, by digest)'
-description: 'Builds the multi-stage Dockerfile natively for the current runner architecture and pushes it by digest.'
+name: 'Push Docker'
+description: 'Builds and pushes the multi-arch (amd64/arm64) web image.'
 
 inputs:
   version:
-    description: 'The version (x.x.x), passed as a build-arg to stamp the build'
+    description: 'The version (x.x.x)'
     required: true
+  suffix:
+    description: 'The docker image suffix'
+    required: false
   docker-token:
     description: 'Docker deploy token'
     required: true
@@ -12,15 +15,13 @@ inputs:
     description: 'Docker username'
     required: true
 
-outputs:
-  digest:
-    description: 'Digest of the single-arch image pushed by this runner'
-    value: ${{ steps.build.outputs.digest }}
-
 runs:
   using: "composite"
 
   steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -30,16 +31,25 @@ runs:
         username: ${{ inputs.docker-username }}
         password: ${{ inputs.docker-token }}
 
-    # Built natively for the runner's architecture (no --platform, no QEMU): the
-    # multi-stage Dockerfile compiles the managed app + native profiler in-image.
-    # Pushed by digest (untagged); the merge job tags the assembled manifest list.
-    - name: Build and push by digest
-      id: build
+    - name: Compute tags
+      id: tags
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.suffix }}" ]; then
+          echo "tags=drdotnet/web:${{ inputs.version }}.${{ github.run_number }}-${{ inputs.suffix }}" >> "$GITHUB_OUTPUT"
+        else
+          v="${{ inputs.version }}"
+          echo "tags=drdotnet/web:latest,drdotnet/web:${v%.*}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Build and push
       uses: docker/build-push-action@v6
       with:
         context: .
         file: src/Dockerfile
-        outputs: type=image,name=drdotnet/web,push-by-digest=true,name-canonical=true,push=true
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.tags.outputs.tags }}
         build-args: |
           VERSION=${{ inputs.version }}
           BUILD_NUMBER=${{ github.run_number }}
