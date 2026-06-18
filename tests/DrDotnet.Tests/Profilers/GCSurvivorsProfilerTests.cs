@@ -55,6 +55,7 @@ public class GCSurvivorsProfilerTests : ProfilerTests
         await session.AwaitUntilCompletion();
 
         var summary = session.EnumerateReports().FirstOrDefault(x => x.Name == "summary.html");
+        Console.WriteLine(session.Path);
 
         Assert.NotNull(summary, "No summary have been created!");
 

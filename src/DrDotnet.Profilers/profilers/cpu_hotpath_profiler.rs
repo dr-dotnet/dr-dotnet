@@ -168,10 +168,10 @@ impl CpuHotpathProfiler {
             }
         }
 
-        let total_samples: usize = tree.get_inclusive_value();
+        let total_samples: usize = tree.compute_inclusive_value();
 
         // Sort by descending inclusive count (hotpaths first)
-        tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        tree.sort_by(&|a, b| b.compute_inclusive_value().cmp(&a.compute_inclusive_value()));
 
         let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
 
@@ -194,7 +194,7 @@ impl CpuHotpathProfiler {
 
     fn print_html(clr: &ClrProfilerInfo, node: &TreeNode<usize, usize>, report: &mut Report, total_samples: usize) {
         let percentage_exclusive = 100f64 * node.value.unwrap_or_default() as f64 / total_samples as f64;
-        let percentage_inclusive = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
+        let percentage_inclusive = 100f64 * node.compute_inclusive_value() as f64 / total_samples as f64;
 
         let mut method_name: String = clr.get_full_method_name(node.key, 0);
         let escaped_class_name = html_escape::encode_text(&mut method_name);
