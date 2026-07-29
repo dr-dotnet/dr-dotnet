@@ -141,7 +141,7 @@ impl GCSurvivorsProfiler {
         depth: usize,
         max_retention_depth: usize,
         retained_references_threshold: usize,
-        retained_bytes_threshold: usize
+        retained_bytes_threshold: usize,
     ) {
         let mut map: HashMap<ClassID, References> = HashMap::new();
 
@@ -255,7 +255,8 @@ impl GCSurvivorsProfiler {
         report.write_line(format!("<h4>Example</h4>"));
 
         // Quick legend
-        report.write_line(format!(" \
+        report.write_line(format!(
+            " \
             <details open> \
                 <summary> \
                     <code>MyRootObject</code> \
@@ -271,8 +272,9 @@ impl GCSurvivorsProfiler {
                     <div class=\"chip\"><span>self+children instances / self+children bytes</span><i class=\"material-icons\">radio_button_checked</i></div> \
                     <div class=\"chip\"><span>self instances / self bytes</span><i class=\"material-icons\">radio_button_unchecked</i></div> \
                 </li></ul> \
-            </details>"));
-        
+            </details>"
+        ));
+
         report.write_line(format!("<h3>Retention Tree</h3>"));
         report.write_line(format!("<h4>{nb_objects} surviving objects of {nb_classes} classes</h4>"));
 
@@ -286,11 +288,10 @@ impl GCSurvivorsProfiler {
     }
 
     fn print_html(&self, tree: &TreeNode<ClassID, References>, depth: usize, report: &mut Report) {
-
         let binding = References::default();
         let references_exlusive = match &tree.value {
             None => &binding,
-            Some(refs) => refs
+            Some(refs) => refs,
         };
         let references_inclusive = &tree.get_inclusive_value();
 
@@ -304,9 +305,11 @@ impl GCSurvivorsProfiler {
 
         let has_children = tree.children.len() > 0;
 
-        let mut line: String = format!("<code>{escaped_class_name}</code> \
+        let mut line: String = format!(
+            "<code>{escaped_class_name}</code> \
             <div class=\"chip\"><span>{references_inclusive}</span><i class=\"material-icons\">radio_button_checked</i></div> \
-            <div class=\"chip\"><span>{references_exlusive}</span><i class=\"material-icons\">radio_button_unchecked</i></div>");
+            <div class=\"chip\"><span>{references_exlusive}</span><i class=\"material-icons\">radio_button_unchecked</i></div>"
+        );
 
         if depth == 0 {
             // Find index of first item with id 42
@@ -321,7 +324,7 @@ impl GCSurvivorsProfiler {
                     ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_STACK => "segment",
                     ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_FINALIZER => "auto_delete",
                     ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_HANDLE => "flag",
-                    ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_OTHER => "help"
+                    ffi::COR_PRF_GC_ROOT_KIND::COR_PRF_GC_ROOT_OTHER => "help",
                 };
                 line = format!("{line}<div class=\"chip\"><span>{count}</span><i class=\"material-icons\">{kind_icon}</i></div>");
             }

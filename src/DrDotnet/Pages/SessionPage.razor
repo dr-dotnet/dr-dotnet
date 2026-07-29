@@ -6,6 +6,7 @@
 
 @using Markdig;
 @using System.IO;
+@using System.Text;
 @using DrDotnet.Utils
 
 <MatIconButton Style="float: left;" Icon="@MatIconNames.Arrow_back" OnClick="@OnBackClick"/>
@@ -71,14 +72,35 @@
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body1">
                 @report.Name
             </div>
-            <div class="report mat-layout-grid-cell mat-layout-grid-cell-span-12">
-                @ConvertFileToMarkup(report)
-            </div>
+            @if (!CanDisplay(report))
+            {
+                <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body2">
+                    This kind of report cannot be displayed here, use the download button to get it.
+                </div>
+            }
+            else if (report.Length > MaxDisplayableReportSize)
+            {
+                <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-body2">
+                    This report is too large to be displayed here (@(report.Length / 1024 / 1024) MB), use the download button to get it.
+                </div>
+            }
+            else
+            {
+                <div class="report mat-layout-grid-cell mat-layout-grid-cell-span-12" id="@GetReportElementId(report)"></div>
+            }
         </div>
     </div>
 }
 
 @code {
+
+    /// <summary>
+    /// Reports beyond that size are not displayed at all: even when streamed, the browser cannot
+    /// build a DOM that large without freezing or running out of memory.
+    /// </summary>
+    private const long MaxDisplayableReportSize = 16 * 1024 * 1024;
+
+    private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
     [Parameter]
     public required Guid SessionId { get; init; }
@@ -86,20 +108,54 @@
     private SessionInfo? _session;
     private SessionInfo Session => _session ??= SessionDiscovery.TryGetSession(SessionId, out SessionInfo? session) ? session : throw new InvalidOperationException($"Session {SessionId} not found");
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // Reports are streamed to the browser instead of being rendered as part of the page, because
+        // they can be big and embedding them would mean holding their whole content in memory and
+        // pushing it through a single render batch.
+        foreach (FileInfo report in Session.EnumerateReports())
+        {
+            if (!CanDisplay(report) || report.Length > MaxDisplayableReportSize)
+            {
+                continue;
+            }
+
+            await using Stream stream = OpenReportAsHtml(report);
+            using var streamReference = new DotNetStreamReference(stream, leaveOpen: true);
+            await JsRuntime.InvokeVoidAsync("setElementHtmlFromStream", GetReportElementId(report), streamReference);
+        }
+    }
+
+    private static bool CanDisplay(FileInfo report)
+    {
+        return report.Extension.ToLowerInvariant() is ".html" or ".md";
+    }
+
+    private static Stream OpenReportAsHtml(FileInfo report)
+    {
+        // Html reports are streamed straight from disk, while markdown ones must be converted first
+        if (report.Extension.ToLowerInvariant() == ".md")
+        {
+            string html = Markdown.ToHtml(File.ReadAllText(report.FullName), MarkdownPipeline);
+            return new MemoryStream(Encoding.UTF8.GetBytes(html));
+        }
+
+        return report.OpenRead();
+    }
+
+    private static string GetReportElementId(FileInfo report)
+    {
+        return "report-" + report.Name.Replace('.', '-');
+    }
+
     private static MarkupString MarkdownStringToMarkup(string str)
     {
-        return new MarkupString(Markdown.ToHtml(str, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()));
-    }
-    
-    private static MarkupString ConvertFileToMarkup(FileInfo file)
-    {
-        string content = File.ReadAllText(file.FullName);
-        return file.Extension.ToLower() switch
-        {
-            ".md" => new MarkupString(Markdown.ToHtml(content, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build())),
-            ".html" => new MarkupString(content),
-            _ => new MarkupString()
-        };
+        return new MarkupString(Markdown.ToHtml(str, MarkdownPipeline));
     }
 
     private void OnBackClick(object data)

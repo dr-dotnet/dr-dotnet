@@ -20,30 +20,10 @@
     <link rel="stylesheet" href="_content/MatBlazor/dist/matBlazor.css"  />
     
     <script src="_content/MatBlazor/dist/matBlazor.js"></script>
-    
+
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Code">
-    
-    <script>
-        async function  downloadFileFromStream(fileName, contentStreamReference) {
-            const arrayBuffer = await contentStreamReference.arrayBuffer();
-            const blob = new Blob([arrayBuffer]);
-            const url = URL.createObjectURL(blob);
-            const anchorElement = document.createElement('a');
-            anchorElement.href = url;
-            anchorElement.download = fileName ?? '';
-            anchorElement.click();
-            anchorElement.remove();
-            URL.revokeObjectURL(url);
-        }
-        
-        function scrollToBottom(elementId) {
-            const element = document.getElementById(elementId);
-            if (!element) {
-                return;
-            }
-            element.scrollTop = element.scrollHeight;
-        }
-    </script>
+
+    <script src="_content/DrDotnet/js/interop.js"></script>
 
 </head>
 <body>

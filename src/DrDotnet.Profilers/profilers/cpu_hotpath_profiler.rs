@@ -10,6 +10,10 @@ use crate::rust_protobuf_protos::interop::*;
 use crate::session::Report;
 use crate::utils::{NameResolver, StackSnapshotCallbackReceiver, TreeNode};
 
+// Key used for the nodes aggregating the samples of the stacks that were truncated away.
+// Method id 0 is never part of a stack, since unmanaged frames are filtered out when snapshotting.
+const TRUNCATION_MARKER: FunctionID = 0;
+
 #[derive(Default)]
 pub struct CpuHotpathProfiler {
     clr_profiler_info: ClrProfilerInfo,
@@ -60,7 +64,7 @@ impl Profiler for CpuHotpathProfiler {
                 ProfilerParameter {
                     name: "Maximum stacks to display".to_owned(),
                     key: "max_stacks".to_owned(),
-                    description: "The maximum number of stacks to display".to_owned(),
+                    description: "The maximum number of distinct callstacks to display. Only the hottest ones are kept, the samples of the others are aggregated into truncation markers so that percentages stay accurate".to_owned(),
                     type_: ParameterType::INT.into(),
                     value: "100".to_owned(),
                     ..std::default::Default::default()
@@ -169,22 +173,37 @@ impl CpuHotpathProfiler {
         }
 
         let total_samples: usize = tree.get_inclusive_value();
+        let total_stacks = tree.count_sequences();
+
+        // Keep only the hottest stacks, otherwise reports can get insanely large (a single stack is
+        // often dozens of frames deep, so the whole tree easily amounts to hundreds of thousands of
+        // nodes, which neither the browser nor the UI can display)
+        let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
+        let dropped_stacks = tree.keep_top_sequences(max_stacks, TRUNCATION_MARKER);
 
         // Sort by descending inclusive count (hotpaths first)
         tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
 
-        let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
-
-        // Truncate tree to max_stacks to avoid too large reports
-        if tree.children.len() > max_stacks {
-            tree.children.truncate(max_stacks);
-        }
-
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
         report.write_line("<h2>Hotpaths</h2>".to_owned());
-        report.write_line(format!("<h3>{} Tree</h3>", if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }));
-        report.write_line(format!("<h4>{} samples of {} roots</h4>", total_samples, tree.children.len()));
+        report.write_line(format!(
+            "<h3>{} Tree</h3>",
+            if caller_to_callee { "Callers to Callees" } else { "Callees to Callers" }
+        ));
+        if dropped_stacks > 0 {
+            report.write_line(format!(
+                "<h4>{total_samples} samples, showing the {} hottest stacks out of {total_stacks}</h4>",
+                total_stacks - dropped_stacks
+            ));
+        } else {
+            report.write_line(format!("<h4>{total_samples} samples, {total_stacks} stacks</h4>"));
+        }
+        report.write_line(
+            "<p>Every frame shows its inclusive share of samples (●, this frame and its children in the tree) \
+            then its exclusive share of samples (○, this frame only)</p>"
+                .to_owned(),
+        );
         tree.children.iter().for_each(|node| Self::print_html(&clr, &node, &mut report, total_samples));
 
         if let Err(e) = clr.request_profiler_detach(3000) {
@@ -196,25 +215,26 @@ impl CpuHotpathProfiler {
         let percentage_exclusive = 100f64 * node.value.unwrap_or_default() as f64 / total_samples as f64;
         let percentage_inclusive = 100f64 * node.get_inclusive_value() as f64 / total_samples as f64;
 
-        let mut method_name: String = clr.get_full_method_name(node.key, 0);
+        let mut method_name: String = if node.key == TRUNCATION_MARKER {
+            "[truncated stacks]".to_owned()
+        } else {
+            clr.get_full_method_name(node.key, 0)
+        };
         let escaped_class_name = html_escape::encode_text(&mut method_name);
 
         let has_children = node.children.len() > 0;
 
-        let line: String = format!("<code>{escaped_class_name}</code> \
-            <div class=\"chip\"><span>{percentage_inclusive:.2} %</span><i class=\"material-icons\">radio_button_checked</i></div> \
-            <div class=\"chip\"><span>{percentage_exclusive:.2} %</span><i class=\"material-icons\">radio_button_unchecked</i></div>");
+        // Markup is kept as terse as possible, since it is repeated for every single frame.
+        // The percent signs and the ● / ○ markers are added through CSS (see site.css).
+        let line: String =
+            format!("<code>{escaped_class_name}</code><i class=\"ci\">{percentage_inclusive:.2}</i><i class=\"ce\">{percentage_exclusive:.2}</i>");
 
         if has_children {
-            report.write_line(format!(
-                "<details><summary>{line}</summary>"
-            ));
-            report.write_line(format!("<ul>"));
+            report.write_line(format!("<details><summary>{line}</summary><ul>"));
             for child in &node.children {
                 Self::print_html(clr, child, report, total_samples);
             }
-            report.write_line(format!("</ul>"));
-            report.write_line(format!("</details>"));
+            report.write_line("</ul></details>".to_owned());
         } else {
             report.write_line(format!("<li>{line}</li>"));
         }

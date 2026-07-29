@@ -185,6 +185,29 @@ a, .btn-link {
     font-size: 0.8em;
 }
 
+/* Compact chips, for reports with a lot of nodes: <i class="ci">12.34</i> for an inclusive value,
+   <i class="ce">12.34</i> for an exclusive one. Markup is kept minimal because it is repeated for
+   every single node, so the units and the markers are added here instead. */
+.report .ci, .report .ce {
+    float: right;
+    font-style: normal;
+    background-color: #fff;
+    border-radius: 5px;
+    border: 1px solid #d3d2d2;
+    padding: 2px 6px 2px 6px;
+    margin-right: 2px;
+    color: #757373;
+    vertical-align: middle;
+    font-family: "Fira Code", monospace;
+    font-size: 0.8em;
+}
+.report .ci::after {
+    content: " % ●";
+}
+.report .ce::after {
+    content: " % ○";
+}
+
 .report .material-icons {
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
