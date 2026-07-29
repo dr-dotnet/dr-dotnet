@@ -62,11 +62,11 @@ impl Profiler for CpuHotpathProfiler {
                     ..std::default::Default::default()
                 },
                 ProfilerParameter {
-                    name: "Maximum stacks to display".to_owned(),
-                    key: "max_stacks".to_owned(),
-                    description: "The maximum number of distinct callstacks to display. Only the hottest ones are kept, the samples of the others are aggregated into truncation markers so that percentages stay accurate".to_owned(),
+                    name: "Maximum children per frame".to_owned(),
+                    key: "max_children".to_owned(),
+                    description: "The maximum number of children to display for each frame of the tree. Only the hottest ones are kept, the samples of the others are aggregated into a truncation marker so that percentages stay accurate. Lower it to get smaller reports".to_owned(),
                     type_: ParameterType::INT.into(),
-                    value: "100".to_owned(),
+                    value: "5".to_owned(),
                     ..std::default::Default::default()
                 }
             ],
@@ -175,14 +175,20 @@ impl CpuHotpathProfiler {
         let total_samples: usize = tree.get_inclusive_value();
         let total_stacks = tree.count_sequences();
 
-        // Keep only the hottest stacks, otherwise reports can get insanely large (a single stack is
-        // often dozens of frames deep, so the whole tree easily amounts to hundreds of thousands of
-        // nodes, which neither the browser nor the UI can display)
-        let max_stacks = session_info.get_parameter::<u64>("max_stacks").unwrap() as usize;
-        let dropped_stacks = tree.keep_top_sequences(max_stacks, TRUNCATION_MARKER);
-
         // Sort by descending inclusive count (hotpaths first)
-        tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        let sort_by_descending_inclusive_value =
+            |a: &TreeNode<FunctionID, usize>, b: &TreeNode<FunctionID, usize>| b.get_inclusive_value().cmp(&a.get_inclusive_value());
+        tree.sort_by(&sort_by_descending_inclusive_value);
+
+        // Then keep only the hottest children of every frame, otherwise reports can get insanely
+        // large: stacks are often more than a hundred frames deep, so a tree that branches even a
+        // little amounts to hundreds of thousands of nodes, which the browser cannot display
+        let max_children = session_info.get_parameter::<u64>("max_children").unwrap() as usize;
+        let dropped_stacks = tree.keep_top_children(max_children, TRUNCATION_MARKER);
+
+        // Truncation markers are appended last, so sort again to give them their rank: they hold the
+        // sum of what was dropped, which can outweigh the smallest child that was kept
+        tree.sort_by(&sort_by_descending_inclusive_value);
 
         // Write tree into HTML report
         let mut report = session_info.create_report("cpu_hotpaths.html".to_owned());
@@ -193,8 +199,7 @@ impl CpuHotpathProfiler {
         ));
         if dropped_stacks > 0 {
             report.write_line(format!(
-                "<h4>{total_samples} samples, showing the {} hottest stacks out of {total_stacks}</h4>",
-                total_stacks - dropped_stacks
+                "<h4>{total_samples} samples, {total_stacks} stacks, {dropped_stacks} of them truncated to the {max_children} hottest children per frame</h4>"
             ));
         } else {
             report.write_line(format!("<h4>{total_samples} samples, {total_stacks} stacks</h4>"));

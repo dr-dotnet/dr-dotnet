@@ -1,7 +1,6 @@
 use rayon::prelude::*;
-use std::cmp::{Ordering, Reverse};
-use std::collections::{BinaryHeap, HashMap, VecDeque};
-use std::hash::Hash;
+use std::cmp::Ordering;
+use std::collections::{HashMap, VecDeque};
 use std::ops::AddAssign;
 
 #[derive(Debug, Clone)]
@@ -115,94 +114,43 @@ where
 
 impl<K, V> TreeNode<K, V>
 where
-    K: Copy + Ord + Hash + Sync + Send,
-    V: Clone + Ord + Default + Sync + Send + for<'a> AddAssign<&'a V>,
+    K: Copy,
+    V: Default + for<'a> AddAssign<&'a V>,
 {
     // Number of sequences held by this tree, ie. the number of nodes carrying a value
     pub fn count_sequences(&self) -> usize {
         self.children.iter().map(Self::count_sequences).sum::<usize>() + usize::from(self.value.is_some())
     }
 
-    /// Keeps only the `max_sequences` sequences with the highest values and drops every node that
-    /// isn't part of one of them.
+    /// Keeps only the `max_children` first children of every node, recursively.
     ///
-    /// Every node that lost children (or its own value) gets a single `placeholder_key` child
-    /// carrying the whole dropped value, so that inclusive values remain exact.
+    /// Children are expected to be sorted beforehand, since the first ones are the ones kept. Nodes
+    /// that lost children get one extra child keyed with `placeholder_key`, holding the inclusive
+    /// value of everything that was dropped, so that inclusive values remain exact. Such a node
+    /// therefore ends up with `max_children` + 1 children.
     ///
     /// Returns the number of dropped sequences.
-    pub fn keep_top_sequences(&mut self, max_sequences: usize, placeholder_key: K) -> usize {
-        let total_sequences = self.count_sequences();
-        if total_sequences <= max_sequences {
-            return 0;
-        }
+    pub fn keep_top_children(&mut self, max_children: usize, placeholder_key: K) -> usize {
+        let mut dropped_sequences = 0;
 
-        // The heap is capped to max_sequences, so that memory stays bounded whatever the tree size
-        let mut heap = BinaryHeap::with_capacity(max_sequences + 1);
-        let mut sequence = Vec::new();
-        for child in &self.children {
-            child.collect_top_sequences(&mut sequence, &mut heap, max_sequences);
-        }
-
-        // The kept sequences are rebuilt into a tree used as a mask to prune this tree. Nodes of the
-        // mask carry a value only when they are the last element of a kept sequence.
-        let kept: HashMap<Vec<K>, ()> = heap.into_iter().map(|Reverse((_, sequence))| (sequence, ())).collect();
-        let kept_sequences = kept.len();
-        let mask = TreeNode::<K, ()>::build_from_sequences(&kept, self.key);
-        self.prune(&mask, placeholder_key);
-
-        total_sequences - kept_sequences
-    }
-
-    fn collect_top_sequences(&self, sequence: &mut Vec<K>, heap: &mut BinaryHeap<Reverse<(V, Vec<K>)>>, max_sequences: usize) {
-        sequence.push(self.key);
-
-        if let Some(value) = &self.value {
-            // Pushing then dropping the lowest value keeps the heap holding the top max_sequences
-            heap.push(Reverse((value.clone(), sequence.clone())));
-            if heap.len() > max_sequences {
-                heap.pop();
+        if self.children.len() > max_children {
+            let mut dropped_value = V::default();
+            for dropped_child in self.children.drain(max_children..) {
+                dropped_sequences += dropped_child.count_sequences();
+                dropped_value.add_assign(&dropped_child.get_inclusive_value());
             }
-        }
-
-        for child in &self.children {
-            child.collect_top_sequences(sequence, heap, max_sequences);
-        }
-
-        sequence.pop();
-    }
-
-    fn prune(&mut self, mask: &TreeNode<K, ()>, placeholder_key: K) {
-        let mut dropped_value = V::default();
-        let mut has_dropped = false;
-
-        // A node carrying a value only keeps it if the mask marks it as the end of a kept sequence
-        if mask.value.is_none() {
-            if let Some(value) = self.value.take() {
-                dropped_value.add_assign(&value);
-                has_dropped = true;
-            }
-        }
-
-        self.children
-            .retain_mut(|child| match mask.children.iter().find(|masked_child| masked_child.key == child.key) {
-                Some(masked_child) => {
-                    child.prune(masked_child, placeholder_key);
-                    true
-                }
-                None => {
-                    dropped_value.add_assign(&child.get_inclusive_value());
-                    has_dropped = true;
-                    false
-                }
-            });
-
-        if has_dropped {
             self.children.push(TreeNode {
                 key: placeholder_key,
                 value: Some(dropped_value),
                 children: Vec::new(),
             });
         }
+
+        for child in &mut self.children {
+            dropped_sequences += child.keep_top_children(max_children, placeholder_key);
+        }
+
+        dropped_sequences
     }
 }
 
@@ -399,82 +347,94 @@ mod tests {
     }
 
     #[test]
-    fn test_keep_top_sequences() {
-        let sequences: HashMap<Vec<u32>, usize> = HashMap::from([(vec![1, 2, 3], 10), (vec![1, 2, 4], 20), (vec![1, 2], 3), (vec![5, 6], 7), (vec![5, 7], 1)]);
+    fn test_keep_top_children() {
+        let sequences: HashMap<Vec<u32>, usize> = HashMap::from([
+            (vec![1, 2, 3], 10),
+            (vec![1, 2, 4], 20),
+            (vec![1, 2], 3),
+            (vec![5, 6], 7),
+            (vec![5, 7], 1),
+            (vec![8], 5),
+        ]);
 
         let mut tree = TreeNode::build_from_sequences(&sequences, 0);
-        assert_eq!(tree.count_sequences(), 5);
-        let total = tree.get_inclusive_value();
-        assert_eq!(total, 41);
-
-        // Keeps [1, 2, 4] (20), [1, 2, 3] (10) and [5, 6] (7), drops [1, 2] (3) and [5, 7] (1)
-        let dropped_sequences = tree.keep_top_sequences(3, u32::MAX);
-        assert_eq!(dropped_sequences, 2);
-
-        // Dropped values are moved to placeholder nodes, so the total is unchanged
-        assert_eq!(tree.get_inclusive_value(), total);
-
         tree.sort_by(&|a, b| b.get_inclusive_value().cmp(&a.get_inclusive_value()));
+        assert_eq!(tree.count_sequences(), 6);
+        let total = tree.get_inclusive_value();
+        assert_eq!(total, 46);
 
-        let expected = TreeNode {
-            key: 0,
-            value: None,
-            children: vec![
-                TreeNode {
-                    key: 1,
-                    value: None,
-                    children: vec![TreeNode {
-                        key: 2,
-                        value: None,
-                        children: vec![
-                            TreeNode {
-                                key: 4,
-                                value: Some(20),
-                                children: vec![],
-                            },
-                            TreeNode {
-                                key: 3,
-                                value: Some(10),
-                                children: vec![],
-                            },
-                            // Value of the dropped [1, 2] sequence
-                            TreeNode {
-                                key: u32::MAX,
-                                value: Some(3),
-                                children: vec![],
-                            },
-                        ],
-                    }],
-                },
-                TreeNode {
-                    key: 5,
-                    value: None,
-                    children: vec![
-                        TreeNode {
-                            key: 6,
-                            value: Some(7),
-                            children: vec![],
-                        },
-                        // Value of the dropped [5, 7] sequence
-                        TreeNode {
-                            key: u32::MAX,
-                            value: Some(1),
-                            children: vec![],
-                        },
-                    ],
-                },
-            ],
-        };
+        // Roots are 1 (33), 5 (8) and 8 (5), so only 8 and its single sequence are dropped
+        let mut tree_of_two = tree.clone();
+        assert_eq!(tree_of_two.keep_top_children(2, u32::MAX), 1);
 
-        print(&tree, 0, &|node: &TreeNode<u32, usize>| {
+        print(&tree_of_two, 0, &|node: &TreeNode<u32, usize>| {
             format!("{} [inc:{}, exc:{:?}]", node.key, node.get_inclusive_value(), node.value)
         });
 
-        assert_eq!(tree, expected);
+        assert_eq!(
+            tree_of_two,
+            TreeNode {
+                key: 0,
+                value: None,
+                children: vec![
+                    TreeNode {
+                        key: 1,
+                        value: None,
+                        children: vec![TreeNode {
+                            key: 2,
+                            value: Some(3),
+                            children: vec![
+                                TreeNode {
+                                    key: 4,
+                                    value: Some(20),
+                                    children: vec![]
+                                },
+                                TreeNode {
+                                    key: 3,
+                                    value: Some(10),
+                                    children: vec![]
+                                },
+                            ],
+                        }],
+                    },
+                    TreeNode {
+                        key: 5,
+                        value: None,
+                        children: vec![
+                            TreeNode {
+                                key: 6,
+                                value: Some(7),
+                                children: vec![]
+                            },
+                            TreeNode {
+                                key: 7,
+                                value: Some(1),
+                                children: vec![]
+                            },
+                        ],
+                    },
+                    // Inclusive value of the dropped 8 root
+                    TreeNode {
+                        key: u32::MAX,
+                        value: Some(5),
+                        children: vec![]
+                    },
+                ],
+            }
+        );
 
-        // Keeping more sequences than the tree holds is a no-op
-        let mut tree_clone = tree.clone();
-        assert_eq!(tree_clone.keep_top_sequences(100, u32::MAX), 0);
-        assert_eq!(tree_clone, tree);
+        // Dropped values are moved to placeholder nodes, so the total is always preserved
+        assert_eq!(tree_of_two.get_inclusive_value(), total);
+
+        // Keeping a single child drops the 5 and 8 roots, then the 3 leaf under 2
+        let mut tree_of_one = tree.clone();
+        assert_eq!(tree_of_one.keep_top_children(1, u32::MAX), 4);
+        assert_eq!(tree_of_one.get_inclusive_value(), total);
+        assert_eq!(tree_of_one.children.last().unwrap().value, Some(13));
+
+        // Keeping more children than any node has is a no-op
+        let mut tree_untouched = tree.clone();
+        assert_eq!(tree_untouched.keep_top_children(100, u32::MAX), 0);
+        assert_eq!(tree_untouched, tree);
     }
 }
